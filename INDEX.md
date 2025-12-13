@@ -1,8 +1,10 @@
 # Jeeves Code Analyser - Repository Index
 
-**Version:** 9.2 | **Status:** Production-Ready | **Updated:** 2025-12-13
+**Version:** 9.3 | **Status:** Production-Ready | **Updated:** 2025-12-13
 **Architecture:** Hybrid Go-Python with 7-Agent Read-Only Pipeline
 **Tech Stack:** Go 1.21+ (commbus, envelope CLI) + Python 3.11+ (application layer)
+
+> **Note:** Core packages (`jeeves_protocols`, `jeeves_avionics`, `jeeves_mission_system`, `jeeves_control_tower`, `jeeves_shared`, `jeeves_memory_module`) are located in the `jeeves-core/` git submodule. Initialize with: `git submodule update --init --recursive`
 
 ---
 
@@ -25,13 +27,13 @@ User Query -> Perception -> Intent -> Planner -> Traverser -> Synthesizer -> Cri
 |----------|---------|
 | [docs/CONSTITUTION.md](docs/CONSTITUTION.md) | Non-negotiable principles, thresholds, Go layer rules |
 | [docs/NORTH_STAR_TRAJECTORY.md](docs/NORTH_STAR_TRAJECTORY.md) | Target architecture, agent contracts, implementation status |
-| [jeeves_control_tower/CONSTITUTION.md](jeeves_control_tower/CONSTITUTION.md) | Control Tower constitution (kernel layer) |
-| [jeeves_memory_module/CONSTITUTION.md](jeeves_memory_module/CONSTITUTION.md) | Memory Module constitution (memory services) |
-| [jeeves_avionics/CONSTITUTION.md](jeeves_avionics/CONSTITUTION.md) | Avionics constitution (infrastructure layer) |
-| [jeeves_mission_system/CONSTITUTION.md](jeeves_mission_system/CONSTITUTION.md) | Mission System constitution (application layer) |
+| [jeeves-core/jeeves_control_tower/CONSTITUTION.md](jeeves-core/jeeves_control_tower/CONSTITUTION.md) | Control Tower constitution (kernel layer) |
+| [jeeves-core/jeeves_memory_module/CONSTITUTION.md](jeeves-core/jeeves_memory_module/CONSTITUTION.md) | Memory Module constitution (memory services) |
+| [jeeves-core/jeeves_avionics/CONSTITUTION.md](jeeves-core/jeeves_avionics/CONSTITUTION.md) | Avionics constitution (infrastructure layer) |
+| [jeeves-core/jeeves_mission_system/CONSTITUTION.md](jeeves-core/jeeves_mission_system/CONSTITUTION.md) | Mission System constitution (application layer) |
 | [jeeves-capability-code-analyser/CONSTITUTION.md](jeeves-capability-code-analyser/CONSTITUTION.md) | Capability layer constitution |
 
-**Note:** Go packages (`commbus/`, `coreengine/`) follow rules in docs/CONSTITUTION.md.
+**Note:** Go packages (`jeeves-core/commbus/`, `jeeves-core/coreengine/`) follow rules in docs/CONSTITUTION.md.
 
 ---
 
@@ -41,37 +43,43 @@ User Query -> Perception -> Intent -> Planner -> Traverser -> Synthesizer -> Cri
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                       GO CORE (root level)                       │
+│                    CAPABILITY LAYER (this repo)                  │
 ├─────────────────────────────────────────────────────────────────┤
-│  commbus/              →  Go messaging bus & protocols          │
-│  coreengine/           →  Go orchestration runtime              │
-│  cmd/envelope/         →  Go CLI for envelope operations        │
-└─────────────────────────────────────────────────────────────────┘
-                              ↑
-                        JSON/stdio bridge
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                  PYTHON FOUNDATION (L0)                          │
-├─────────────────────────────────────────────────────────────────┤
-│  jeeves_protocols/         →  Type definitions, protocols        │
-│  jeeves_shared/            →  Shared utilities (logging, UUID)   │
+│  jeeves-capability-code-analyser/  →  Code analysis capability  │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                   CONTROL TOWER (Kernel Layer)                   │
-├─────────────────────────────────────────────────────────────────┤
-│  jeeves_control_tower/     →  Lifecycle, resources, dispatch    │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-                    Service dispatch via CommBus
+                    imports from jeeves-core submodule
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│                       PYTHON LAYERS                              │
+│              JEEVES-CORE SUBMODULE (jeeves-core/)                │
 ├─────────────────────────────────────────────────────────────────┤
-│  jeeves-capability-*/      →  Capability layer (domain agents)  │
-│  jeeves_mission_system/    →  Application layer (API, verticals)│
-│  jeeves_avionics/          →  Infrastructure (DB, LLM, gateway) │
-│  jeeves_memory_module/     →  Memory services (L1-L5)           │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                    GO CORE                                  │ │
+│  ├────────────────────────────────────────────────────────────┤ │
+│  │  commbus/              →  Go messaging bus & protocols     │ │
+│  │  coreengine/           →  Go orchestration runtime         │ │
+│  │  cmd/envelope/         →  Go CLI for envelope operations   │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                              ↑                                   │
+│                        JSON/stdio bridge                         │
+│                              ↓                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │               PYTHON FOUNDATION (L0)                        │ │
+│  │  jeeves_protocols/     →  Type definitions, protocols       │ │
+│  │  jeeves_shared/        →  Shared utilities (logging, UUID)  │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                              ↓                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │              CONTROL TOWER (Kernel Layer)                   │ │
+│  │  jeeves_control_tower/ →  Lifecycle, resources, dispatch    │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                              ↓                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                    PYTHON LAYERS                            │ │
+│  │  jeeves_mission_system/→  Application layer (API, verticals)│ │
+│  │  jeeves_avionics/      →  Infrastructure (DB, LLM, gateway) │ │
+│  │  jeeves_memory_module/ →  Memory services (L1-L5)           │ │
+│  └────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -79,24 +87,24 @@ User Query -> Perception -> Intent -> Planner -> Traverser -> Synthesizer -> Cri
 
 ---
 
-### Go Core Layer (Root Level)
+### Go Core Layer (in jeeves-core submodule)
 
 | Directory | Description | Key Files |
 |-----------|-------------|-----------|
-| [commbus/](commbus/) | Go messaging bus, protocol definitions | `bus.go`, `protocols.go`, `messages.go` |
-| [coreengine/](coreengine/) | Go orchestration runtime | `agents/`, `config/`, `envelope/`, `runtime/` |
-| [cmd/envelope/](cmd/envelope/) | Go CLI entry points | `main.go` |
+| [jeeves-core/commbus/](jeeves-core/commbus/) | Go messaging bus, protocol definitions | `bus.go`, `protocols.go`, `messages.go` |
+| [jeeves-core/coreengine/](jeeves-core/coreengine/) | Go orchestration runtime | `agents/`, `config/`, `envelope/`, `runtime/` |
+| [jeeves-core/cmd/envelope/](jeeves-core/cmd/envelope/) | Go CLI entry points | `main.go` |
 
-**Go Module:** `github.com/jeeves-cluster-organization/codeanalysis` (see `go.mod`)
+**Go Module:** `github.com/jeeves-cluster-organization/codeanalysis` (see `jeeves-core/go.mod`)
 
 ---
 
-### Python Foundation (L0)
+### Python Foundation (L0) (in jeeves-core submodule)
 
 | Directory | Description | Key Files |
 |-----------|-------------|-----------|
-| [jeeves_protocols/](jeeves_protocols/) | Protocol definitions, type stubs for Go-Python interop | `protocols.py`, `interrupts.py`, `envelope.py` |
-| [jeeves_shared/](jeeves_shared/) | Shared utilities (logging, serialization, UUID) | `logging/`, `serialization.py`, `uuid_utils.py` |
+| [jeeves-core/jeeves_protocols/](jeeves-core/jeeves_protocols/) | Protocol definitions, type stubs for Go-Python interop | `protocols.py`, `interrupts.py`, `envelope.py` |
+| [jeeves-core/jeeves_shared/](jeeves-core/jeeves_shared/) | Shared utilities (logging, serialization, UUID) | `logging/`, `serialization.py`, `uuid_utils.py` |
 
 **jeeves_protocols exports (v3.0.0):**
 - Core enums: `RiskLevel`, `ToolCategory`, `HealthStatus`, `CriticVerdict`, `OperationStatus`
@@ -116,11 +124,11 @@ User Query -> Perception -> Intent -> Planner -> Traverser -> Synthesizer -> Cri
 
 ---
 
-### Control Tower (Kernel Layer)
+### Control Tower (Kernel Layer) (in jeeves-core submodule)
 
 | Directory | Description | CONSTITUTION |
 |-----------|-------------|--------------|
-| [jeeves_control_tower/](jeeves_control_tower/) | OS-style kernel: lifecycle, resources, dispatch | [CONSTITUTION](jeeves_control_tower/CONSTITUTION.md) |
+| [jeeves-core/jeeves_control_tower/](jeeves-core/jeeves_control_tower/) | OS-style kernel: lifecycle, resources, dispatch | [CONSTITUTION](jeeves-core/jeeves_control_tower/CONSTITUTION.md) |
 
 **Components (v1.0.0):**
 - `ControlTower` - Main kernel class (kernel.py)
@@ -134,22 +142,22 @@ User Query -> Perception -> Intent -> Planner -> Traverser -> Synthesizer -> Cri
 
 ---
 
-### Memory Module
+### Memory Module (in jeeves-core submodule)
 
 | Directory | Description | CONSTITUTION |
 |-----------|-------------|--------------|
-| [jeeves_memory_module/](jeeves_memory_module/) | Memory services (repositories, services, adapters) | [CONSTITUTION](jeeves_memory_module/CONSTITUTION.md) |
+| [jeeves-core/jeeves_memory_module/](jeeves-core/jeeves_memory_module/) | Memory services (repositories, services, adapters) | [CONSTITUTION](jeeves-core/jeeves_memory_module/CONSTITUTION.md) |
 
-### Infrastructure Layer (Avionics)
+### Infrastructure Layer (Avionics) (in jeeves-core submodule)
 
 | Directory | Description | INDEX |
 |-----------|-------------|-------|
-| [jeeves_avionics/](jeeves_avionics/) | Infrastructure wiring, settings, feature flags | [INDEX](jeeves_avionics/INDEX.md) |
-| [jeeves_avionics/database/](jeeves_avionics/database/) | PostgreSQL/Redis clients and repositories | [INDEX](jeeves_avionics/database/INDEX.md) |
-| [jeeves_avionics/llm/](jeeves_avionics/llm/) | LLM provider abstraction layer | [INDEX](jeeves_avionics/llm/INDEX.md) |
-| [jeeves_avionics/gateway/](jeeves_avionics/gateway/) | FastAPI gateway with REST/SSE/WebSocket | - |
-| [jeeves_avionics/distributed/](jeeves_avionics/distributed/) | Redis distributed bus | - |
-| [jeeves_avionics/checkpoint/](jeeves_avionics/checkpoint/) | PostgreSQL checkpoint adapter | - |
+| [jeeves-core/jeeves_avionics/](jeeves-core/jeeves_avionics/) | Infrastructure wiring, settings, feature flags | [INDEX](jeeves-core/jeeves_avionics/INDEX.md) |
+| [jeeves-core/jeeves_avionics/database/](jeeves-core/jeeves_avionics/database/) | PostgreSQL/Redis clients and repositories | [INDEX](jeeves-core/jeeves_avionics/database/INDEX.md) |
+| [jeeves-core/jeeves_avionics/llm/](jeeves-core/jeeves_avionics/llm/) | LLM provider abstraction layer | [INDEX](jeeves-core/jeeves_avionics/llm/INDEX.md) |
+| [jeeves-core/jeeves_avionics/gateway/](jeeves-core/jeeves_avionics/gateway/) | FastAPI gateway with REST/SSE/WebSocket | - |
+| [jeeves-core/jeeves_avionics/distributed/](jeeves-core/jeeves_avionics/distributed/) | Redis distributed bus | - |
+| [jeeves-core/jeeves_avionics/checkpoint/](jeeves-core/jeeves_avionics/checkpoint/) | PostgreSQL checkpoint adapter | - |
 
 **Core Exports:**
 - Settings: `Settings`, `get_settings`, `reload_settings`
@@ -161,24 +169,24 @@ User Query -> Perception -> Intent -> Planner -> Traverser -> Synthesizer -> Cri
 - Adapters (lazy): `PostgresCheckpointAdapter`, `RedisDistributedBus`
 - Logging: `configure_logging`, `create_logger`, `trace_agent`, `trace_tool`
 
-### Mission System (Application Layer)
+### Mission System (Application Layer) (in jeeves-core submodule)
 
 | Directory | Description | INDEX |
 |-----------|-------------|-------|
-| [jeeves_mission_system/](jeeves_mission_system/) | Application layer root | [INDEX](jeeves_mission_system/INDEX.md) |
-| [jeeves_mission_system/verticals/](jeeves_mission_system/verticals/) | Domain-specific verticals | [INDEX](jeeves_mission_system/verticals/INDEX.md) |
-| [jeeves_mission_system/verticals/code_analysis/](jeeves_mission_system/verticals/code_analysis/) | Code analysis vertical | [INDEX](jeeves_mission_system/verticals/code_analysis/INDEX.md) |
-| [jeeves_mission_system/orchestrator/](jeeves_mission_system/orchestrator/) | LangGraph flow orchestration | [INDEX](jeeves_mission_system/orchestrator/INDEX.md) |
-| [jeeves_mission_system/api/](jeeves_mission_system/api/) | HTTP API server and endpoints | [INDEX](jeeves_mission_system/api/INDEX.md) |
-| [jeeves_mission_system/services/](jeeves_mission_system/services/) | Application services | [INDEX](jeeves_mission_system/services/INDEX.md) |
-| [jeeves_mission_system/common/](jeeves_mission_system/common/) | Shared utilities | [INDEX](jeeves_mission_system/common/INDEX.md) |
-| [jeeves_mission_system/config/](jeeves_mission_system/config/) | Configuration management | [INDEX](jeeves_mission_system/config/INDEX.md) |
-| [jeeves_mission_system/proto/](jeeves_mission_system/proto/) | gRPC protocol definitions | [INDEX](jeeves_mission_system/proto/INDEX.md) |
-| [jeeves_mission_system/scripts/](jeeves_mission_system/scripts/) | Operational scripts | [INDEX](jeeves_mission_system/scripts/INDEX.md) |
-| [jeeves_mission_system/tests/](jeeves_mission_system/tests/) | Test suites | [INDEX](jeeves_mission_system/tests/INDEX.md) |
-| [jeeves_mission_system/static/](jeeves_mission_system/static/) | Static web assets | [INDEX](jeeves_mission_system/static/INDEX.md) |
-| [jeeves_mission_system/systemd/](jeeves_mission_system/systemd/) | Systemd service definitions | [INDEX](jeeves_mission_system/systemd/INDEX.md) |
-| [jeeves_mission_system/docs/](jeeves_mission_system/docs/) | Architecture documentation | [INDEX](jeeves_mission_system/docs/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/](jeeves-core/jeeves_mission_system/) | Application layer root | [INDEX](jeeves-core/jeeves_mission_system/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/verticals/](jeeves-core/jeeves_mission_system/verticals/) | Domain-specific verticals | [INDEX](jeeves-core/jeeves_mission_system/verticals/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/verticals/code_analysis/](jeeves-core/jeeves_mission_system/verticals/code_analysis/) | Code analysis vertical | [INDEX](jeeves-core/jeeves_mission_system/verticals/code_analysis/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/orchestrator/](jeeves-core/jeeves_mission_system/orchestrator/) | LangGraph flow orchestration | [INDEX](jeeves-core/jeeves_mission_system/orchestrator/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/api/](jeeves-core/jeeves_mission_system/api/) | HTTP API server and endpoints | [INDEX](jeeves-core/jeeves_mission_system/api/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/services/](jeeves-core/jeeves_mission_system/services/) | Application services | [INDEX](jeeves-core/jeeves_mission_system/services/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/common/](jeeves-core/jeeves_mission_system/common/) | Shared utilities | [INDEX](jeeves-core/jeeves_mission_system/common/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/config/](jeeves-core/jeeves_mission_system/config/) | Configuration management | [INDEX](jeeves-core/jeeves_mission_system/config/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/proto/](jeeves-core/jeeves_mission_system/proto/) | gRPC protocol definitions | [INDEX](jeeves-core/jeeves_mission_system/proto/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/scripts/](jeeves-core/jeeves_mission_system/scripts/) | Operational scripts | [INDEX](jeeves-core/jeeves_mission_system/scripts/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/tests/](jeeves-core/jeeves_mission_system/tests/) | Test suites | [INDEX](jeeves-core/jeeves_mission_system/tests/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/static/](jeeves-core/jeeves_mission_system/static/) | Static web assets | [INDEX](jeeves-core/jeeves_mission_system/static/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/systemd/](jeeves-core/jeeves_mission_system/systemd/) | Systemd service definitions | [INDEX](jeeves-core/jeeves_mission_system/systemd/INDEX.md) |
+| [jeeves-core/jeeves_mission_system/docs/](jeeves-core/jeeves_mission_system/docs/) | Architecture documentation | [INDEX](jeeves-core/jeeves_mission_system/docs/INDEX.md) |
 
 ---
 
@@ -246,13 +254,13 @@ go test -cover ./...                       # With coverage
 
 ## Import Boundary Rules
 
-### Go Layer (Self-Contained)
+### Go Layer (Self-Contained in jeeves-core submodule)
 
 ```
-RULE 0: Go packages (commbus/, coreengine/) have NO Python dependencies
+RULE 0: Go packages (jeeves-core/commbus/, jeeves-core/coreengine/) have NO Python dependencies
 RULE 1: Go commbus is the foundation - coreengine depends on it
-RULE 2: Go CLI (cmd/) depends on both commbus and coreengine
-RULE 3: Go module: github.com/jeeves-cluster-organization/codeanalysis
+RULE 2: Go CLI (jeeves-core/cmd/) depends on both commbus and coreengine
+RULE 3: Go module: github.com/jeeves-cluster-organization/codeanalysis (in jeeves-core/)
 ```
 
 ### Python Foundation (L0)
@@ -278,7 +286,7 @@ RULE 12: Types exported: ProcessState, ResourceQuota, ServiceDescriptor, etc.
 
 ```
 RULE 13: Memory Module imports from protocols, shared, avionics.database.factory only
-RULE 14: Avionics bridges to Go via subprocess/JSON (jeeves_avionics/interop/)
+RULE 14: Avionics bridges to Go via subprocess/JSON (jeeves-core/jeeves_avionics/interop/)
 RULE 15: Avionics provides lazy imports to avoid circular dependencies
 RULE 16: Mission System provides orchestration, API, and vertical registry
 RULE 17: Capabilities use jeeves_protocols types and CapabilityResourceRegistry
@@ -288,11 +296,11 @@ RULE 17: Capabilities use jeeves_protocols types and CapabilityResourceRegistry
 
 **Enforcement:**
 ```bash
-# Verify Go builds cleanly (self-contained)
-go build ./...
+# Verify Go builds cleanly (self-contained) - run from jeeves-core/
+cd jeeves-core && go build ./...
 
-# Check Python import boundaries
-python jeeves_mission_system/scripts/check_import_boundaries.py
+# Check Python import boundaries - run from jeeves-core/
+python jeeves-core/jeeves_mission_system/scripts/check_import_boundaries.py
 ```
 
 ---

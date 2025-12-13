@@ -23,6 +23,12 @@ sys.path.insert(0, str(app_root))
 project_root = app_root.parent
 sys.path.insert(0, str(project_root))
 
+# Add jeeves-core submodule to Python path for core packages
+# (jeeves_protocols, jeeves_avionics, jeeves_mission_system, etc.)
+jeeves_core_path = project_root / "jeeves-core"
+if jeeves_core_path.exists() and str(jeeves_core_path) not in sys.path:
+    sys.path.insert(0, str(jeeves_core_path))
+
 
 # ============================================================
 # Capability Registration Fixture (Constitution R7)

@@ -20,6 +20,11 @@ from typing import List, Tuple
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Add jeeves-core submodule to Python path for core packages
+JEEVES_CORE_PATH = PROJECT_ROOT / "jeeves-core"
+if JEEVES_CORE_PATH.exists():
+    sys.path.insert(0, str(JEEVES_CORE_PATH))
+
 # Ensure we're using mock provider for all tests
 os.environ['LLM_PROVIDER'] = 'mock'
 

@@ -8,7 +8,9 @@
 
 This document provides an overview of the Jeeves constitutional framework—a hierarchy of constitutions that govern the **Jeeves Code Analyser**, a three-component AI system for read-only code analysis.
 
-**Note:** This is an overview document. The actual governing constitutions are in the component directories, following the dependency hierarchy.
+**Note:** This is an overview document. The actual governing constitutions are in the component directories within the `jeeves-core/` submodule, following the dependency hierarchy.
+
+> **Submodule Note:** Core packages are in the `jeeves-core/` git submodule. Initialize with: `git submodule update --init --recursive`
 
 ---
 
@@ -19,7 +21,7 @@ The Jeeves system uses a decentralized model where each component's constitution
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ CommBus (FOUNDATION) - Go Implementation                │
-│ /commbus/                                               │
+│ jeeves-core/commbus/                                    │
 │ • ZERO dependencies - foundation layer                  │
 │ • Defines canonical protocols and messaging             │
 │ • Used by all other components                          │
@@ -29,7 +31,7 @@ The Jeeves system uses a decentralized model where each component's constitution
                      ↓
 ┌─────────────────────────────────────────────────────────┐
 │ Core Engine (BASE) - Go Implementation                  │
-│ /coreengine/                                            │
+│ jeeves-core/coreengine/                                 │
 │ • Depends on: CommBus only                              │
 │ • Defines core principles (P1-P3)                       │
 │ • Pure orchestration runtime                            │
@@ -39,7 +41,7 @@ The Jeeves system uses a decentralized model where each component's constitution
                      ↓
 ┌─────────────────────────────────────────────────────────┐
 │ Avionics Constitution - Python                          │
-│ jeeves_avionics/CONSTITUTION.md                         │
+│ jeeves-core/jeeves_avionics/CONSTITUTION.md             │
 │ • Parent: Core Engine                                   │
 │ • Inherits P1-P3 + adds infrastructure rules            │
 │ • LLM, database, memory, gateway                        │
@@ -48,14 +50,14 @@ The Jeeves system uses a decentralized model where each component's constitution
                      ↓
 ┌─────────────────────────────────────────────────────────┐
 │ Mission System Constitution - Python                    │
-│ jeeves_mission_system/CONSTITUTION.md                   │
+│ jeeves-core/jeeves_mission_system/CONSTITUTION.md       │
 │ • Parent: Avionics Constitution                         │
 │ • Inherits full dependency chain                        │
 │ • 7-agent pipeline, tools, API                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Key principle:** Each constitution extends its dependencies, matching the code dependency hierarchy. CommBus and Core Engine are now **Go implementations** at the repository root, providing the foundation layer with zero external dependencies.
+**Key principle:** Each constitution extends its dependencies, matching the code dependency hierarchy. CommBus and Core Engine are now **Go implementations** in the `jeeves-core/` submodule, providing the foundation layer with zero external dependencies.
 
 ---
 

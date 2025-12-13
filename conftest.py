@@ -177,6 +177,12 @@ project_root = Path(__file__).parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+# Add jeeves-core submodule to Python path for core packages
+# (jeeves_protocols, jeeves_avionics, jeeves_mission_system, etc.)
+jeeves_core_path = project_root / "jeeves-core"
+if jeeves_core_path.exists() and str(jeeves_core_path) not in sys.path:
+    sys.path.insert(0, str(jeeves_core_path))
+
 
 def pytest_addoption(parser):
     """Add custom command-line options for snapshot testing."""

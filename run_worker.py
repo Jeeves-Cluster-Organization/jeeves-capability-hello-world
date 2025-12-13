@@ -31,7 +31,13 @@ import uuid
 from typing import List, Optional
 
 # Ensure project root is in path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, project_root)
+
+# Add jeeves-core submodule to Python path for core packages
+jeeves_core_path = os.path.join(project_root, "jeeves-core")
+if os.path.exists(jeeves_core_path):
+    sys.path.insert(0, jeeves_core_path)
 
 
 async def create_redis_client():
