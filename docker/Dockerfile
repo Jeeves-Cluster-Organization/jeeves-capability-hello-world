@@ -168,6 +168,11 @@ COPY --chown=1000:1000 jeeves-core/jeeves_control_tower/ ./jeeves_control_tower/
 COPY --chown=1000:1000 jeeves-core/jeeves_memory_module/ ./jeeves_memory_module/
 COPY --chown=1000:1000 jeeves-core/jeeves_avionics/ ./jeeves_avionics/
 COPY --chown=1000:1000 jeeves-core/jeeves_mission_system/ ./jeeves_mission_system/
+
+# Copy code analysis capability as Python package (with underscores for import)
+# This enables: from jeeves_capability_code_analyser import register_capability
+COPY --chown=1000:1000 jeeves-capability-code-analyser/ ./jeeves_capability_code_analyser/
+
 # Copy code analysis capability to app root for imports
 # Copy ALL composite tools (includes correct __init__.py with proper imports)
 COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/*.py ./tools/
@@ -316,6 +321,11 @@ COPY --chown=jeeves:jeeves jeeves-core/jeeves_control_tower/ ./jeeves_control_to
 COPY --chown=jeeves:jeeves jeeves-core/jeeves_memory_module/ ./jeeves_memory_module/
 COPY --chown=jeeves:jeeves jeeves-core/jeeves_avionics/ ./jeeves_avionics/
 COPY --chown=jeeves:jeeves jeeves-core/jeeves_mission_system/ ./jeeves_mission_system/
+
+# Copy code analysis capability as Python package (with underscores for import)
+# This enables: from jeeves_capability_code_analyser import register_capability
+COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/ ./jeeves_capability_code_analyser/
+
 # Copy code analysis capability (tools, agents, models, etc.) to app root
 # This makes "from tools import ..." and similar imports work
 # First copy ALL composite tools from tools root (includes correct __init__.py)
