@@ -188,7 +188,9 @@ COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/base/semantic_tools
 COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/base/session_tools.py ./tools/base/
 COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/base/system_tools.py ./tools/base/
 COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/base/citation_validator.py ./tools/base/
-# Copy base files to tools/ root for flat imports (tools.path_helpers, tools.resilient_ops)
+COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/base/path_helpers.py ./tools/base/
+COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/base/resilient_ops.py ./tools/base/
+# Also copy to tools/ root for flat imports (tools.path_helpers, tools.resilient_ops)
 COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/base/path_helpers.py ./tools/
 COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/base/resilient_ops.py ./tools/
 # Copy other capability components
@@ -342,7 +344,9 @@ COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/tools/base/semantic_t
 COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/tools/base/session_tools.py ./tools/base/
 COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/tools/base/system_tools.py ./tools/base/
 COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/tools/base/citation_validator.py ./tools/base/
-# Copy base files to tools/ root for flat imports (tools.path_helpers, tools.resilient_ops)
+COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/tools/base/path_helpers.py ./tools/base/
+COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/tools/base/resilient_ops.py ./tools/base/
+# Also copy to tools/ root for flat imports (tools.path_helpers, tools.resilient_ops)
 COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/tools/base/path_helpers.py ./tools/
 COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/tools/base/resilient_ops.py ./tools/
 # Copy other capability components
