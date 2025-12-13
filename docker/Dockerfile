@@ -133,8 +133,16 @@ RUN pip install --no-cache-dir \
     pytest-asyncio==0.21.1 \
     pytest-cov==4.1.0 \
     pytest-timeout>=2.0.0 \
+    pytest-xdist>=3.5.0 \
+    pytest-html>=4.1.0 \
+    pytest-json-report>=1.5.0 \
     testcontainers[postgres]>=3.7.0 \
-    websockets>=12.0
+    websockets>=12.0 \
+    httpx>=0.25.0 \
+    asyncpg>=0.29.0 \
+    aiohttp>=3.9.0 \
+    docker>=7.0.0 \
+    hypothesis>=6.92.0
 
 # Set working directory
 WORKDIR /app

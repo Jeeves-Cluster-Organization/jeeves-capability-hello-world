@@ -36,3 +36,16 @@ respx>=0.20.0  # Mock httpx library
 # Test reporting
 pytest-html>=4.1.0  # HTML test reports
 pytest-json-report>=1.5.0  # JSON test reports
+
+# Deployment testing
+docker>=7.0.0  # Docker SDK for Python
+asyncpg>=0.29.0  # Async PostgreSQL driver for direct DB testing
+
+# UI/UX and API testing
+pytest-benchmark>=4.0.0  # Performance benchmarking
+pytest-snapshot>=0.9.0  # Snapshot testing for response formats
+aiohttp>=3.9.0  # Async HTTP client for WebSocket testing
+
+# Contract testing
+hypothesis>=6.92.0  # Property-based testing
+schemathesis>=3.21.0  # API schema testing
