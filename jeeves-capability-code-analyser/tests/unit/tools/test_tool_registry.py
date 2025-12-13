@@ -5,7 +5,7 @@ The canonical ToolCatalog is in jeeves_avionics.tools.catalog.
 """
 
 import pytest
-from jeeves_mission_system.contracts import RiskLevel
+from jeeves_protocols import RiskLevel
 from tests.fixtures.mocks.tools import MockToolRegistry, MockToolDefinition
 
 

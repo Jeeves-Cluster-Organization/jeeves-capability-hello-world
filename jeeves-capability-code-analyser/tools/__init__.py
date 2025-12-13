@@ -19,9 +19,9 @@ from jeeves_mission_system.contracts import (
     PersistenceProtocol,
     tool_catalog,
     ToolId,
-    ToolCategory,
     EXPOSED_TOOL_IDS,
 )
+from jeeves_protocols import ToolCategory
 
 from tools.registration import (
     register_all_tools,

@@ -24,8 +24,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import ContextBounds, ToolId, ToolCategory, tool_catalog
-from jeeves_protocols import RiskLevel, OperationStatus
+from jeeves_mission_system.contracts import ContextBounds, ToolId, tool_catalog
+from jeeves_protocols import RiskLevel, OperationStatus, ToolCategory
 from tools.robust_tool_base import AttemptRecord, CitationCollector
 
 

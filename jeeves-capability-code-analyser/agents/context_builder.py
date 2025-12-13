@@ -23,8 +23,9 @@ Each agent receives:
 
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
-# Constitutional imports - from mission_system contracts layer
-from jeeves_mission_system.contracts import ContextBounds, tool_catalog, RiskLevel
+# Constitutional imports - RiskLevel from protocols, others from mission_system contracts
+from jeeves_protocols import RiskLevel
+from jeeves_mission_system.contracts import ContextBounds, tool_catalog
 
 
 @dataclass

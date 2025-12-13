@@ -7,7 +7,7 @@ requiring real file system access or external services.
 from typing import Any, Callable, Dict, List, Optional
 from dataclasses import dataclass, field
 
-from jeeves_mission_system.contracts import RiskLevel
+from jeeves_protocols import RiskLevel
 
 
 @dataclass

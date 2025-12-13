@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import LoggerProtocol, ToolId, ToolCategory, tool_catalog
-from jeeves_protocols import RiskLevel
+from jeeves_mission_system.contracts import LoggerProtocol, ToolId, tool_catalog
+from jeeves_protocols import RiskLevel, ToolCategory
 from tools.path_helpers import get_repo_path, resolve_path
 from tools.robust_tool_base import (
     RobustToolExecutor,
