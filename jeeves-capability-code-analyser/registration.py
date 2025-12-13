@@ -5,6 +5,8 @@ Constitutional Reference:
 - Mission System Constitution: Domain configs OWNED by capabilities
 - Capability Constitution R7: Capability MUST register its resources at application startup
 
+See docs/JEEVES_CORE_RUNTIME_CONTRACT.md for the authoritative runtime contract.
+
 This module registers the code_analysis capability resources at startup.
 Infrastructure queries these registrations instead of having hardcoded knowledge.
 

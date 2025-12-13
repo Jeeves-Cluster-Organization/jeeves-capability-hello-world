@@ -383,8 +383,9 @@ codeanalysis-7agent/
 | Document | Purpose |
 |----------|---------|
 | [INDEX.md](INDEX.md) | **START HERE** - Complete repository navigation |
-| [JEEVES_CORE_CONSTITUTION.md](JEEVES_CORE_CONSTITUTION.md) | Governance framework (v2.1) |
-| [NORTH_STAR_TRAJECTORY.md](NORTH_STAR_TRAJECTORY.md) | Target architecture and roadmap |
+| [docs/JEEVES_CORE_RUNTIME_CONTRACT.md](docs/JEEVES_CORE_RUNTIME_CONTRACT.md) | **SOURCE OF TRUTH** - Runtime contract for capabilities |
+| [docs/CONSTITUTION.md](docs/CONSTITUTION.md) | Governance framework and constitutional hierarchy |
+| [docs/NORTH_STAR_TRAJECTORY.md](docs/NORTH_STAR_TRAJECTORY.md) | Target architecture and roadmap |
 
 ### Component Documentation
 
@@ -517,7 +518,7 @@ make quality
 
 ### Import Boundaries
 
-The system enforces strict import boundaries between layers:
+The system enforces strict import boundaries between layers. See **[JEEVES_CORE_RUNTIME_CONTRACT.md](docs/JEEVES_CORE_RUNTIME_CONTRACT.md)** for the authoritative import rules.
 
 ```bash
 # Check Python import boundaries
@@ -545,4 +546,5 @@ See repository root for license information.
 For issues, questions, or contributions:
 - GitHub Issues: <repository-url>/issues
 - Documentation: [INDEX.md](INDEX.md)
-- Constitution: [JEEVES_CORE_CONSTITUTION.md](JEEVES_CORE_CONSTITUTION.md)
+- Runtime Contract: [docs/JEEVES_CORE_RUNTIME_CONTRACT.md](docs/JEEVES_CORE_RUNTIME_CONTRACT.md)
+- Constitution: [docs/CONSTITUTION.md](docs/CONSTITUTION.md)

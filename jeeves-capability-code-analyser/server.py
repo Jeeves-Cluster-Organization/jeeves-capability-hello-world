@@ -3,6 +3,8 @@ Code Analysis Capability - Main Entry Point.
 
 This is the capability's own server that builds on the Mission System framework.
 
+See docs/JEEVES_CORE_RUNTIME_CONTRACT.md for the authoritative runtime contract.
+
 **Constitutional Layering:**
 ```
 Code Analysis Capability (this file)  ← TOP (application)
@@ -19,6 +21,11 @@ This capability:
 - Creates its own service using the framework
 - Starts its own gRPC server
 - Mission system NEVER imports this file
+
+**Bootstrap Order (per Runtime Contract):**
+1. Register capability resources FIRST (register_capability())
+2. Import runtime services AFTER registration
+3. Start application server
 
 **Constitution R7 Compliance:**
 - register_capability() is called at module import time

@@ -25,8 +25,10 @@ User Query -> Perception -> Intent -> Planner -> Traverser -> Synthesizer -> Cri
 
 | Document | Purpose |
 |----------|---------|
+| [docs/JEEVES_CORE_RUNTIME_CONTRACT.md](docs/JEEVES_CORE_RUNTIME_CONTRACT.md) | **SOURCE OF TRUTH** - Runtime contract for capabilities |
 | [docs/CONSTITUTION.md](docs/CONSTITUTION.md) | Non-negotiable principles, thresholds, Go layer rules |
 | [docs/NORTH_STAR_TRAJECTORY.md](docs/NORTH_STAR_TRAJECTORY.md) | Target architecture, agent contracts, implementation status |
+| [docs/CAPABILITY_INTEGRATION_GUIDE.md](docs/CAPABILITY_INTEGRATION_GUIDE.md) | Implementation details for capability integration |
 | [jeeves-core/jeeves_control_tower/CONSTITUTION.md](jeeves-core/jeeves_control_tower/CONSTITUTION.md) | Control Tower constitution (kernel layer) |
 | [jeeves-core/jeeves_memory_module/CONSTITUTION.md](jeeves-core/jeeves_memory_module/CONSTITUTION.md) | Memory Module constitution (memory services) |
 | [jeeves-core/jeeves_avionics/CONSTITUTION.md](jeeves-core/jeeves_avionics/CONSTITUTION.md) | Avionics constitution (infrastructure layer) |
@@ -305,4 +307,4 @@ python jeeves-core/jeeves_mission_system/scripts/check_import_boundaries.py
 
 ---
 
-*This INDEX reflects the hybrid Go-Python architecture. Go core at root level, Python foundation (protocols/shared) at L0, higher application layers in subdirectories. See [docs/CONSTITUTION.md](docs/CONSTITUTION.md) for authoritative documentation.*
+*This INDEX reflects the hybrid Go-Python architecture. Go core at root level, Python foundation (protocols/shared) at L0, higher application layers in subdirectories. See [docs/JEEVES_CORE_RUNTIME_CONTRACT.md](docs/JEEVES_CORE_RUNTIME_CONTRACT.md) for the authoritative runtime contract.*

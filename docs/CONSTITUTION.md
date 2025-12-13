@@ -8,6 +8,8 @@
 
 This document provides an overview of the Jeeves constitutional framework—a hierarchy of constitutions that govern the **Jeeves Code Analyser**, a three-component AI system for read-only code analysis.
 
+> **Runtime Contract:** For the authoritative source of truth on capability integration with jeeves-core, see **[JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md)**.
+
 **Note:** This is an overview document. The actual governing constitutions are in the component directories within the `jeeves-core/` submodule, following the dependency hierarchy.
 
 > **Submodule Note:** Core packages are in the `jeeves-core/` git submodule. Initialize with: `git submodule update --init --recursive`
@@ -394,6 +396,7 @@ Use git history to reference prior implementations.
 
 | Topic | Location |
 |-------|----------|
+| **Runtime Contract** | [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md) |
 | Canonical protocols | `/commbus/protocols.go` (Go) |
 | Message types | `/commbus/messages.go` (Go) |
 | CommBus interface | `/commbus/bus.go` (Go) |
@@ -418,20 +421,22 @@ Use git history to reference prior implementations.
 
 ## Cross-References
 
+- **Runtime Contract:** [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md) - **SOURCE OF TRUTH** for capability integration
 - **Architecture:** [NORTH_STAR_TRAJECTORY.md](NORTH_STAR_TRAJECTORY.md)
-- **Repository Index:** [INDEX.md](INDEX.md)
+- **Repository Index:** [INDEX.md](../INDEX.md)
+- **Capability Integration:** [CAPABILITY_INTEGRATION_GUIDE.md](CAPABILITY_INTEGRATION_GUIDE.md)
 - **Audit Reports:**
   - [CENTRALIZATION_AUDIT_2025_12_10.md](CENTRALIZATION_AUDIT_2025_12_10.md) - Code pattern centralization opportunities
-  - [docs/POST_INTEGRATION_ARCHITECTURE_AUDIT.md](docs/POST_INTEGRATION_ARCHITECTURE_AUDIT.md) - Control Tower integration audit
+  - [POST_INTEGRATION_ARCHITECTURE_AUDIT.md](POST_INTEGRATION_ARCHITECTURE_AUDIT.md) - Control Tower integration audit
 - **Go Packages (Foundation):**
   - `/commbus/` - Foundation layer (Go)
   - `/coreengine/` - Runtime layer (Go)
   - `/cmd/envelope/` - CLI for Python-Go interop
 - **Python Constitutions:**
-  - [Control Tower Constitution](jeeves_control_tower/CONSTITUTION.md)
-  - [Avionics Constitution](jeeves_avionics/CONSTITUTION.md)
-  - [Mission System Constitution](jeeves_mission_system/CONSTITUTION.md)
+  - [Control Tower Constitution](../jeeves-core/jeeves_control_tower/CONSTITUTION.md)
+  - [Avionics Constitution](../jeeves-core/jeeves_avionics/CONSTITUTION.md)
+  - [Mission System Constitution](../jeeves-core/jeeves_mission_system/CONSTITUTION.md)
 
 ---
 
-*This is an overview document. CommBus and CoreEngine are **Go implementations** at `/commbus/` and `/coreengine/`. Python layers (Avionics, Mission System) interact via `jeeves_protocols`.*
+*This is an overview document. CommBus and CoreEngine are **Go implementations** at `/commbus/` and `/coreengine/`. Python layers (Avionics, Mission System) interact via `jeeves_protocols`. For the authoritative runtime contract, see [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md).*
