@@ -1,13 +1,13 @@
-# Docker Compose configuration for 7-Agent Assistant
+# Docker Compose configuration for Jeeves Code Analysis Capability
 #
 # Cross-platform: Works on Linux, Windows (Docker Desktop + WSL2), and macOS.
 # GPU auto-detection: Falls back to CPU if NVIDIA GPU unavailable.
 #
 # Profiles:
-#   prod:    Production services (api, gateway, postgres, llama-server)
+#   prod:    Production services (orchestrator, gateway, postgres, llama-server)
 #   test:    All services including test runner
 #   dev:     All services (same as no profile)
-#   minimal: Core services only (api, postgres, llama-server) - no gateway
+#   minimal: Core services only (orchestrator, postgres, llama-server) - no gateway
 #
 # Usage (from project root):
 #   Build services:         docker compose -f docker/docker-compose.yml build
@@ -37,17 +37,17 @@
 
 services:
   # ==========================================================================
-  # 7-Agent API Service (gRPC Orchestrator)
+  # Jeeves Orchestrator Service (gRPC)
   # ==========================================================================
-  assistant:
-    container_name: assistant-7agent-api
+  orchestrator:
+    container_name: jeeves-orchestrator
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      target: orchestrator  # Explicitly use orchestrator stage for gRPC server
+      target: orchestrator
       args:
         CODE_VERSION: ${CODE_VERSION:-dev}
-    image: assistant-7agent:latest
+    image: jeeves-code-analysis:latest
 
     # Port mapping (host:container) - gRPC server listens on 50051 inside container
     ports:
@@ -116,26 +116,27 @@ services:
 
     # Network
     networks:
-      - assistant-network
+      - jeeves-network
 
     # Labels
     labels:
-      com.assistant.service: "api"
-      com.assistant.version: "1.0.0"
+      com.jeeves.service: "orchestrator"
+      com.jeeves.capability: "code-analysis"
+      com.jeeves.version: "1.0.0"
 
 
   # ==========================================================================
-  # HTTP Gateway (FastAPI - user-facing web UI)
+  # Jeeves Gateway (FastAPI - user-facing web UI)
   # ==========================================================================
   gateway:
-    container_name: assistant-gateway
+    container_name: jeeves-gateway
     build:
       context: ..
       dockerfile: docker/Dockerfile
       target: gateway
       args:
         CODE_VERSION: ${CODE_VERSION:-dev}
-    image: assistant-gateway:latest
+    image: jeeves-gateway:latest
 
     # Port mapping - HTTP gateway on port 8001
     ports:
@@ -143,7 +144,7 @@ services:
 
     # Environment variables
     environment:
-      - ORCHESTRATOR_HOST=assistant
+      - ORCHESTRATOR_HOST=orchestrator
       - ORCHESTRATOR_PORT=50051
       - API_HOST=0.0.0.0
       - API_PORT=8000
@@ -171,26 +172,27 @@ services:
       retries: 3
       start_period: 10s
 
-    # Dependencies - wait for API to be healthy
+    # Dependencies - wait for orchestrator to be healthy
     depends_on:
-      assistant:
+      orchestrator:
         condition: service_healthy
 
     # Network
     networks:
-      - assistant-network
+      - jeeves-network
 
     # Labels
     labels:
-      com.assistant.service: "gateway"
-      com.assistant.version: "1.0.0"
+      com.jeeves.service: "gateway"
+      com.jeeves.capability: "code-analysis"
+      com.jeeves.version: "1.0.0"
 
 
   # ==========================================================================
   # PostgreSQL Database with pgvector Extension
   # ==========================================================================
   postgres:
-    container_name: assistant-postgres
+    container_name: jeeves-postgres
     image: pgvector/pgvector:pg16
 
     # Port mapping
@@ -207,7 +209,7 @@ services:
     # Volume mounts
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ../jeeves_avionics/database/schemas:/docker-entrypoint-initdb.d:ro
+      - ../jeeves-core/jeeves_avionics/database/schemas:/docker-entrypoint-initdb.d:ro
 
     # Resource limits
     deploy:
@@ -232,20 +234,21 @@ services:
 
     # Network
     networks:
-      - assistant-network
+      - jeeves-network
 
     # Labels
     labels:
-      com.assistant.service: "database"
-      com.assistant.version: "1.0.0"
+      com.jeeves.service: "database"
+      com.jeeves.capability: "code-analysis"
+      com.jeeves.version: "1.0.0"
 
 
   # ==========================================================================
-  # llama-server LLM Service (GPU auto-detection, falls back to CPU)
+  # Jeeves LLM Service (llama-server with GPU auto-detection)
   # Uses llama.cpp server with OpenAI-compatible API on port 8080
   # ==========================================================================
   llama-server:
-    container_name: assistant-llama-server
+    container_name: jeeves-llm
     image: ghcr.io/ggerganov/llama.cpp:server-cuda
 
     # Port mapping
@@ -312,23 +315,24 @@ services:
 
     # Network
     networks:
-      - assistant-network
+      - jeeves-network
 
     # Labels
     labels:
-      com.assistant.service: "llm"
-      com.assistant.version: "1.0.0"
+      com.jeeves.service: "llm"
+      com.jeeves.capability: "code-analysis"
+      com.jeeves.version: "1.0.0"
 
 
   # ==========================================================================
-  # Test Runner Service
+  # Jeeves Test Runner Service
   # Usage:
   #   docker compose --profile test build test
   #   docker compose run --rm test pytest tests/unit/ -v
   #   docker compose run --rm test pytest tests/integration/test_gateway.py -v
   # ==========================================================================
   test:
-    container_name: assistant-test
+    container_name: jeeves-test
     # Profile: only build/start when explicitly requested (reduces default build time)
     profiles:
       - test
@@ -356,9 +360,10 @@ services:
       - LLM_PROVIDER=llamaserver
       - DEFAULT_MODEL=${DEFAULT_MODEL:-Llama-3.2-3B-Instruct}
       # API (required by tests/config/endpoints.py)
-      - API_HOST=http://assistant:8000
+      - API_HOST=http://orchestrator:8000
       # Gateway (for integration tests)
       - GATEWAY_HOST=http://gateway:8000
+      - ORCHESTRATOR_HOST=orchestrator
       # Logging
       - LOG_LEVEL=DEBUG
 
@@ -371,25 +376,26 @@ services:
 
     # Network
     networks:
-      - assistant-network
+      - jeeves-network
 
     # Default test command (can be overridden)
     command: pytest -v --tb=short
 
     # Labels
     labels:
-      com.assistant.service: "test"
-      com.assistant.version: "1.0.0"
+      com.jeeves.service: "test"
+      com.jeeves.capability: "code-analysis"
+      com.jeeves.version: "1.0.0"
 
 
 # =============================================================================
 # Networks
 # =============================================================================
 networks:
-  assistant-network:
+  jeeves-network:
     driver: bridge
     labels:
-      com.assistant.network: "main"
+      com.jeeves.network: "code-analysis"
 
 
 # =============================================================================
@@ -405,4 +411,5 @@ volumes:
   postgres-data:
     driver: local
     labels:
-      com.assistant.volume: "database"
+      com.jeeves.volume: "database"
+      com.jeeves.capability: "code-analysis"
