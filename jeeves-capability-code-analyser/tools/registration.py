@@ -44,7 +44,7 @@ def register_all_tools() -> Dict[str, Any]:
     from tools.module_mapper import map_module
     from tools.flow_tracer import trace_entry_point
     from tools.base.resilient_ops import read_code, find_related
-    from tools.unified_analyzer import search_code, analyze
+    from tools.unified_analyzer import search_code
 
     registered = []
 
@@ -60,17 +60,6 @@ def register_all_tools() -> Dict[str, Any]:
         risk_level=RiskLevel.READ_ONLY,
     )
     registered.append("search_code")
-
-    # Legacy analyze - kept for backwards compatibility
-    tool_catalog.register_function(
-        tool_id=ToolId.ANALYZE,
-        func=analyze,
-        description="LEGACY: Use search_code instead. Unified code analysis.",
-        parameters={"target": "string", "target_type": "string?", "include_usages": "boolean?"},
-        category=ToolCategory.UNIFIED,
-        risk_level=RiskLevel.READ_ONLY,
-    )
-    registered.append("analyze")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # COMPOSITE TOOLS (Amendment XVII)

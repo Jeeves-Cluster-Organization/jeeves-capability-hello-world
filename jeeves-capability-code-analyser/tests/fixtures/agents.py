@@ -65,7 +65,7 @@ def pipeline_config():
 
     Use for testing the pipeline configuration and hooks.
     """
-    from pipeline_config import get_code_analysis_pipeline
+    from jeeves_capability_code_analyser.pipeline_config import get_code_analysis_pipeline
     return get_code_analysis_pipeline()
 
 
