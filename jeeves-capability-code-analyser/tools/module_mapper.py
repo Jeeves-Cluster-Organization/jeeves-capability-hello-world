@@ -22,7 +22,7 @@ from config.tool_profiles import detect_semantic_mismatch
 async def _get_tree(module_path: str, depth: int) -> Dict[str, Any]:
     """Get directory tree for the module."""
     _logger = get_logger()
-    if not tool_catalog.has_tool(ToolId.TREE_STRUCTURE):
+    if not tool_catalog.has_tool_id(ToolId.TREE_STRUCTURE):
         return {"status": "tool_unavailable", "tree": "", "file_count": 0, "dir_count": 0}
 
     tree_structure = tool_catalog.get_function(ToolId.TREE_STRUCTURE)
@@ -44,7 +44,7 @@ async def _get_tree(module_path: str, depth: int) -> Dict[str, Any]:
 async def _get_files(module_path: str) -> Dict[str, Any]:
     """Get list of Python files in the module."""
     _logger = get_logger()
-    if not tool_catalog.has_tool(ToolId.GLOB_FILES):
+    if not tool_catalog.has_tool_id(ToolId.GLOB_FILES):
         return {"status": "tool_unavailable", "files": []}
 
     glob_files = tool_catalog.get_function(ToolId.GLOB_FILES)
@@ -62,7 +62,7 @@ async def _get_files(module_path: str) -> Dict[str, Any]:
 async def _get_symbols(file_path: str) -> Dict[str, Any]:
     """Get symbols defined in a file."""
     _logger = get_logger()
-    if not tool_catalog.has_tool(ToolId.GET_FILE_SYMBOLS):
+    if not tool_catalog.has_tool_id(ToolId.GET_FILE_SYMBOLS):
         return {"status": "tool_unavailable", "symbols": []}
 
     get_file_symbols = tool_catalog.get_function(ToolId.GET_FILE_SYMBOLS)
@@ -79,7 +79,7 @@ async def _get_symbols(file_path: str) -> Dict[str, Any]:
 async def _get_imports(file_path: str) -> Dict[str, Any]:
     """Get imports from a file."""
     _logger = get_logger()
-    if not tool_catalog.has_tool(ToolId.GET_IMPORTS):
+    if not tool_catalog.has_tool_id(ToolId.GET_IMPORTS):
         return {"status": "tool_unavailable", "imports": []}
 
     get_imports = tool_catalog.get_function(ToolId.GET_IMPORTS)
@@ -96,7 +96,7 @@ async def _get_imports(file_path: str) -> Dict[str, Any]:
 async def _get_consumers(module_path: str) -> Dict[str, Any]:
     """Get files that import from this module."""
     _logger = get_logger()
-    if not tool_catalog.has_tool(ToolId.GET_IMPORTERS):
+    if not tool_catalog.has_tool_id(ToolId.GET_IMPORTERS):
         return {"status": "tool_unavailable", "consumers": []}
 
     get_importers = tool_catalog.get_function(ToolId.GET_IMPORTERS)

@@ -24,270 +24,222 @@ from jeeves_mission_system.prompts.core.registry import register_prompt
 # --- PERCEPTION PROMPTS (Agent 1) - Context Loading ---
 
 def code_analysis_perception() -> str:
-    """Code analysis perception prompt - context loading and query normalization.
-
-    Expected placeholders:
-        - system_identity: Core identity block
-        - role_description: Perception role explanation
-        - user_query: Raw user input
-        - session_state: Formatted session state
-    """
+    """Perception prompt - normalize query and extract scope."""
     return """{system_identity}
 
-**Your Role:** Perception Agent - Load context and normalize code analysis queries.
+**Query:** {user_query}
+**Session:** {session_state}
 
-{role_description}
+Normalize query, extract scope (files/dirs), identify type (explore/explain/search/trace).
 
-**User Query:** {user_query}
-
-**Session State:**
-{session_state}
-
-**Your Task:**
-1. Normalize the user query (fix typos, expand abbreviations)
-2. Extract any scope information (files, directories, patterns)
-3. Identify the query type (exploration, explanation, search, trace)
-
-Output JSON only:
-{{"normalized_query": "...", "scope": "...", "query_type": "..."}}"""
+Output ONE JSON object only: {{"normalized_query": "...", "scope": "...", "query_type": "..."}}"""
 
 
 # --- INTENT PROMPTS (Agent 2) - Query Classification ---
 
 def code_analysis_intent() -> str:
-    """Code analysis intent classification prompt.
-
-    Expected placeholders:
-        - system_identity: Core identity block
-        - role_description: Intent role explanation
-        - normalized_input: Cleaned query from perception
-        - context_summary: Session context summary
-        - detected_languages: List of detected languages
-        - capabilities_summary: What the system can do
-    """
+    """Intent prompt - classify query and extract goals."""
     return """{system_identity}
 
-**Your Role:** Intent Agent - Classify code analysis intent.
-
-{role_description}
-
 **Query:** {normalized_input}
-
 **Context:** {context_summary}
+**Languages:** {detected_languages}
 
-**Detected Languages:** {detected_languages}
+{capabilities_summary}
 
-**Available Capabilities:** {capabilities_summary}
+Analyze the query and extract:
 
-**Your Task:**
-Classify the intent and extract goals.
+1. **intent**: What the user wants to accomplish:
+   - "find_symbol" - locate a specific class, function, or variable
+   - "explore_module" - understand a directory or module structure
+   - "trace_flow" - follow execution from entry point to implementation
+   - "explain_code" - understand what specific code does
+   - "search_concept" - find code related to a concept/feature
 
-Common intents:
-- explore: Understand structure/architecture
-- explain: Understand how code works
-- search: Find specific code/patterns
-- trace: Follow execution flow
+2. **search_targets**: Keywords/symbols to search for (CRITICAL for planner):
+   - Extract specific names: class names, function names, variable names
+   - Extract keywords: "authentication", "database", "routing"
+   - Extract directory hints: "agents/", "tools/", "src/"
 
-Output JSON only:
-{{"intent": "...", "goals": [...], "confidence": 0.9}}"""
+3. **goals**: Specific questions to answer (actionable, verifiable)
+
+4. **constraints**: Any limits mentioned (specific files, directories, languages)
+
+Output ONE JSON object:
+{{
+  "intent": "<one of the 5 intents above>",
+  "search_targets": ["<symbol or keyword 1>", "<symbol or keyword 2>"],
+  "goals": ["<specific goal 1>", "<specific goal 2>"],
+  "constraints": {{"directories": [], "file_types": [], "exclude": []}},
+  "confidence": 0.9
+}}"""
 
 
 # --- PLANNER PROMPTS (Agent 3) - Traversal Planning ---
 
 def code_analysis_planner() -> str:
-    """Code analysis plan generation prompt.
-
-    Expected placeholders:
-        - system_identity: Core identity block
-        - role_description: Planner role explanation
-        - intent: Classified intent type
-        - goals: List of goals to achieve
-        - scope_path: Target directory/file scope
-        - exploration_summary: Prior exploration info
-        - available_tools: Dynamic tool descriptions from registry
-        - bounds_description: Context bounds explanation
-        - max_files, max_tokens: Numeric limits
-        - tokens_used, files_explored: Current usage
-        - remaining_tokens, remaining_files: Remaining budget
-        - retry_feedback: Optional feedback from previous attempt
-    """
+    """Planner prompt - create tool execution plan."""
     return """{system_identity}
 
-**Your Role:** Planner Agent - Create code traversal plan.
-
-{role_description}
-
+**User Query:** {user_query}
+**Repository:** {repo_path}
 **Intent:** {intent}
+**Search Targets:** {search_targets}
 **Goals:** {goals}
 **Scope:** {scope_path}
+**Prior exploration:** {exploration_summary}
 
-**Exploration Summary:** {exploration_summary}
+**Tools:** {available_tools}
 
-**Available Tools:**
-{available_tools}
-
-**Context Bounds:**
-{bounds_description}
-- Max files: {max_files} (used: {files_explored}, remaining: {remaining_files})
-- Max tokens: {max_tokens} (used: {tokens_used}, remaining: {remaining_tokens})
+**Bounds:** files {files_explored}/{max_files}, tokens {tokens_used}/{max_tokens}
 
 {retry_feedback}
 
-**Your Task:**
-Create an execution plan using available tools to gather information.
+TWO-TOOL ARCHITECTURE - Use the search_targets extracted by Intent:
+
+1. SEARCH using the provided search_targets:
+   - Use search_code(query) with each search target
+   - The Intent agent already extracted: {search_targets}
+   - Use these targets DIRECTLY - don't invent new paths
+
+2. READ ONLY after search returns paths:
+   - Use read_code(path) ONLY on paths returned by search_code
+   - Never guess paths
 
 CRITICAL RULES:
-1. You are a PLANNER, not a coder. DO NOT write code. DO NOT explain code.
-2. ONLY output a JSON object with tool calls
-3. Use read-only tools only
-4. Respect context bounds
-5. Start broad, then narrow
+- Use the search_targets from Intent - they are already extracted for you
+- NEVER invent file paths like "/workspace/path/to/File.py"
+- search_code finds files; read_code reads confirmed paths
 
-RESPOND WITH ONLY THIS JSON FORMAT (no other text):
-```json
-{{"steps": [{{"tool": "tool_name", "parameters": {{"param": "value"}}, "reasoning": "why this step"}}], "rationale": "overall strategy"}}
-```
-
-WRONG (do NOT do this):
-- Writing Python code
-- Explaining what code does
-- Describing protocols or classes
-
-RIGHT:
-- JSON with tool calls to FIND and READ the code"""
+Output EXACTLY ONE JSON object (no duplicates, no code fences, no explanation):
+{{"steps": [{{"tool": "search_code", "parameters": {{"query": "<use a search_target from above>"}}, "reasoning": "searching for this target"}}], "rationale": "search strategy based on intent"}}"""
 
 
 # --- SYNTHESIZER PROMPTS (Agent 5 - after Traverser) - Structured Understanding ---
 
 def code_analysis_synthesizer() -> str:
-    """Code analysis synthesizer prompt - build structured understanding.
-
-    Expected placeholders:
-        - system_identity: Core identity block
-        - role_description: Synthesizer role explanation
-        - user_query: Original user query
-        - intent: Classified intent type
-        - goals: List of goals
-        - execution_results: Tool execution results
-        - relevant_snippets: Code snippets collected
-    """
+    """Synthesizer prompt - structure findings with citations."""
     return """{system_identity}
 
-**Your Role:** Synthesizer Agent - Build structured understanding.
-
-{role_description}
-
-**User Query:** {user_query}
+**Query:** {user_query}
 **Intent:** {intent}
+**Search Targets:** {search_targets}
 **Goals:** {goals}
 
-**Execution Results:**
-{execution_results}
+**Execution Results:** {execution_results}
+**Code Snippets:** {relevant_snippets}
 
-**Code Snippets:**
-{relevant_snippets}
+Synthesize the search results into structured findings:
 
-**Your Task:**
-Synthesize findings into structured understanding.
+1. **findings**: What was discovered about each search target
+   - Include file:line citations for EVERY claim
+   - Mark which goals are satisfied vs. still open
 
-Rules:
-1. Every claim must cite source (file:line)
-2. No hallucination - only what tools found
-3. Organize by architectural concepts
-4. Flag missing information
+2. **goal_status**: For each goal, indicate:
+   - "satisfied" - found clear answer with evidence
+   - "partial" - found some information but incomplete
+   - "unsatisfied" - no relevant information found
 
-Output JSON only:
-{{"findings": [...], "citations": [...], "gaps": [...]}}"""
+3. **gaps**: What's missing that would fully answer the query?
+   - Missing search targets that weren't found
+   - Files that should be read but weren't
+   - Connections that couldn't be traced
+
+4. **quality_score**: 0.0-1.0 indicating completeness of findings
+
+Output ONE JSON object:
+{{
+  "findings": [{{"target": "...", "summary": "...", "citations": ["file:line", ...]}}],
+  "goal_status": {{"<goal>": "satisfied|partial|unsatisfied"}},
+  "gaps": ["<gap 1>", "<gap 2>"],
+  "quality_score": 0.8,
+  "suggested_next_searches": ["<term>"]
+}}"""
 
 
 # --- CRITIC PROMPTS (Agent 6 - after Synthesizer) - Anti-Hallucination ---
 
 def code_analysis_critic() -> str:
-    """Code analysis critic validation prompt.
+    """Critic prompt - validate claims against code, provide feedback (no routing).
 
-    Expected placeholders:
-        - system_identity: Core identity block
-        - role_description: Critic role explanation
-        - user_query: Original user query
-        - intent: Classified intent type
-        - goals: List of goals to verify
-        - execution_results: Tool execution results
-        - relevant_snippets: Code snippets collected
+    The Critic provides FEEDBACK ONLY. Integration decides whether to answer or reintent.
     """
     return """{system_identity}
 
-**Your Role:** Critic Agent - Validate against hallucination.
-
-{role_description}
-
-**User Query:** {user_query}
+**Query:** {user_query}
 **Intent:** {intent}
 **Goals:** {goals}
 
-**Execution Results:**
-{execution_results}
+**Synthesizer Output:** {synthesizer_output}
+**Execution Results:** {execution_results}
+**Code Snippets:** {relevant_snippets}
 
-**Code Snippets:**
-{relevant_snippets}
+Validate the synthesis and provide feedback for Integration:
 
-**Your Task:**
-Validate all claims against actual code.
+1. **Verify citations**: Do file:line references actually exist in the snippets?
+2. **Check goal coverage**: Are all goals addressed with evidence?
+3. **Detect hallucination**: Are there claims without supporting code?
+4. **Assess completeness**: Is this enough to answer the user's query?
 
-Hallucination checks:
-1. Every claim has file:line citation?
-2. Citations match actual code?
-3. No invented details?
-4. Goals satisfied?
+**Recommendation levels** (Integration decides what to do):
+- "sufficient" - Findings are accurate and complete. Ready to answer.
+- "partial" - Some findings, but gaps remain. May still be enough to answer.
+- "insufficient" - Major gaps or no results. May need different search approach.
 
-Output JSON only:
-{{"verdict": "approved|replan|clarify", "issues": [...], "suggested_response": "..."}}"""
+Output ONE JSON object:
+{{
+  "recommendation": "sufficient|partial|insufficient",
+  "confidence": 0.9,
+  "issues": ["<issue 1>", "<issue 2>"],
+  "suggested_response": "<draft response if recommendation is sufficient or partial>",
+  "refine_hint": "<if insufficient: what should be searched differently>",
+  "additional_searches": ["<suggested additional search terms>"]
+}}"""
 
 
 # --- INTEGRATION PROMPTS (Agent 7) - Response Building ---
 
 def code_analysis_integration() -> str:
-    """Code analysis integration/response building prompt.
+    """Integration prompt - decide answer vs reintent, build final response.
 
-    Expected placeholders:
-        - system_identity: Core identity block
-        - role_description: Integration role explanation
-        - user_query: Original user query
-        - verdict: Critic's verdict
-        - suggested_response: Critic's suggested response
-        - relevant_snippets: Code snippets collected
-        - exploration_summary: What was explored
-        - files_examined: List of examined files
-        - pipeline_overview: Pipeline structure description
+    Integration is the DECISION MAKER: answer with current findings OR reintent for better search.
     """
     return """{system_identity}
 
-**Your Role:** Integration Agent - Build final response.
+**Query:** {user_query}
+**Critic Recommendation:** {critic_recommendation}
+**Critic Feedback:** {critic_feedback}
 
-{role_description}
-
-**User Query:** {user_query}
-
-**Critic Verdict:** {verdict}
-**Suggested Response:** {suggested_response}
-
-**Code Snippets:**
-{relevant_snippets}
-
-**Exploration Summary:** {exploration_summary}
+**Synthesizer Findings:** {synthesizer_output}
+**Code Snippets:** {relevant_snippets}
 **Files Examined:** {files_examined}
 
-**Pipeline Overview:** {pipeline_overview}
+**Prior Cycle Context (if reintent):** {cycle_context}
 
-**Your Task:**
-Build final response with citations.
+DECIDE: Can you answer the user's query with current findings?
 
-Rules:
-1. Use file:line format for all citations
-2. No claims without citations
-3. Be concise and clear
-4. Acknowledge limitations
+**Decision criteria:**
+- If findings exist and address the query (even partially): **answer**
+- If search completely failed (no files examined) AND this is first attempt: **reintent**
+- If already reintented once: **answer** with whatever we have (avoid infinite loops)
 
-Output the final response text (not JSON)."""
+**If action=answer:**
+1. Answer the query directly - Start with the key finding
+2. Cite every claim - Use format `path/to/file.py:42`
+3. Include relevant code snippets - Quote key lines when helpful
+4. Acknowledge gaps - If something wasn't found, say so honestly
+5. Keep it concise - Don't repeat information
+
+**If action=reintent:**
+- Explain why current search failed
+- Suggest what Intent should look for instead
+
+Output ONE JSON object:
+{{
+  "action": "answer|reintent",
+  "final_response": "<if answer: the response text with citations>",
+  "reason": "<if reintent: why reintenting and what to search instead>"
+}}"""
 
 
 def register_code_analysis_prompts() -> None:

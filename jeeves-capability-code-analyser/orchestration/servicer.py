@@ -176,11 +176,31 @@ class CodeAnalysisServicer:
         )
 
         # Delegate to CodeAnalysisFlowService streaming method
+        event_count = 0
         async for event in self.code_analysis_service.process_query_streaming(
             user_id=user_id,
             session_id=session_id,
             query=message,
         ):
+            event_count += 1
+            # Diagnostic: log each event received
+            event_type_name = type(event).__name__
+            self._logger.debug(
+                "servicer_event_received",
+                event_number=event_count,
+                event_type=event_type_name,
+                is_agent_event=isinstance(event, AgentEvent),
+            )
             # Convert internal events to gRPC FlowEvent messages
             flow_event = self._convert_to_flow_event(event, session_id)
+            self._logger.debug(
+                "servicer_event_yielded",
+                event_number=event_count,
+                flow_event_type=getattr(flow_event, 'type', 'unknown'),
+            )
             yield flow_event
+
+        self._logger.info(
+            "servicer_stream_complete",
+            total_events=event_count,
+        )

@@ -49,7 +49,7 @@ FRAMEWORK_PATTERNS = {
 
 async def _detect_framework() -> Dict[str, Any]:
     """Detect which web/CLI framework is used in the project."""
-    if not tool_catalog.has_tool(ToolId.GREP_SEARCH):
+    if not tool_catalog.has_tool_id(ToolId.GREP_SEARCH):
         return {"status": "tool_unavailable", "frameworks": [], "primary": None}
 
     grep_search = tool_catalog.get_function(ToolId.GREP_SEARCH)
@@ -76,7 +76,7 @@ async def _detect_framework() -> Dict[str, Any]:
 
 async def _find_entry_points(entry_type: str, pattern: str, framework: Optional[Dict]) -> Dict[str, Any]:
     """Find entry point definitions."""
-    if not tool_catalog.has_tool(ToolId.GREP_SEARCH):
+    if not tool_catalog.has_tool_id(ToolId.GREP_SEARCH):
         return {"status": "tool_unavailable", "entry_points": []}
 
     grep_search = tool_catalog.get_function(ToolId.GREP_SEARCH)
@@ -156,7 +156,7 @@ async def _find_entry_points(entry_type: str, pattern: str, framework: Optional[
 async def _trace_calls(file_path: str, start_line: int) -> Dict[str, Any]:
     """Trace function calls from a starting point."""
     _logger = get_logger()
-    if not tool_catalog.has_tool(ToolId.READ_FILE):
+    if not tool_catalog.has_tool_id(ToolId.READ_FILE):
         return {"status": "tool_unavailable", "calls": []}
 
     read_file = tool_catalog.get_function(ToolId.READ_FILE)
@@ -185,7 +185,7 @@ async def _trace_calls(file_path: str, start_line: int) -> Dict[str, Any]:
 
 async def _resolve_target(call_name: str) -> Dict[str, Any]:
     """Resolve where a called function is defined."""
-    if not tool_catalog.has_tool(ToolId.FIND_SYMBOL):
+    if not tool_catalog.has_tool_id(ToolId.FIND_SYMBOL):
         return {"status": "tool_unavailable", "target": None}
 
     find_symbol = tool_catalog.get_function(ToolId.FIND_SYMBOL)

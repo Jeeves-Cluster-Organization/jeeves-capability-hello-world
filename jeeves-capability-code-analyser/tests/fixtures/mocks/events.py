@@ -36,8 +36,8 @@ class MockEventBus:
     ) -> None:
         """Emit agent started event."""
         self.events.append({
-            "type": "agent.started",
-            "agent": agent_name,
+            "event_type": "agent.started",
+            "agent_name": agent_name,
             "envelope_id": envelope_id,
             **payload,
         })
@@ -52,8 +52,8 @@ class MockEventBus:
     ) -> None:
         """Emit agent completed event."""
         self.events.append({
-            "type": "agent.completed",
-            "agent": agent_name,
+            "event_type": "agent.completed",
+            "agent_name": agent_name,
             "status": status,
             "error": error,
             "duration_ms": duration_ms,
@@ -144,11 +144,11 @@ class MockEventBus:
 
     def get_events_by_type(self, event_type: str) -> List[Dict[str, Any]]:
         """Get all events of a specific type."""
-        return [e for e in self.events if e.get("type") == event_type]
+        return [e for e in self.events if e.get("event_type") == event_type]
 
     def get_agent_events(self, agent_name: str) -> List[Dict[str, Any]]:
         """Get all events for a specific agent."""
-        return [e for e in self.events if e.get("agent") == agent_name]
+        return [e for e in self.events if e.get("agent_name") == agent_name]
 
     def reset(self):
         """Clear all captured events."""
@@ -157,4 +157,4 @@ class MockEventBus:
     @property
     def event_types(self) -> List[str]:
         """Get list of captured event types."""
-        return [e.get("type") for e in self.events if e.get("type")]
+        return [e.get("event_type") for e in self.events if e.get("event_type")]

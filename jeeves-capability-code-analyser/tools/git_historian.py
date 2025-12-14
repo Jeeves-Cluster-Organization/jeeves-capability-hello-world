@@ -21,7 +21,7 @@ from jeeves_protocols import RiskLevel
 async def _get_blame(path: str, start_line: Optional[int], end_line: Optional[int]) -> Dict[str, Any]:
     """Get git blame information for a file/range."""
     _logger = get_logger()
-    if not tool_catalog.has_tool(ToolId.GIT_BLAME):
+    if not tool_catalog.has_tool_id(ToolId.GIT_BLAME):
         return {"status": "tool_unavailable", "blame": []}
 
     git_blame = tool_catalog.get_function(ToolId.GIT_BLAME)
@@ -38,7 +38,7 @@ async def _get_blame(path: str, start_line: Optional[int], end_line: Optional[in
 async def _get_log(path: str, n: int, since: Optional[str]) -> Dict[str, Any]:
     """Get commit attempt_history for a file."""
     _logger = get_logger()
-    if not tool_catalog.has_tool(ToolId.GIT_LOG):
+    if not tool_catalog.has_tool_id(ToolId.GIT_LOG):
         return {"status": "tool_unavailable", "commits": []}
 
     git_log = tool_catalog.get_function(ToolId.GIT_LOG)
@@ -55,7 +55,7 @@ async def _get_log(path: str, n: int, since: Optional[str]) -> Dict[str, Any]:
 async def _get_diff(path: str, commit1: str, commit2: Optional[str]) -> Dict[str, Any]:
     """Get diff for a specific commit on a file."""
     _logger = get_logger()
-    if not tool_catalog.has_tool(ToolId.GIT_DIFF):
+    if not tool_catalog.has_tool_id(ToolId.GIT_DIFF):
         return {"status": "tool_unavailable", "diff": ""}
 
     git_diff = tool_catalog.get_function(ToolId.GIT_DIFF)

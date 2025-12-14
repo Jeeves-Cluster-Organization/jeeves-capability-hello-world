@@ -50,7 +50,7 @@ async def _strategy_exact_path(
     **kwargs,
 ) -> Dict[str, Any]:
     """Strategy 1: Try exact path."""
-    if not tool_catalog.has_tool(ToolId.READ_FILE):
+    if not tool_catalog.has_tool_id(ToolId.READ_FILE):
         return {"status": "tool_unavailable"}
 
     read_file = tool_catalog.get_function(ToolId.READ_FILE)
@@ -78,7 +78,7 @@ async def _strategy_extension_swap(
     **kwargs,
 ) -> Dict[str, Any]:
     """Strategy 2: Try alternative extensions (.py <-> .pyi, .ts <-> .tsx, etc.)."""
-    if not tool_catalog.has_tool(ToolId.READ_FILE):
+    if not tool_catalog.has_tool_id(ToolId.READ_FILE):
         return {"status": "tool_unavailable"}
 
     read_file = tool_catalog.get_function(ToolId.READ_FILE)
@@ -119,7 +119,7 @@ async def _strategy_glob_filename(
     **kwargs,
 ) -> Dict[str, Any]:
     """Strategy 3: Glob search for exact filename anywhere in repo."""
-    if not tool_catalog.has_tool(ToolId.GLOB_FILES) or not tool_catalog.has_tool(ToolId.READ_FILE):
+    if not tool_catalog.has_tool_id(ToolId.GLOB_FILES) or not tool_catalog.has_tool_id(ToolId.READ_FILE):
         return {"status": "tool_unavailable"}
 
     glob_files = tool_catalog.get_function(ToolId.GLOB_FILES)
@@ -165,7 +165,7 @@ async def _strategy_glob_stem(
     **kwargs,
 ) -> Dict[str, Any]:
     """Strategy 4: Glob for stem pattern (provides suggestions only)."""
-    if not tool_catalog.has_tool(ToolId.GLOB_FILES):
+    if not tool_catalog.has_tool_id(ToolId.GLOB_FILES):
         return {"status": "tool_unavailable"}
 
     glob_files = tool_catalog.get_function(ToolId.GLOB_FILES)
@@ -299,7 +299,7 @@ async def _strategy_content_similarity(
     if not resolved or not resolved.exists():
         return {"status": "no_match", "reason": "file_not_found"}
 
-    if not tool_catalog.has_tool(ToolId.FIND_SIMILAR_FILES):
+    if not tool_catalog.has_tool_id(ToolId.FIND_SIMILAR_FILES):
         return {"status": "tool_unavailable"}
 
     find_similar = tool_catalog.get_function(ToolId.FIND_SIMILAR_FILES)
@@ -328,7 +328,7 @@ async def _strategy_filename_pattern(
     if not is_path:
         return {"status": "no_match", "reason": "not_a_path"}
 
-    if not tool_catalog.has_tool(ToolId.GLOB_FILES):
+    if not tool_catalog.has_tool_id(ToolId.GLOB_FILES):
         return {"status": "tool_unavailable"}
 
     glob_files = tool_catalog.get_function(ToolId.GLOB_FILES)
@@ -361,7 +361,7 @@ async def _strategy_semantic_search(
     **kwargs,
 ) -> Dict[str, Any]:
     """Strategy 3: Semantic search using reference as query."""
-    if not tool_catalog.has_tool(ToolId.SEMANTIC_SEARCH):
+    if not tool_catalog.has_tool_id(ToolId.SEMANTIC_SEARCH):
         return {"status": "tool_unavailable"}
 
     semantic_search = tool_catalog.get_function(ToolId.SEMANTIC_SEARCH)

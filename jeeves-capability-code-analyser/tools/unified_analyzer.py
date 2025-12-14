@@ -1,22 +1,21 @@
-"""Unified Analysis Tool - Single entry point for code analysis.
+"""Code Analysis Tools - Two-path architecture for robust code exploration.
 
 Phase 2/4 Constitutional Compliance - No auto-registration at import time
 
-Per Amendment XXII (Tool Consolidation), this mega-tool:
-- Provides a single `analyze` entry point for all code analysis needs
-- Internally orchestrates composite tools (explore_symbol_usage, map_module, etc.)
-- Reduces plan complexity from N steps to 1 step for most queries
-- Auto-detects target type (symbol, module, file, query)
-- Returns comprehensive analysis with all relevant context
+TWO-TOOL ARCHITECTURE:
+1. search_code(query) - Always searches. Never assumes paths exist.
+   Use for: symbols, keywords, natural language queries, directory exploration
+   Returns: matches with file:line citations
 
-This replaces multi-step plans like:
-    Steps: 2 | Tools: explore_symbol_usage, map_module
+2. read_code(path) - Reads a confirmed file path.
+   Use ONLY after search_code returns a valid path.
+   Returns: file content with symbols
 
-With:
-    Steps: 1 | Tools: analyze
-
-The tool intelligently routes to the appropriate composite tools based on
-the target type and query intent.
+This replaces the single `analyze` tool which was prone to LLM hallucination
+of file paths. With two explicit paths:
+- Planner MUST search first, THEN read
+- No guessing of file paths
+- Search results provide the paths for read_code
 """
 
 import re
@@ -88,10 +87,16 @@ async def _analyze_symbol(symbol: str, include_usages: bool = True) -> Dict[str,
     }
 
     # Step 1: Find symbol definition and usages via explore_symbol_usage
-    if tool_catalog.has_tool(ToolId.EXPLORE_SYMBOL_USAGE):
+    if tool_catalog.has_tool_id(ToolId.EXPLORE_SYMBOL_USAGE):
         explore = tool_catalog.get_function(ToolId.EXPLORE_SYMBOL_USAGE)
         try:
-            explore_result = await explore(symbol_name=symbol, include_call_sites=include_usages)
+            # Create context bounds for exploration
+            context_bounds = ContextBounds(max_files=50, max_tokens=8000)
+            explore_result = await explore(
+                symbol_name=symbol,
+                context_bounds=context_bounds,
+                include_tests=include_usages,  # Use include_tests (actual param), not include_call_sites
+            )
             attempt_history.append({
                 "tool": "explore_symbol_usage",
                 "status": "success" if explore_result.get("status") == "success" else "partial",
@@ -114,7 +119,7 @@ async def _analyze_symbol(symbol: str, include_usages: bool = True) -> Dict[str,
             attempt_history.append({"tool": "explore_symbol_usage", "status": "error", "error": str(e)})
 
     # Step 2: Get module context if we found a definition
-    if result["definition"] and tool_catalog.has_tool(ToolId.MAP_MODULE):
+    if result["definition"] and tool_catalog.has_tool_id(ToolId.MAP_MODULE):
         defn_file = result["definition"].get("file", "")
         if defn_file:
             # Extract module path (directory containing the file)
@@ -164,7 +169,7 @@ async def _analyze_module(module_path: str) -> Dict[str, Any]:
     }
 
     # Use map_module for comprehensive module analysis
-    if tool_catalog.has_tool(ToolId.MAP_MODULE):
+    if tool_catalog.has_tool_id(ToolId.MAP_MODULE):
         map_module = tool_catalog.get_function(ToolId.MAP_MODULE)
         try:
             module_result = await map_module(module_path=module_path, depth=2)
@@ -195,7 +200,10 @@ async def _analyze_module(module_path: str) -> Dict[str, Any]:
 
 
 async def _analyze_file(file_path: str) -> Dict[str, Any]:
-    """Analyze a file: read content, extract symbols."""
+    """Analyze a file: read content, extract symbols.
+
+    Falls back to searching if file doesn't exist (handles LLM hallucinated paths).
+    """
     _logger = get_logger()
     all_citations = set()
     attempt_history = []
@@ -209,14 +217,16 @@ async def _analyze_file(file_path: str) -> Dict[str, Any]:
         "status": "success",
     }
 
+    file_found = False
+
     # Read the file content
-    if tool_catalog.has_tool(ToolId.READ_CODE):
+    if tool_catalog.has_tool_id(ToolId.READ_CODE):
         read_code = tool_catalog.get_function(ToolId.READ_CODE)
         try:
             read_result = await read_code(path=file_path)
             attempt_history.append({
                 "tool": "read_code",
-                "status": "success" if read_result.get("status") == "success" else "error",
+                "status": "success" if read_result.get("status") == "success" else "not_found",
                 "result_summary": f"Read {file_path}"
             })
 
@@ -224,11 +234,45 @@ async def _analyze_file(file_path: str) -> Dict[str, Any]:
                 result["content"] = read_result.get("content")
                 result["symbols"] = read_result.get("symbols", [])
                 all_citations.add(f"{file_path}:1")
+                file_found = True
 
         except Exception as e:
             _logger.warning("analyze_file_error", file=file_path, error=str(e))
             attempt_history.append({"tool": "read_code", "status": "error", "error": str(e)})
-            result["status"] = "error"
+
+    # FALLBACK: If file not found, extract filename and search for it
+    if not file_found:
+        import os
+        filename = os.path.basename(file_path)
+        stem = os.path.splitext(filename)[0]  # e.g., "Jeeves" from "Jeeves.py"
+
+        _logger.info("analyze_file_fallback_to_search", original_path=file_path, search_term=stem)
+
+        # Try to find files matching the stem
+        if tool_catalog.has_tool_id(ToolId.LOCATE):
+            locate = tool_catalog.get_function(ToolId.LOCATE)
+            try:
+                locate_result = await locate(query=stem)
+                attempt_history.append({
+                    "tool": "locate",
+                    "status": "success" if locate_result.get("status") == "success" else "partial",
+                    "result_summary": f"Searched for '{stem}'"
+                })
+
+                if locate_result.get("status") == "success" and locate_result.get("matches"):
+                    result["matches"] = locate_result.get("matches", [])
+                    result["fallback_search"] = stem
+                    for match in result["matches"][:5]:
+                        all_citations.add(f"{match.get('file', '')}:{match.get('line', 0)}")
+
+            except Exception as e:
+                _logger.warning("analyze_file_fallback_error", search_term=stem, error=str(e))
+                attempt_history.append({"tool": "locate", "status": "error", "error": str(e)})
+
+        # If still nothing found, mark as not_found
+        if not result.get("matches"):
+            result["status"] = "not_found"
+            result["error"] = f"File '{file_path}' not found. Searched for '{stem}' but found no matches."
 
     result["attempt_history"] = attempt_history
     result["citations"] = sorted(list(all_citations))
@@ -250,7 +294,7 @@ async def _analyze_query(query: str) -> Dict[str, Any]:
     }
 
     # Use locate for finding relevant code
-    if tool_catalog.has_tool(ToolId.LOCATE):
+    if tool_catalog.has_tool_id(ToolId.LOCATE):
         locate = tool_catalog.get_function(ToolId.LOCATE)
         try:
             locate_result = await locate(query=query)
@@ -271,10 +315,10 @@ async def _analyze_query(query: str) -> Dict[str, Any]:
             attempt_history.append({"tool": "locate", "status": "error", "error": str(e)})
 
     # Also find related files
-    if tool_catalog.has_tool(ToolId.FIND_RELATED):
+    if tool_catalog.has_tool_id(ToolId.FIND_RELATED):
         find_related = tool_catalog.get_function(ToolId.FIND_RELATED)
         try:
-            related_result = await find_related(query=query, max_results=5)
+            related_result = await find_related(reference=query, limit=5)
             attempt_history.append({
                 "tool": "find_related",
                 "status": "success" if related_result.get("status") == "success" else "partial",
@@ -290,6 +334,84 @@ async def _analyze_query(query: str) -> Dict[str, Any]:
 
     result["attempt_history"] = attempt_history
     result["citations"] = sorted(list(all_citations))
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PRIMARY EXPOSED TOOLS - Two-path architecture
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def search_code(
+    query: str,
+    *,
+    search_type: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Search for code - ALWAYS searches, never assumes paths exist.
+
+    This is the PRIMARY tool for finding code. Use it for:
+    - Symbol names: "Jeeves", "CodeAnalysisService", "build_planner_context"
+    - Keywords: "authentication", "database connection"
+    - Natural language: "how does routing work", "where are errors handled"
+    - Directory exploration: "agents/", "tools/"
+
+    The tool will search the codebase and return matches with file:line citations.
+    NEVER invent file paths - this tool finds them for you.
+
+    Args:
+        query: What to search for (symbol, keyword, or natural language)
+        search_type: Optional hint - "symbol", "module", or "query" (auto-detected if not provided)
+
+    Returns:
+        Dict with:
+        - query: The search query
+        - matches: List of matches with file, line, context
+        - related_files: Semantically related files
+        - citations: file:line references
+        - status: "success", "partial", or "error"
+    """
+    _logger = get_logger()
+
+    # Auto-detect search type if not provided
+    if search_type:
+        try:
+            detected_type = TargetType(search_type)
+        except ValueError:
+            detected_type = _detect_target_type(query)
+    else:
+        detected_type = _detect_target_type(query)
+
+    _logger.info(
+        "search_code_start",
+        query=query,
+        detected_type=detected_type.value,
+    )
+
+    # Route based on detected type - but ALWAYS search, never read directly
+    if detected_type == TargetType.SYMBOL:
+        result = await _analyze_symbol(query, include_usages=True)
+    elif detected_type == TargetType.MODULE:
+        result = await _analyze_module(query)
+    elif detected_type == TargetType.FILE:
+        # For file-like queries, extract the key term and search
+        # DO NOT try to read - search instead
+        import os
+        stem = os.path.splitext(os.path.basename(query))[0]
+        _logger.info("search_code_file_to_search", original=query, search_term=stem)
+        result = await _analyze_query(stem)
+        result["original_query"] = query
+        result["search_term"] = stem
+    else:  # QUERY
+        result = await _analyze_query(query)
+
+    _logger.info(
+        "search_code_complete",
+        query=query,
+        status=result.get("status"),
+        matches_count=len(result.get("matches", [])),
+        citations_count=len(result.get("citations", [])),
+    )
+
     return result
 
 
@@ -367,20 +489,41 @@ async def analyze(
 
 # Registration function (no longer auto-registers on import)
 def _register_analyze_tool():
-    """Register the unified analyze tool with canonical tool_catalog.
+    """Register the code analysis tools with canonical tool_catalog.
 
     Per Amendment XXII and Phase 2/4: Only registers with tool_catalog.
     No auto-registration at import time - must be called explicitly.
+
+    TWO-TOOL ARCHITECTURE:
+    - search_code: Primary search tool - always searches, never assumes paths
+    - read_code: Already registered elsewhere - reads confirmed paths
+    - analyze: Legacy tool kept for backwards compatibility
     """
-    # Register with canonical tool_catalog (Decision 1:A compliance)
-    if not tool_catalog.has_tool(ToolId.ANALYZE):
+    # Register search_code as the PRIMARY search tool
+    if not tool_catalog.has_tool_id(ToolId.SEARCH_CODE):
+        tool_catalog.register_function(
+            tool_id=ToolId.SEARCH_CODE,
+            func=search_code,
+            description=(
+                "Search for code - ALWAYS searches, never assumes paths exist. "
+                "Use for symbols, keywords, natural language queries, or directory exploration. "
+                "Returns matches with file:line citations. Use read_code ONLY on paths returned by this tool."
+            ),
+            parameters={
+                "query": "string - what to search for",
+                "search_type": "string? (optional) - hint: 'symbol', 'module', or 'query'",
+            },
+            category=ToolCategory.UNIFIED,
+        )
+
+    # Keep analyze for backwards compatibility (internal use)
+    if not tool_catalog.has_tool_id(ToolId.ANALYZE):
         tool_catalog.register_function(
             tool_id=ToolId.ANALYZE,
             func=analyze,
             description=(
-                "Unified code analysis - automatically analyzes symbols, modules, files, or queries. "
-                "Detects target type and orchestrates appropriate tools internally. "
-                "Use this as the primary tool for most analysis tasks."
+                "LEGACY: Use search_code instead. "
+                "Unified code analysis - automatically analyzes symbols, modules, files, or queries."
             ),
             parameters={
                 "target": "string",
@@ -392,4 +535,4 @@ def _register_analyze_tool():
         )
 
 
-__all__ = ["analyze", "_register_analyze_tool"]
+__all__ = ["search_code", "analyze", "_register_analyze_tool"]

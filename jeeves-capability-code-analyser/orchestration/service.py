@@ -98,7 +98,12 @@ class CodeAnalysisService:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> CodeAnalysisResult:
         """
-        Process a code analysis query through the pipeline.
+        Process a code analysis query through the pipeline (non-streaming).
+
+        This is a convenience wrapper around process_query_streaming that
+        collects all events and returns only the final result.
+
+        For real-time event visibility, use process_query_streaming instead.
 
         Args:
             user_id: User identifier
@@ -109,26 +114,23 @@ class CodeAnalysisService:
         Returns:
             CodeAnalysisResult with response or clarification request
         """
-        request_id = f"req_{uuid4().hex[:16]}"
-
-        envelope = create_generic_envelope(
-            raw_input=query,
+        result = None
+        async for event in self.process_query_streaming(
             user_id=user_id,
             session_id=session_id,
-            request_id=request_id,
+            query=query,
             metadata=metadata,
-        )
+        ):
+            # Keep the last CodeAnalysisResult (final response)
+            if isinstance(event, CodeAnalysisResult):
+                result = event
 
-        self._logger.info(
-            "code_analysis_started",
-            request_id=request_id,
-            user_id=user_id,
-            session_id=session_id,
-        )
-
-        envelope = await self._runtime.run(envelope, thread_id=session_id)
-
-        return self._envelope_to_result(envelope, session_id)
+        if result is None:
+            return CodeAnalysisResult(
+                status="error",
+                error="Pipeline completed without producing a result",
+            )
+        return result
 
     async def process_query_streaming(
         self,
@@ -195,26 +197,34 @@ class CodeAnalysisService:
             payload={"query": query},
         )
 
-        # Run pipeline in background task
-        async def run_pipeline():
+        # Run pipeline and close orchestrator when done
+        # The close() puts a None sentinel in the queue to signal end of events
+        async def run_pipeline_and_signal():
             try:
                 result_envelope = await self._runtime.run(envelope, thread_id=session_id)
                 return result_envelope
             finally:
-                # Close orchestrator when pipeline completes
+                # Signal end of events AFTER pipeline completes
+                # Events are FIFO - all emitted events will be consumed before this sentinel
                 await orchestrator.close()
 
-        pipeline_task = asyncio.create_task(run_pipeline())
+        pipeline_task = asyncio.create_task(run_pipeline_and_signal())
+
+        # Yield control to let pipeline task start before we block on queue.get()
+        # This ensures the pipeline has a chance to emit events
+        await asyncio.sleep(0)
 
         # Stream events as they're emitted by agents (Constitutional pattern)
+        # The event loop interleaves: pipeline emits → queue.put() → queue.get() → yield
         try:
             async for event in orchestrator.events():
                 yield event
 
-            # Wait for pipeline to complete and get final envelope
+            # Pipeline has signaled completion (sentinel received)
+            # Now wait for the task to get the result envelope
             envelope_result = await pipeline_task
 
-            # Convert envelope to result and emit
+            # Convert envelope to result and emit final response
             result = self._envelope_to_result(envelope_result, session_id)
             yield result
 
@@ -224,6 +234,13 @@ class CodeAnalysisService:
                 request_id=request_id,
                 error=str(e),
             )
+            # Cancel pipeline task if still running
+            if not pipeline_task.done():
+                pipeline_task.cancel()
+                try:
+                    await pipeline_task
+                except asyncio.CancelledError:
+                    pass
             # Emit error result
             yield CodeAnalysisResult(
                 status="error",
@@ -480,14 +497,19 @@ class CodeAnalysisService:
 
         # Success
         if envelope.terminal_reason == TerminalReason.COMPLETED:
+            # Get final response - try final_response first, then fall back to response
+            # (LLM output parsing may fallback to {"response": ...} if JSON is truncated)
+            final_response = integration.get("final_response") or integration.get("response")
+
             self._logger.info(
                 "code_analysis_completed",
                 envelope_id=envelope.envelope_id,
                 files_examined=len(traversal.get("explored_files", [])),
+                has_response=bool(final_response),
             )
             return CodeAnalysisResult(
                 status="complete",
-                response=integration.get("final_response"),
+                response=final_response,
                 thread_id=session_id,
                 envelope_id=envelope.envelope_id,
                 request_id=envelope.request_id,

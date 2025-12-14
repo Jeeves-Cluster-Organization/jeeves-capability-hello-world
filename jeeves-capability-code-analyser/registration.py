@@ -134,6 +134,7 @@ def register_capability() -> None:
     """Register code_analysis capability resources with infrastructure.
 
     Registers:
+    - Config: language_config in ConfigRegistry (REQUIRED for tools)
     - Database schema: 002_code_analysis_schema.sql
     - Gateway mode: "code_analysis" with response field configuration
     - Service: "code_analysis" for Control Tower registration
@@ -146,6 +147,12 @@ def register_capability() -> None:
     This function should be called at application startup, before
     avionics/infrastructure initialization.
     """
+    # Register language_config FIRST - tools depend on this
+    from jeeves_capability_code_analyser.config import get_language_config
+    from jeeves_mission_system.contracts import get_config_registry, ConfigKeys
+    config_registry = get_config_registry()
+    config_registry.register(ConfigKeys.LANGUAGE_CONFIG, get_language_config())
+
     registry = get_capability_resource_registry()
 
     # Register database schema

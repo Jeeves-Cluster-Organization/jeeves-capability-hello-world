@@ -7,7 +7,9 @@
       "Bash(docker logs:*)",
       "Bash(docker exec:*)",
       "Bash(docker restart:*)",
-      "Bash(docker compose build:*)"
+      "Bash(docker compose build:*)",
+      "Bash(python:*)",
+      "Bash(grep:*)"
     ]
   }
 }

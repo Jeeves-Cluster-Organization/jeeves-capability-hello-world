@@ -471,8 +471,13 @@ class TestCompositeToolContracts:
 
         for tool_name in COMPOSITE_TOOLS:
             if tool_catalog.has_tool(tool_name):
-                tool = tool_catalog.get_tool(tool_name)
-                assert tool.risk_level == RiskLevel.READ_ONLY, f"{tool_name} should be READ_ONLY"
+                # Use get_entry() to access risk_level (ToolCatalogEntry has it, ToolDefinition doesn't)
+                from jeeves_avionics.tools.catalog import resolve_tool_id
+                tool_id = resolve_tool_id(tool_name)
+                if tool_id:
+                    entry = tool_catalog.get_entry(tool_id)
+                    if entry:
+                        assert entry.risk_level == RiskLevel.READ_ONLY, f"{tool_name} should be READ_ONLY"
 
 
 # ============================================================

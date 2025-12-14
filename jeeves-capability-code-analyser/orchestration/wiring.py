@@ -69,12 +69,16 @@ def create_code_analysis_service(
     tool_executor = runtime.tool_executor
     persistence = runtime.persistence
 
+    # Extract use_mock from runtime (MissionRuntime.use_mock property)
+    use_mock = getattr(runtime, 'use_mock', False)
+
     logger.info(
         "creating_code_analysis_service",
         has_llm_factory=llm_provider_factory is not None,
         has_tool_executor=tool_executor is not None,
         has_persistence=persistence is not None,
         has_control_tower=control_tower is not None,
+        use_mock=use_mock,
     )
 
     return CodeAnalysisService(
@@ -83,6 +87,7 @@ def create_code_analysis_service(
         logger=logger,
         persistence=persistence,
         control_tower=control_tower,
+        use_mock=use_mock,
     )
 
 

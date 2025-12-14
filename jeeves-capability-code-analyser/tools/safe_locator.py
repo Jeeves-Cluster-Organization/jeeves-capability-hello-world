@@ -67,7 +67,7 @@ async def locate(
 
     # Strategy 1: Exact symbol match
     if search_type in ("auto", "symbol"):
-        if tool_catalog.has_tool(ToolId.FIND_SYMBOL):
+        if tool_catalog.has_tool_id(ToolId.FIND_SYMBOL):
             find_symbol = tool_catalog.get_function(ToolId.FIND_SYMBOL)
             result = await find_symbol(name=query, exact=True, path_prefix=scope)
             attempt_history.append({"strategy": "find_symbol (exact)", "status": result.get("status")})
@@ -89,7 +89,7 @@ async def locate(
 
     # Strategy 2: Partial symbol match
     if search_type in ("auto", "symbol"):
-        if tool_catalog.has_tool(ToolId.FIND_SYMBOL):
+        if tool_catalog.has_tool_id(ToolId.FIND_SYMBOL):
             find_symbol = tool_catalog.get_function(ToolId.FIND_SYMBOL)
             result = await find_symbol(name=query, exact=False, path_prefix=scope)
             attempt_history.append({"strategy": "find_symbol (partial)", "status": result.get("status")})
@@ -111,7 +111,7 @@ async def locate(
 
     # Strategy 3: Grep case-sensitive
     if search_type in ("auto", "text"):
-        if tool_catalog.has_tool(ToolId.GREP_SEARCH):
+        if tool_catalog.has_tool_id(ToolId.GREP_SEARCH):
             grep_search = tool_catalog.get_function(ToolId.GREP_SEARCH)
             pattern = re.escape(query)  # Literal search
             result = await grep_search(pattern=pattern, path=scope, max_results=max_results)
@@ -134,7 +134,7 @@ async def locate(
 
     # Strategy 4: Grep case-insensitive
     if search_type in ("auto", "text"):
-        if tool_catalog.has_tool(ToolId.GREP_SEARCH):
+        if tool_catalog.has_tool_id(ToolId.GREP_SEARCH):
             grep_search = tool_catalog.get_function(ToolId.GREP_SEARCH)
             pattern = f"(?i){re.escape(query)}"  # Case-insensitive
             result = await grep_search(pattern=pattern, path=scope, max_results=max_results)
@@ -157,7 +157,7 @@ async def locate(
 
     # Strategy 5: Semantic search
     if search_type in ("auto", "semantic"):
-        if tool_catalog.has_tool(ToolId.SEMANTIC_SEARCH):
+        if tool_catalog.has_tool_id(ToolId.SEMANTIC_SEARCH):
             semantic_search = tool_catalog.get_function(ToolId.SEMANTIC_SEARCH)
             result = await semantic_search(query=query, limit=min(max_results, 10), path_prefix=scope)
             attempt_history.append({"strategy": "semantic_search", "status": result.get("status")})

@@ -88,7 +88,7 @@ async def explore_symbol_usage(
 
     # Step 1: Find definitions (exact match)
     definitions = []
-    if tool_catalog.has_tool(ToolId.FIND_SYMBOL):
+    if tool_catalog.has_tool_id(ToolId.FIND_SYMBOL):
         find_symbol = tool_catalog.get_function(ToolId.FIND_SYMBOL)
         result = await find_symbol(name=symbol_name, exact=True, include_body=False)
         attempt_history.append({"step": "find_symbol (exact)", "status": result.get("status")})
@@ -104,7 +104,7 @@ async def explore_symbol_usage(
                 all_citations.add(f"{sym.get('file')}:{sym.get('line', 1)}")
 
     # Step 2: If no exact match, try partial
-    if not definitions and tool_catalog.has_tool(ToolId.FIND_SYMBOL):
+    if not definitions and tool_catalog.has_tool_id(ToolId.FIND_SYMBOL):
         find_symbol = tool_catalog.get_function(ToolId.FIND_SYMBOL)
         result = await find_symbol(name=symbol_name, exact=False, include_body=False)
         attempt_history.append({"step": "find_symbol (partial)", "status": result.get("status")})
@@ -121,7 +121,7 @@ async def explore_symbol_usage(
 
     # Step 3: Find usages via grep
     usages = []
-    if tool_catalog.has_tool(ToolId.GREP_SEARCH):
+    if tool_catalog.has_tool_id(ToolId.GREP_SEARCH):
         grep_search = tool_catalog.get_function(ToolId.GREP_SEARCH)
         pattern = rf"\b{re.escape(symbol_name)}\b"  # Word boundary for exact symbol
         result = await grep_search(

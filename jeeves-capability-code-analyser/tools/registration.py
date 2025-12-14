@@ -44,17 +44,28 @@ def register_all_tools() -> Dict[str, Any]:
     from tools.module_mapper import map_module
     from tools.flow_tracer import trace_entry_point
     from tools.base.resilient_ops import read_code, find_related
-    from tools.unified_analyzer import analyze
+    from tools.unified_analyzer import search_code, analyze
 
     registered = []
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # UNIFIED ANALYZER (Amendment XXII)
+    # PRIMARY SEARCH TOOL - Two-Tool Architecture (Amendment XXII v2)
     # ═══════════════════════════════════════════════════════════════════════════
+    tool_catalog.register_function(
+        tool_id=ToolId.SEARCH_CODE,
+        func=search_code,
+        description="Search for code - ALWAYS searches, never assumes paths exist. Use for symbols, keywords, queries.",
+        parameters={"query": "string", "search_type": "string?"},
+        category=ToolCategory.UNIFIED,
+        risk_level=RiskLevel.READ_ONLY,
+    )
+    registered.append("search_code")
+
+    # Legacy analyze - kept for backwards compatibility
     tool_catalog.register_function(
         tool_id=ToolId.ANALYZE,
         func=analyze,
-        description="Unified code analysis - auto-detects target type and orchestrates tools",
+        description="LEGACY: Use search_code instead. Unified code analysis.",
         parameters={"target": "string", "target_type": "string?", "include_usages": "boolean?"},
         category=ToolCategory.UNIFIED,
         risk_level=RiskLevel.READ_ONLY,
@@ -78,7 +89,7 @@ def register_all_tools() -> Dict[str, Any]:
         tool_id=ToolId.EXPLORE_SYMBOL_USAGE,
         func=explore_symbol_usage,
         description="Find symbol definition and all usages across codebase",
-        parameters={"symbol_name": "string", "include_call_sites": "boolean?"},
+        parameters={"symbol_name": "string", "context_bounds": "ContextBounds", "trace_depth": "integer?", "include_tests": "boolean?"},
         category=ToolCategory.COMPOSITE,
         risk_level=RiskLevel.READ_ONLY,
     )
@@ -363,11 +374,8 @@ def has_tool(tool_name: str) -> bool:
     Returns:
         True if tool exists
     """
-    try:
-        tool_id = ToolId(tool_name)
-        return tool_catalog.has_tool(tool_id)
-    except ValueError:
-        return False
+    # ToolCatalog.has_tool() now accepts string directly (ToolRegistryProtocol)
+    return tool_catalog.has_tool(tool_name)
 
 
 def list_registered_tools() -> List[str]:

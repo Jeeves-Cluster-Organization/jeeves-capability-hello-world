@@ -86,32 +86,37 @@ Your responses must be:
 
 
 def get_available_tools_description() -> str:
-    """Generate description of the 5 exposed tools.
+    """Generate description of the exposed tools.
 
-    Per Amendment XXII (Tool Consolidation):
-    - Only 5 tools are exposed to agents
-    - analyze handles most queries in a single step
-    - All composite tools are INTERNAL to analyze
+    Per Amendment XXII v2 (Two-Tool Architecture):
+    - search_code: Primary search tool - ALWAYS searches, never assumes paths
+    - read_code: Read confirmed paths ONLY from prior search results
     """
-    return """**AVAILABLE TOOLS (use only these):**
+    return """**AVAILABLE TOOLS - TWO-TOOL ARCHITECTURE:**
 
-### Primary (use for most queries)
-  - analyze(target): Unified analysis - auto-detects if target is a symbol, module, file, or query.
-    Internally orchestrates all necessary tools. Returns comprehensive analysis with citations.
-    Examples: analyze("CodeAnalysisRuntime"), analyze("agents/"), analyze("how does routing work")
+### Step 1: SEARCH (always start here)
+  - search_code(query): Search for code - ALWAYS searches, never assumes paths exist.
+    Use for: symbols, keywords, natural language, directory exploration.
+    Examples:
+      - search_code("Jeeves") - finds the Jeeves class
+      - search_code("authentication") - finds auth-related code
+      - search_code("agents/") - explores the agents directory
+      - search_code("how does routing work") - semantic search
 
-### Direct Access (when you need specific data)
-  - read_code(path): Read a specific file's contents
-  - find_related(query): Find files semantically related to a query
+### Step 2: READ (only after search)
+  - read_code(path): Read a specific file's contents.
+    ONLY use paths returned by search_code results.
+    Example: If search_code returns "agents/planner.py:42", use read_code("agents/planner.py")
 
 ### Utility
   - git_status(): Current repository state
   - list_tools(): Discover available tools
 
-**PLANNING GUIDANCE:**
-- For most queries: 1 step with analyze(target) is sufficient
-- Use read_code only when you need the exact contents of a known file
-- Use find_related when you need to discover files by semantic similarity"""
+**CRITICAL RULES:**
+1. ALWAYS start with search_code - it finds files for you
+2. NEVER invent file paths like "/workspace/path/to/File.py"
+3. read_code is ONLY for paths from prior search_code results
+4. If you don't know the path, use search_code first"""
 
 
 def get_context_bounds_description(context_bounds: ContextBounds) -> str:
@@ -169,21 +174,52 @@ def build_intent_context(
     normalized_input: str,
     context_summary: str,
     detected_languages: List[str],
+    reintent_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
-    """Build context dictionary for Intent agent."""
+    """Build context dictionary for Intent agent.
+
+    Args:
+        normalized_input: Normalized query from perception
+        context_summary: Summary of session context
+        detected_languages: Languages detected in codebase
+        reintent_context: Context from prior cycle (if this is a reintent)
+    """
     tools_summary = _get_tools_capability_summary()
+
+    # Format reintent context if present
+    reintent_str = ""
+    if reintent_context:
+        prior_cycle = reintent_context.get("prior_cycle", {})
+        reason = reintent_context.get("reason", "")
+        prior_targets = prior_cycle.get("prior_search_targets", [])
+        prior_files = prior_cycle.get("files_examined", [])
+        refine_hint = prior_cycle.get("critic_feedback", {}).get("refine_hint", "")
+
+        reintent_str = f"""
+**REINTENT - Prior search failed. Extract DIFFERENT search targets.**
+- Prior search targets (did not work): {prior_targets}
+- Files found: {len(prior_files)}
+- Reason for reintent: {reason}
+- Hint: {refine_hint}
+
+Do NOT repeat the same search targets. Try different keywords, synonyms, or approaches."""
+
+    context_with_reintent = context_summary or "New session - no prior context"
+    if reintent_str:
+        context_with_reintent += reintent_str
 
     return {
         "system_identity": get_system_identity(),
         "normalized_input": normalized_input,
-        "context_summary": context_summary or "New session - no prior context",
+        "context_summary": context_with_reintent,
         "detected_languages": ", ".join(detected_languages) if detected_languages else "Not specified",
         "capabilities_summary": tools_summary,
         "role_description": """Your role: INTENT AGENT
-- Classify the query into one of 5 categories
+- Classify the query into one of 5 intent categories
+- Extract SEARCH TARGETS (symbols, keywords, directories) - this is CRITICAL
 - Extract specific, actionable goals
 - Identify constraints (file types, directories, etc.)
-- Flag ambiguities that might need clarification""",
+- The planner will use your search_targets to call search_code()""",
     }
 
 
@@ -197,6 +233,9 @@ def build_planner_context(
     context_bounds: ContextBounds,
     retry_feedback: Optional[str] = None,
     completed_stages: Optional[List[Dict[str, Any]]] = None,
+    user_query: Optional[str] = None,
+    repo_path: Optional[str] = None,
+    search_targets: Optional[List[str]] = None,
 ) -> Dict[str, str]:
     """Build context dictionary for Planner agent.
 
@@ -211,10 +250,19 @@ def build_planner_context(
         retry_feedback: Optional feedback from previous attempt
         completed_stages: Results from previous stages (for multi-stage execution).
                          Each stage contains: satisfied_goals, entities_found, open_questions.
+        user_query: Original user query (for target extraction)
+        repo_path: Current repository path being analyzed
+        search_targets: List of search targets extracted by Intent agent
     """
+    # Format search targets for the prompt
+    targets_formatted = ", ".join(f'"{t}"' for t in search_targets) if search_targets else "none extracted"
+
     context = {
         "system_identity": get_system_identity(),
+        "user_query": user_query or "Unknown query",
+        "repo_path": repo_path or "/workspace",
         "intent": intent,
+        "search_targets": targets_formatted,
         "goals": "\n".join(f"- {g}" for g in goals) if goals else "- Answer the user's query",
         "scope_path": scope_path or "Entire repository",
         "exploration_summary": exploration_summary,
@@ -227,9 +275,9 @@ def build_planner_context(
         "remaining_tokens": str(context_bounds.max_total_code_tokens - tokens_used),
         "remaining_files": str(context_bounds.max_files_per_query - files_explored),
         "role_description": """Your role: PLANNER AGENT
-- Create a plan of tool calls to answer the query
+- Use the search_targets from Intent to call search_code()
 - Respect context bounds (files, tokens)
-- Order steps logically (broader exploration first, then specific reads)
+- NEVER invent file paths - use search_code to find them
 - Each step should have clear reasoning""",
     }
 
@@ -329,27 +377,65 @@ Verdict options:
 
 def build_integration_context(
     user_query: str,
-    verdict: str,
-    validated_claims: str,
+    critic_recommendation: str,
+    critic_feedback: Dict[str, Any],
+    synthesizer_output: str,
     relevant_snippets: str,
-    exploration_summary: str,
     files_examined: List[str],
+    cycle_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
-    """Build context dictionary for Integration agent."""
+    """Build context dictionary for Integration agent.
+
+    Integration is the DECISION MAKER: decides answer vs reintent.
+
+    Args:
+        user_query: Original user query
+        critic_recommendation: sufficient/partial/insufficient
+        critic_feedback: Full critic output with issues, hints, etc.
+        synthesizer_output: Structured findings from synthesizer
+        relevant_snippets: Code snippets collected
+        files_examined: List of files that were examined
+        cycle_context: Context from prior cycle (if reintenting)
+    """
+    # Format critic feedback for prompt
+    critic_feedback_str = ""
+    if critic_feedback:
+        issues = critic_feedback.get("issues", [])
+        if issues:
+            critic_feedback_str += f"Issues: {'; '.join(issues)}\n"
+        refine_hint = critic_feedback.get("refine_hint", "")
+        if refine_hint:
+            critic_feedback_str += f"Refinement hint: {refine_hint}\n"
+        suggested = critic_feedback.get("suggested_response", "")
+        if suggested:
+            critic_feedback_str += f"Suggested response: {suggested[:200]}..."
+
+    # Format cycle context
+    cycle_context_str = "First attempt - no prior cycle"
+    if cycle_context:
+        prior = cycle_context.get("prior_cycle", {})
+        if prior:
+            prior_targets = prior.get("prior_search_targets", [])
+            prior_files = prior.get("files_examined", [])
+            cycle_context_str = f"Prior search targets: {prior_targets}. Prior files examined: {len(prior_files)}."
+            reason = cycle_context.get("reason", "")
+            if reason:
+                cycle_context_str += f" Reason for reintent: {reason}"
+
     return {
         "system_identity": get_system_identity(),
         "user_query": user_query,
-        "verdict": verdict,
-        "validated_claims": validated_claims or "No validated claims from critic",
+        "critic_recommendation": critic_recommendation,
+        "critic_feedback": critic_feedback_str or "No specific feedback",
+        "synthesizer_output": synthesizer_output,
         "relevant_snippets": relevant_snippets,
-        "exploration_summary": exploration_summary,
-        "files_examined": ", ".join(files_examined) if files_examined else "None recorded",
-        "pipeline_overview": get_pipeline_overview(),
-        "role_description": """Your role: INTEGRATION AGENT (Response Writer)
-- Build the final response from validated claims
-- Add file:line citations for every claim
-- Structure the answer clearly
-- Note limitations honestly""",
+        "files_examined": ", ".join(files_examined) if files_examined else "None examined",
+        "cycle_context": cycle_context_str,
+        "role_description": """Your role: INTEGRATION AGENT (Decision Maker)
+- DECIDE: answer with current findings OR reintent for better search
+- If answering: build response with file:line citations
+- If reintenting: explain why and what to search instead
+- Avoid infinite loops - if already reintented, answer with best effort""",
     }
 
 
@@ -383,13 +469,12 @@ def _format_session_state(state: Dict[str, Any]) -> str:
 def _get_tools_capability_summary() -> str:
     """Brief summary of what the system can do (for Intent agent).
 
-    Per Amendment XXII: Only 5 tools exposed, with analyze as primary.
+    Per Amendment XXII v2: Two-tool architecture.
     """
     return """This system can:
-- Analyze anything: symbols, modules, files, or natural language queries (via analyze tool)
-- Read specific files: get exact file contents (via read_code)
-- Find related code: semantic search for similar files (via find_related)
+- Search for code: find symbols, keywords, patterns (via search_code)
+- Read files: get exact file contents (via read_code, ONLY for confirmed paths)
 - Check git status: current repository state (via git_status)
 
 All operations are READ-ONLY - we analyze code, we don't modify it.
-The analyze tool internally handles all complexity (symbol lookup, module mapping, etc.)."""
+The search_code tool finds files; read_code reads them. Always search first."""
