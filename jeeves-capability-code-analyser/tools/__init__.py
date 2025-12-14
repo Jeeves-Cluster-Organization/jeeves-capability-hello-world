@@ -116,7 +116,7 @@ CODE_ANALYSIS_TOOLS = [
 ]
 
 # ═══════════════════════════════════════════════════════════════════════════
-# EXPOSED TOOLS - Only visible to agents
+# EXPOSED TOOLS - Visible to agents
 # ═══════════════════════════════════════════════════════════════════════════
 EXPOSED_TOOLS = [
     "search_code",   # Primary: searches for code, never assumes paths exist
@@ -127,24 +127,15 @@ EXPOSED_TOOLS = [
 ]
 
 # ═══════════════════════════════════════════════════════════════════════════
-# INTERNAL TOOLS - Not exposed to agents, used by search_code internally
+# INTERNAL TOOLS - Used by exposed tools, not directly visible to agents
 # ═══════════════════════════════════════════════════════════════════════════
-INTERNAL_COMPOSITE_TOOLS = [
+INTERNAL_TOOLS = [
     "locate",
     "explore_symbol_usage",
     "explain_code_history",
     "map_module",
     "trace_entry_point",
 ]
-
-# Unified search tool
-UNIFIED_TOOLS = ["search_code"]
-
-# For backward compatibility with validation code
-COMPOSITE_TOOLS = INTERNAL_COMPOSITE_TOOLS
-
-# Resilient tools with retry logic (Amendment XXI)
-RESILIENT_TOOLS = ["read_code", "find_related"]
 
 
 def get_code_analysis_tools_for_llm() -> str:
@@ -170,10 +161,8 @@ __all__ = [
     "register_all_tools",
     # Constants
     "CODE_ANALYSIS_TOOLS",
-    "COMPOSITE_TOOLS",
-    "RESILIENT_TOOLS",
     "EXPOSED_TOOLS",
-    "UNIFIED_TOOLS",
+    "INTERNAL_TOOLS",
     # Registration
     "get_code_analysis_tools_for_llm",
     "get_code_analysis_tool_names",

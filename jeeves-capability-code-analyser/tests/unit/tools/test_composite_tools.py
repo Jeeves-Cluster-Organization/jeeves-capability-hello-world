@@ -439,12 +439,12 @@ class TestCompositeToolContracts:
     """Tests verifying Amendment XVII contracts across all composite tools."""
 
     @pytest.mark.asyncio
-    async def test_all_composite_tools_return_status(self):
-        """Verify all composite tools return a status field."""
-        from tools import COMPOSITE_TOOLS
+    async def test_all_internal_tools_return_status(self):
+        """Verify all internal tools return a status field."""
+        from tools import INTERNAL_TOOLS
 
         # This test verifies the contract is defined
-        assert len(COMPOSITE_TOOLS) == 5
+        assert len(INTERNAL_TOOLS) == 5
         expected_tools = [
             "locate",
             "explore_symbol_usage",
@@ -453,11 +453,11 @@ class TestCompositeToolContracts:
             "trace_entry_point",
         ]
         for tool in expected_tools:
-            assert tool in COMPOSITE_TOOLS
+            assert tool in INTERNAL_TOOLS
 
-    def test_composite_tools_registered_as_read_only(self):
-        """Verify all composite tools are READ_ONLY risk level."""
-        from tools import COMPOSITE_TOOLS
+    def test_internal_tools_registered_as_read_only(self):
+        """Verify all internal tools are READ_ONLY risk level."""
+        from tools import INTERNAL_TOOLS
         from tools.registry import RiskLevel
 
         # Register tools first (imports trigger registration)
@@ -469,7 +469,7 @@ class TestCompositeToolContracts:
             flow_tracer,
         )
 
-        for tool_name in COMPOSITE_TOOLS:
+        for tool_name in INTERNAL_TOOLS:
             if tool_catalog.has_tool(tool_name):
                 # Use get_entry() to access risk_level (ToolCatalogEntry has it, ToolDefinition doesn't)
                 from jeeves_avionics.tools.catalog import resolve_tool_id
