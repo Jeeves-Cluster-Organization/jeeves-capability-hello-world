@@ -167,22 +167,23 @@ class CodeAnalysisService:
             session_id=session_id,
         )
 
-        # Constitutional EventContext pattern for event streaming
+        # Constitutional EventOrchestrator pattern for event streaming
+        # Events flow: Orchestrator → gRPC → Gateway → WebSocket
+        # NO cross-process gateway injection (orchestrator and gateway are separate processes)
         import asyncio
-        from jeeves_mission_system.orchestrator.agent_events import AgentEventEmitter
-        from jeeves_mission_system.orchestrator.event_context import AgentEventContext
+        from jeeves_mission_system.orchestrator.events import create_event_orchestrator
 
-        # Create event emitter and context
-        emitter = AgentEventEmitter()
-        event_context = AgentEventContext(
+        # Create event orchestrator for streaming (no gateway injection needed)
+        orchestrator = create_event_orchestrator(
             session_id=session_id,
             request_id=request_id,
             user_id=user_id,
-            agent_event_emitter=emitter,
+            enable_streaming=True,
+            enable_persistence=False,
         )
 
         # Set event context on runtime so agents automatically emit events
-        self._runtime.set_event_context(event_context)
+        self._runtime.set_event_context(orchestrator.context)
 
         # Emit FLOW_STARTED event
         yield AgentEvent(
@@ -200,14 +201,14 @@ class CodeAnalysisService:
                 result_envelope = await self._runtime.run(envelope, thread_id=session_id)
                 return result_envelope
             finally:
-                # Close emitter when pipeline completes
-                await emitter.close()
+                # Close orchestrator when pipeline completes
+                await orchestrator.close()
 
         pipeline_task = asyncio.create_task(run_pipeline())
 
         # Stream events as they're emitted by agents (Constitutional pattern)
         try:
-            async for event in emitter.events():
+            async for event in orchestrator.events():
                 yield event
 
             # Wait for pipeline to complete and get final envelope
