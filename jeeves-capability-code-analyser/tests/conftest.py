@@ -4,8 +4,8 @@ This file configures pytest for the app layer test suite.
 It ensures proper import paths and shared fixtures.
 
 Constitutional Compliance:
-- Uses jeeves_mission_system.contracts for all core types
-- Does NOT import from jeeves_core_engine or jeeves_avionics directly
+- Uses jeeves_protocols for all core types
+- Does NOT import from coreengine or jeeves_avionics directly
 - App layer tests are self-contained with own fixtures
 - Constitution R7: register_capability() called at test setup
 """
@@ -19,7 +19,7 @@ import pytest
 app_root = Path(__file__).parent.parent
 sys.path.insert(0, str(app_root))
 
-# Add mission system to path for contracts import
+# Add project root to path
 project_root = app_root.parent
 sys.path.insert(0, str(project_root))
 
@@ -46,19 +46,23 @@ def setup_capability_registration():
     - Tools initializer
     - Agent definitions
     """
-    from jeeves_protocols import reset_capability_resource_registry
+    try:
+        from jeeves_protocols import reset_capability_resource_registry
 
-    # Start with clean registry
-    reset_capability_resource_registry()
+        # Start with clean registry
+        reset_capability_resource_registry()
 
-    # Register capability (Constitution R7)
-    from jeeves_capability_code_analyser import register_capability
-    register_capability()
+        # Register capability (Constitution R7)
+        from jeeves_capability_code_analyser import register_capability
+        register_capability()
 
-    yield
+        yield
 
-    # Clean up for test isolation
-    reset_capability_resource_registry()
+        # Clean up for test isolation
+        reset_capability_resource_registry()
+    except ImportError:
+        # jeeves_protocols not available (submodule not initialized)
+        yield
 
 
 # ============================================================
@@ -73,44 +77,75 @@ def setup_language_config():
     get_language_config_from_registry() which expects the config
     to be registered at bootstrap.
     """
-    from jeeves_mission_system.contracts import get_config_registry, ConfigKeys
-    from jeeves_capability_code_analyser.config import get_language_config
+    try:
+        from jeeves_mission_system.contracts import get_config_registry, ConfigKeys
+        from jeeves_capability_code_analyser.config import get_language_config
 
-    registry = get_config_registry()
-    config = get_language_config()
-    registry.register(ConfigKeys.LANGUAGE_CONFIG, config)
+        registry = get_config_registry()
+        config = get_language_config()
+        registry.register(ConfigKeys.LANGUAGE_CONFIG, config)
+    except ImportError:
+        # jeeves_mission_system not available
+        pass
     yield
-    # Cleanup not strictly needed as registry persists across tests
 
 
 # ============================================================
 # Import Fixtures from tests/fixtures/ package
 # ============================================================
 
-# Envelope fixtures
-from tests.fixtures.envelope import (
-    envelope_factory,
-    sample_envelope,
-    envelope_with_perception,
-    envelope_with_intent,
-    envelope_with_plan,
-    envelope_with_execution,
-    envelope_with_synthesizer,
-    envelope_with_critic,
-)
+try:
+    # Envelope fixtures
+    from jeeves_capability_code_analyser.tests.fixtures.envelope import (
+        envelope_factory,
+        sample_envelope,
+        envelope_with_perception,
+        envelope_with_intent,
+        envelope_with_plan,
+        envelope_with_execution,
+        envelope_with_synthesizer,
+        envelope_with_critic,
+    )
 
-# Mock service fixtures (Centralized Architecture v4.0 - agents are config-driven)
-from tests.fixtures.agents import (
-    mock_llm_provider,
-    mock_tool_registry,
-    mock_tool_executor,
-    mock_db,
-    mock_event_bus,
-    mock_settings,
-    # Pipeline fixtures
-    pipeline_config,
-    mock_llm_factory,
-)
+    # Mock service fixtures (Centralized Architecture v4.0 - agents are config-driven)
+    from jeeves_capability_code_analyser.tests.fixtures.agents import (
+        mock_llm_provider,
+        mock_tool_registry,
+        mock_tool_executor,
+        mock_db,
+        mock_event_bus,
+        mock_settings,
+        # Pipeline fixtures
+        pipeline_config,
+        mock_llm_factory,
+    )
+except ImportError:
+    # Fall back to relative imports
+    try:
+        from tests.fixtures.envelope import (
+            envelope_factory,
+            sample_envelope,
+            envelope_with_perception,
+            envelope_with_intent,
+            envelope_with_plan,
+            envelope_with_execution,
+            envelope_with_synthesizer,
+            envelope_with_critic,
+        )
+
+        from tests.fixtures.agents import (
+            mock_llm_provider,
+            mock_tool_registry,
+            mock_tool_executor,
+            mock_db,
+            mock_event_bus,
+            mock_settings,
+            pipeline_config,
+            mock_llm_factory,
+        )
+    except ImportError:
+        # Fixtures not available - tests will fail if they need them
+        pass
 
 
 # ============================================================
@@ -142,12 +177,14 @@ def reset_repo_path_cache():
     allowing monkeypatch to properly change REPO_PATH.
     """
     try:
-        from tools.base.path_helpers import reset_repo_path_cache as reset_cache
+        from jeeves_capability_code_analyser.tools.base.path_helpers import (
+            reset_repo_path_cache as reset_cache
+        )
         reset_cache()
         yield
         reset_cache()
     except ImportError:
-        # path_helpers may not exist yet
+        # path_helpers may not exist or tools not importable
         yield
 
 
@@ -159,27 +196,3 @@ def reset_repo_path_cache():
 def anyio_backend():
     """Use asyncio as the async backend."""
     return "asyncio"
-
-
-# Re-export all fixtures for pytest discovery
-__all__ = [
-    # Envelope fixtures
-    "envelope_factory",
-    "sample_envelope",
-    "envelope_with_perception",
-    "envelope_with_intent",
-    "envelope_with_plan",
-    "envelope_with_execution",
-    "envelope_with_synthesizer",
-    "envelope_with_critic",
-    # Mock service fixtures
-    "mock_llm_provider",
-    "mock_tool_registry",
-    "mock_tool_executor",
-    "mock_db",
-    "mock_event_bus",
-    "mock_settings",
-    # Pipeline fixtures
-    "pipeline_config",
-    "mock_llm_factory",
-]

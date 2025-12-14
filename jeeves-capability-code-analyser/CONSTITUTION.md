@@ -1,7 +1,7 @@
 # Code Analysis Capability Constitution
 
-**Parent:** [Mission System Constitution](../jeeves_mission_system/CONSTITUTION.md)
-**Updated:** 2025-12-13
+**Parent:** [docs/CONSTITUTION.md](../docs/CONSTITUTION.md)
+**Updated:** 2025-12-14
 
 ---
 
@@ -408,10 +408,10 @@ register_capability()  # MUST be called before infrastructure init
 **Do NOT:**
 - Create concrete agent classes
 - Import deprecated types (Agent, CoreEnvelope, EnvelopeStage, AgentStage)
-- Bypass mission_system.contracts_core
+- Bypass mission_system.contracts
 - Hallucinate code without tool execution
 - Import domain config from mission_system (LanguageConfig, NodeProfiles, etc. are in capability)
 
 ---
 
-*This constitution extends the [Mission System Constitution](../jeeves_mission_system/CONSTITUTION.md).*
+*This constitution defines the rules for the jeeves-capability-code-analyser package. See [docs/CONSTITUTION.md](../docs/CONSTITUTION.md) for the overview constitution.*

@@ -3,13 +3,13 @@
 Centralized Architecture (v4.0):
 - Uses GenericEnvelope with dynamic outputs dict
 - Pre-populated states for each pipeline stage
-- Imports from contracts_core (not deprecated types)
+- Imports from jeeves_protocols
 """
 
 import pytest
 from typing import Optional, Dict, Any
 
-from jeeves_mission_system.contracts_core import (
+from jeeves_protocols import (
     GenericEnvelope,
     create_generic_envelope,
     CriticVerdict,
