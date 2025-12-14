@@ -116,10 +116,10 @@ CODE_ANALYSIS_TOOLS = [
 ]
 
 # ═══════════════════════════════════════════════════════════════════════════
-# EXPOSED TOOLS (Amendment XXII) - Only visible to agents
+# EXPOSED TOOLS - Visible to agents
 # ═══════════════════════════════════════════════════════════════════════════
 EXPOSED_TOOLS = [
-    "analyze",       # Primary: auto-detects target, orchestrates internal tools
+    "search_code",   # Primary: searches for code, never assumes paths exist
     "read_code",     # Direct file reading with retry
     "find_related",  # Semantic search for related files
     "git_status",    # Current repo state
@@ -127,24 +127,15 @@ EXPOSED_TOOLS = [
 ]
 
 # ═══════════════════════════════════════════════════════════════════════════
-# INTERNAL TOOLS - Not exposed to agents, used by analyze internally
+# INTERNAL TOOLS - Used by exposed tools, not directly visible to agents
 # ═══════════════════════════════════════════════════════════════════════════
-INTERNAL_COMPOSITE_TOOLS = [
+INTERNAL_TOOLS = [
     "locate",
     "explore_symbol_usage",
     "explain_code_history",
     "map_module",
     "trace_entry_point",
 ]
-
-# Unified analyzer tool (Amendment XXII)
-UNIFIED_TOOLS = ["analyze"]
-
-# For backward compatibility with validation code
-COMPOSITE_TOOLS = INTERNAL_COMPOSITE_TOOLS
-
-# Resilient tools with retry logic (Amendment XXI)
-RESILIENT_TOOLS = ["read_code", "find_related"]
 
 
 def get_code_analysis_tools_for_llm() -> str:
@@ -170,10 +161,8 @@ __all__ = [
     "register_all_tools",
     # Constants
     "CODE_ANALYSIS_TOOLS",
-    "COMPOSITE_TOOLS",
-    "RESILIENT_TOOLS",
     "EXPOSED_TOOLS",
-    "UNIFIED_TOOLS",
+    "INTERNAL_TOOLS",
     # Registration
     "get_code_analysis_tools_for_llm",
     "get_code_analysis_tool_names",

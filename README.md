@@ -195,13 +195,13 @@ The capability exposes these tools to agents:
 
 | Tool | Description |
 |------|-------------|
-| `analyze` | Primary tool - auto-detects target, orchestrates internal tools |
+| `search_code` | Primary tool - searches for code, never assumes paths exist |
 | `read_code` | Direct file reading with retry logic |
 | `find_related` | Semantic search for related files |
 | `git_status` | Current repository state |
 | `list_tools` | Tool discovery |
 
-Internal tools (used by `analyze`):
+Internal tools (used by `search_code`):
 - `locate` - Symbol location via index/grep/semantic
 - `explore_symbol_usage` - Symbol usage analysis
 - `map_module` - Module dependency mapping

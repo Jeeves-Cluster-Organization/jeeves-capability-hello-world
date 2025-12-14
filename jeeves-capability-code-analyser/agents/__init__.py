@@ -1,21 +1,21 @@
 """
-Code Analysis Agent Pipeline - Centralized Architecture (v4.0)
+Code Analysis Agent Pipeline
 
 Agents are defined declaratively via AgentConfig in pipeline_config.py.
 This module exports supporting utilities only.
 
 The 7-agent pipeline:
-1. perception - Load session state, detect scope (hook: perception_pre_process)
-2. intent - Classify query intent (LLM, hook: intent_post_process)
+1. perception - Load session state, detect scope
+2. intent - Classify query intent (LLM)
 3. planner - Generate tool call plan (LLM)
 4. executor - Execute read-only code operations (tools)
 5. synthesizer - Aggregate findings (LLM)
-6. critic - Validate results (LLM, hook: critic_post_process)
-7. integration - Build response with citations (LLM, hook: integration_post_process)
+6. critic - Validate results (LLM)
+7. integration - Build response with citations (LLM)
 
-Key differences from legacy architecture:
+Architecture:
 - No concrete agent classes (all via AgentConfig)
-- GenericEnvelope with dynamic outputs (no CoreEnvelope)
+- GenericEnvelope with dynamic outputs
 - Hooks define capability-specific logic
 - UnifiedRuntime executes pipeline from config
 """
