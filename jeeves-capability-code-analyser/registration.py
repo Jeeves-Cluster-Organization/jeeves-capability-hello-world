@@ -147,11 +147,20 @@ def register_capability() -> None:
     This function should be called at application startup, before
     avionics/infrastructure initialization.
     """
-    # Register language_config FIRST - tools depend on this
-    from jeeves_capability_code_analyser.config import get_language_config
+    # Register configs FIRST - tools depend on these
+    from jeeves_capability_code_analyser.config import (
+        get_language_config,
+        CodeAnalysisBounds,
+        set_code_analysis_bounds,
+    )
     from jeeves_mission_system.contracts import get_config_registry, ConfigKeys
     config_registry = get_config_registry()
     config_registry.register(ConfigKeys.LANGUAGE_CONFIG, get_language_config())
+
+    # Register CodeAnalysisBounds (domain-specific resource limits)
+    # These override defaults and can be customized per deployment
+    bounds = CodeAnalysisBounds()
+    set_code_analysis_bounds(bounds)
 
     registry = get_capability_resource_registry()
 

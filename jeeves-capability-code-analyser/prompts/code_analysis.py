@@ -186,14 +186,12 @@ Validate the synthesis and provide feedback for Integration:
 - "partial" - Some findings, but gaps remain. May still be enough to answer.
 - "insufficient" - Major gaps or no results. May need different search approach.
 
-Output ONE JSON object:
+Output ONE JSON object (keep it concise):
 {{
   "recommendation": "sufficient|partial|insufficient",
   "confidence": 0.9,
-  "issues": ["<issue 1>", "<issue 2>"],
-  "suggested_response": "<draft response if recommendation is sufficient or partial>",
-  "refine_hint": "<if insufficient: what should be searched differently>",
-  "additional_searches": ["<suggested additional search terms>"]
+  "issues": ["<brief issue 1>"],
+  "refine_hint": "<if insufficient: what to search instead>"
 }}"""
 
 

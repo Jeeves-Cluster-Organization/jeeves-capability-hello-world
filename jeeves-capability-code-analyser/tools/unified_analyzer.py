@@ -23,8 +23,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import ToolId, tool_catalog,  ContextBounds, ToolId, tool_catalog
+from jeeves_mission_system.contracts import ToolId, tool_catalog
 from jeeves_protocols import RiskLevel, OperationStatus, ToolCategory
+# Domain-specific bounds from capability config (per Constitution R6)
+from jeeves_capability_code_analyser.config import CodeAnalysisBounds, get_code_analysis_bounds
 
 
 class TargetType(Enum):
@@ -90,8 +92,8 @@ async def _analyze_symbol(symbol: str, include_usages: bool = True) -> Dict[str,
     if tool_catalog.has_tool_id(ToolId.EXPLORE_SYMBOL_USAGE):
         explore = tool_catalog.get_function(ToolId.EXPLORE_SYMBOL_USAGE)
         try:
-            # Create context bounds for exploration
-            context_bounds = ContextBounds(max_files=50, max_tokens=8000)
+            # Use domain-specific bounds (per Constitution R6)
+            context_bounds = get_code_analysis_bounds()
             explore_result = await explore(
                 symbol_name=symbol,
                 context_bounds=context_bounds,

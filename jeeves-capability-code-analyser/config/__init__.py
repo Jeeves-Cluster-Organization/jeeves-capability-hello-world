@@ -4,12 +4,21 @@ Domain-specific configuration for the code analysis vertical.
 Generic config types are in jeeves_mission_system.config.
 
 Exports:
+- Context bounds (CodeAnalysisBounds - domain-specific resource limits)
 - Language config (LanguageId, LanguageSpec, LanguageConfig)
 - Tool access matrix (AgentToolAccess, TOOL_CATEGORIES)
 - Pipeline modes (AGENT_MODES)
 - Deployment profiles (CODE_ANALYSIS_AGENTS, PROFILES)
 - Product identity (PRODUCT_NAME, etc.)
 """
+
+from jeeves_capability_code_analyser.config.context_bounds import (
+    CodeAnalysisBounds,
+    DEFAULT_CODE_ANALYSIS_BOUNDS,
+    get_code_analysis_bounds,
+    set_code_analysis_bounds,
+    reset_code_analysis_bounds,
+)
 
 from jeeves_capability_code_analyser.config.language_config import (
     LanguageId,
@@ -62,18 +71,13 @@ from jeeves_capability_code_analyser.config.identity import (
     AGENT_COUNT,
 )
 
-from jeeves_capability_code_analyser.config.llm_config import (
-    CAPABILITY_ID,
-    CODE_ANALYSIS_AGENT_LLM_CONFIGS,
-    CODE_ANALYSIS_AGENT_PROFILES,
-    CODE_ANALYSIS_LATENCY_BUDGETS,
-    register_code_analysis_agents,
-    get_agent_profile,
-    get_llm_config,
-    get_latency_budget,
-)
-
 __all__ = [
+    # Context bounds (domain-specific resource limits)
+    "CodeAnalysisBounds",
+    "DEFAULT_CODE_ANALYSIS_BOUNDS",
+    "get_code_analysis_bounds",
+    "set_code_analysis_bounds",
+    "reset_code_analysis_bounds",
     # Language config
     "LanguageId",
     "LanguageSpec",
@@ -114,13 +118,4 @@ __all__ = [
     "PRODUCT_SERVICE_NAME",
     "AGENT_ARCHITECTURE",
     "AGENT_COUNT",
-    # LLM Configuration (capability-owned)
-    "CAPABILITY_ID",
-    "CODE_ANALYSIS_AGENT_LLM_CONFIGS",
-    "CODE_ANALYSIS_AGENT_PROFILES",
-    "CODE_ANALYSIS_LATENCY_BUDGETS",
-    "register_code_analysis_agents",
-    "get_agent_profile",
-    "get_llm_config",
-    "get_latency_budget",
 ]

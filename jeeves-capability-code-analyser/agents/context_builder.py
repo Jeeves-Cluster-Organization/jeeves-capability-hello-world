@@ -25,7 +25,9 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 # Constitutional imports - RiskLevel from protocols, others from mission_system contracts
 from jeeves_protocols import RiskLevel
-from jeeves_mission_system.contracts import ContextBounds, tool_catalog
+from jeeves_mission_system.contracts import tool_catalog
+# Domain-specific bounds from capability config (per Constitution R6)
+from jeeves_capability_code_analyser.config import CodeAnalysisBounds, get_code_analysis_bounds
 
 
 @dataclass
@@ -42,11 +44,11 @@ class RepositoryContext:
     explored_symbols_count: int
     tokens_used: int
 
-    def to_summary(self, context_bounds: Optional[ContextBounds] = None) -> str:
+    def to_summary(self, context_bounds: Optional[CodeAnalysisBounds] = None) -> str:
         """Generate human-readable summary.
 
         Args:
-            context_bounds: Context bounds configuration (from AppContext)
+            context_bounds: Code analysis bounds (from capability config)
         """
         parts = []
 
@@ -119,13 +121,13 @@ def get_available_tools_description() -> str:
 4. If you don't know the path, use search_code first"""
 
 
-def get_context_bounds_description(context_bounds: ContextBounds) -> str:
+def get_context_bounds_description(context_bounds: CodeAnalysisBounds) -> str:
     """Generate clear description of context bounds.
 
     This ensures all agents understand the limits they must respect.
 
     Args:
-        context_bounds: Context bounds configuration (from AppContext)
+        context_bounds: Code analysis bounds (from capability config)
     """
     return f"""CONTEXT BOUNDS (Amendment XI - MUST RESPECT):
 - Max files per query: {context_bounds.max_files_per_query}
@@ -230,7 +232,7 @@ def build_planner_context(
     exploration_summary: str,
     tokens_used: int,
     files_explored: int,
-    context_bounds: ContextBounds,
+    context_bounds: CodeAnalysisBounds,
     retry_feedback: Optional[str] = None,
     completed_stages: Optional[List[Dict[str, Any]]] = None,
     user_query: Optional[str] = None,
@@ -246,7 +248,7 @@ def build_planner_context(
         exploration_summary: Summary of prior exploration
         tokens_used: Tokens consumed so far
         files_explored: Files explored so far
-        context_bounds: Context bounds configuration (from AppContext)
+        context_bounds: Code analysis bounds (from capability config)
         retry_feedback: Optional feedback from previous attempt
         completed_stages: Results from previous stages (for multi-stage execution).
                          Each stage contains: satisfied_goals, entities_found, open_questions.
@@ -405,10 +407,7 @@ def build_integration_context(
             critic_feedback_str += f"Issues: {'; '.join(issues)}\n"
         refine_hint = critic_feedback.get("refine_hint", "")
         if refine_hint:
-            critic_feedback_str += f"Refinement hint: {refine_hint}\n"
-        suggested = critic_feedback.get("suggested_response", "")
-        if suggested:
-            critic_feedback_str += f"Suggested response: {suggested[:200]}..."
+            critic_feedback_str += f"Refinement hint: {refine_hint}"
 
     # Format cycle context
     cycle_context_str = "First attempt - no prior cycle"

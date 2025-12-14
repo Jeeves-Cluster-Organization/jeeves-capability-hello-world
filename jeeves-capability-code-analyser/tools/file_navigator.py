@@ -27,8 +27,8 @@ from tools.base.path_helpers import (
     ensure_repo_path_valid,
     repo_path_error_response,
 )
-# Constitutional imports - from mission_system contracts layer
-from jeeves_mission_system.contracts import ContextBounds
+# Domain-specific bounds from capability config (per Constitution R6)
+from jeeves_capability_code_analyser.config import CodeAnalysisBounds, get_code_analysis_bounds
 
 
 class FileNavigatorTools:
@@ -41,14 +41,14 @@ class FileNavigatorTools:
     - View project tree structure
     """
 
-    def __init__(self, bounds: Optional[ContextBounds] = None, logger: Optional[LoggerProtocol] = None):
+    def __init__(self, bounds: Optional[CodeAnalysisBounds] = None, logger: Optional[LoggerProtocol] = None):
         """Initialize file navigator tools.
 
         Args:
-            bounds: Optional context bounds configuration
+            bounds: Optional code analysis bounds
             logger: Optional logger instance
         """
-        self.bounds = bounds or ContextBounds()
+        self.bounds = bounds or get_code_analysis_bounds()
         self._logger = logger or get_logger()
 
     async def list_files(
@@ -504,7 +504,7 @@ def get_file_navigator() -> FileNavigatorTools:
 
 def register_file_navigator_tools(
     registry=None,
-    bounds: Optional[ContextBounds] = None,
+    bounds: Optional[CodeAnalysisBounds] = None,
 ) -> Dict[str, Any]:
     """Register file navigator tools with the registry.
 

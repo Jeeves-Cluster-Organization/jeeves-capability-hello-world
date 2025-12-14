@@ -387,23 +387,16 @@ def critic_mock_handler(envelope: Any) -> Dict[str, Any]:
     # Provide recommendation (Integration decides what to do with it)
     if quality_score >= 0.7 and not gaps and files_examined:
         recommendation = "sufficient"
-        suggested_response = "Based on code analysis: " + "; ".join(
-            f.get("summary", "") for f in findings[:3]
-        )
     elif quality_score < 0.3 or not files_examined:
         recommendation = "insufficient"
-        suggested_response = ""
     else:
         recommendation = "partial"
-        suggested_response = "Partial findings from code analysis."
 
     return {
         "recommendation": recommendation,  # sufficient/partial/insufficient
         "confidence": quality_score,
         "issues": issues,
-        "suggested_response": suggested_response,
         "refine_hint": "Try different search terms" if recommendation == "insufficient" else "",
-        "additional_searches": synthesizer.get("suggested_next_searches", []),
     }
 
 
@@ -422,14 +415,11 @@ def critic_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None
     # Format critic feedback as string for prompt
     issues = output.get("issues", [])
     refine_hint = output.get("refine_hint", "")
-    suggested = output.get("suggested_response", "")
     feedback_parts = []
     if issues:
         feedback_parts.append(f"Issues: {'; '.join(issues)}")
     if refine_hint:
         feedback_parts.append(f"Hint: {refine_hint}")
-    if suggested:
-        feedback_parts.append(f"Suggested: {suggested[:200]}...")
     envelope.metadata["critic_feedback"] = "\n".join(feedback_parts) if feedback_parts else "No issues"
 
     # Store complete cycle context for potential reintent
@@ -440,8 +430,6 @@ def critic_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None
             "confidence": output.get("confidence", 0.5),
             "issues": output.get("issues", []),
             "refine_hint": output.get("refine_hint", ""),
-            "additional_searches": output.get("additional_searches", []),
-            "suggested_response": output.get("suggested_response", ""),
         },
         "prior_intent": envelope.outputs.get("intent", {}),
         "prior_search_targets": envelope.outputs.get("intent", {}).get("search_targets", []),
@@ -470,7 +458,6 @@ def integration_mock_handler(envelope: Any) -> Dict[str, Any]:
 
     # Get critic's assessment
     recommendation = critic.get("recommendation", "partial")
-    suggested_response = critic.get("suggested_response", "")
     issues = critic.get("issues", [])
 
     # Get files_examined from execution output or traversal_state metadata
@@ -502,7 +489,7 @@ def integration_mock_handler(envelope: Any) -> Dict[str, Any]:
 
         return {
             "action": "answer",
-            "final_response": suggested_response or response,
+            "final_response": response,
             "citations": [],
             "files_examined": files_examined,
         }
@@ -597,6 +584,8 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             prompt_key="code_analysis.intent",
             output_key="intent",
             required_output_fields=["intent", "goals"],
+            max_tokens=2000,
+            temperature=0.3,
             mock_handler=intent_mock_handler,
             post_process=intent_post_process,
             routing_rules=[
@@ -615,6 +604,8 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             tool_access=ToolAccess.READ,  # For tool listing
             output_key="plan",
             required_output_fields=["steps"],
+            max_tokens=2500,
+            temperature=0.3,
             mock_handler=planner_mock_handler,
             default_next="executor",
         ),
@@ -640,6 +631,8 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             model_role="planner",
             prompt_key="code_analysis.synthesizer",
             output_key="synthesizer",
+            max_tokens=2000,
+            temperature=0.3,
             mock_handler=synthesizer_mock_handler,
             post_process=synthesizer_post_process,  # Store output in metadata for critic
             default_next="critic",
@@ -656,6 +649,8 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             prompt_key="code_analysis.critic",
             output_key="critic",
             required_output_fields=["recommendation"],  # Changed from verdict
+            max_tokens=2500,
+            temperature=0.2,
             mock_handler=critic_mock_handler,
             post_process=critic_post_process,
             # NO routing rules - critic provides feedback only
@@ -673,6 +668,8 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             tool_access=ToolAccess.WRITE,
             output_key="integration",
             required_output_fields=["action"],  # action: answer|reintent
+            max_tokens=2000,
+            temperature=0.3,
             mock_handler=integration_mock_handler,
             post_process=integration_post_process,
             routing_rules=[

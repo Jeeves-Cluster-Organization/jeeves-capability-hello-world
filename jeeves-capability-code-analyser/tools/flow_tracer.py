@@ -14,8 +14,10 @@ import re
 from typing import Any, Dict, List, Optional
 
 from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import ToolId, tool_catalog,  LoggerProtocol, ContextBounds
+from jeeves_mission_system.contracts import ToolId, tool_catalog,  LoggerProtocol
 from jeeves_protocols import RiskLevel
+# Domain-specific bounds from capability config (per Constitution R6)
+from jeeves_capability_code_analyser.config import CodeAnalysisBounds
 
 # Framework-specific patterns for entry point detection
 FRAMEWORK_PATTERNS = {
@@ -239,7 +241,7 @@ def _build_flow_diagram(entry_points: List[Dict], call_chains: List[Dict]) -> st
 async def trace_entry_point(
     entry_type: str,
     pattern: str,
-    context_bounds: ContextBounds,
+    context_bounds: CodeAnalysisBounds,
     max_depth: int = 5,
 ) -> Dict[str, Any]:
     """Trace execution flow from an entry point to implementation.

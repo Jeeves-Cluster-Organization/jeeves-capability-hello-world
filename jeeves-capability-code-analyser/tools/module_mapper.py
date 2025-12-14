@@ -14,9 +14,11 @@ from typing import Any, Dict, List, Optional
 from collections import defaultdict
 
 from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import ToolId, tool_catalog,  LoggerProtocol, ContextBounds
+from jeeves_mission_system.contracts import ToolId, tool_catalog, LoggerProtocol
 from jeeves_protocols import RiskLevel, OperationStatus
 from config.tool_profiles import detect_semantic_mismatch
+# Domain-specific bounds from capability config (per Constitution R6)
+from jeeves_capability_code_analyser.config import CodeAnalysisBounds
 
 
 async def _get_tree(module_path: str, depth: int) -> Dict[str, Any]:
@@ -183,7 +185,7 @@ def _infer_responsibilities(module_path: str, symbols: Dict[str, List[str]], fil
 
 async def map_module(
     module_path: str,
-    context_bounds: ContextBounds,
+    context_bounds: CodeAnalysisBounds,
     include_external: bool = False,
     summary_style: str = "compact",
 ) -> Dict[str, Any]:
@@ -200,7 +202,7 @@ async def map_module(
 
     Args:
         module_path: Path to module/directory to map
-        context_bounds: Context bounds configuration (from AppContext)
+        context_bounds: Code analysis bounds (from capability config)
         include_external: Include external dependencies
         summary_style: Output style ("compact", "detailed", "full")
     """

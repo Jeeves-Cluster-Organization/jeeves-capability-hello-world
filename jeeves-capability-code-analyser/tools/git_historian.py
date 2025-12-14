@@ -14,8 +14,10 @@ from typing import Any, Dict, List, Optional
 from collections import defaultdict
 
 from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import ToolId, tool_catalog,  LoggerProtocol, ContextBounds
+from jeeves_mission_system.contracts import ToolId, tool_catalog,  LoggerProtocol
 from jeeves_protocols import RiskLevel
+# Domain-specific bounds from capability config (per Constitution R6)
+from jeeves_capability_code_analyser.config import CodeAnalysisBounds
 
 
 async def _get_blame(path: str, start_line: Optional[int], end_line: Optional[int]) -> Dict[str, Any]:
@@ -94,7 +96,7 @@ def _compute_ownership(blame_entries: List[Dict]) -> Dict[str, float]:
 
 async def explain_code_history(
     path: str,
-    context_bounds: ContextBounds,
+    context_bounds: CodeAnalysisBounds,
     line_range: Optional[str] = None,
     depth: str = "recent",
 ) -> Dict[str, Any]:

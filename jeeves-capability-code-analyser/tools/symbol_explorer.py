@@ -20,14 +20,16 @@ import re
 from typing import Any, Dict, List
 
 from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import LoggerProtocol, ContextBounds, ToolId, tool_catalog
+from jeeves_mission_system.contracts import LoggerProtocol, ToolId, tool_catalog
 from jeeves_protocols import RiskLevel, OperationStatus
 from config.tool_profiles import detect_semantic_mismatch
+# Domain-specific bounds from capability config (per Constitution R6)
+from jeeves_capability_code_analyser.config import CodeAnalysisBounds
 
 
 async def explore_symbol_usage(
     symbol_name: str,
-    context_bounds: ContextBounds,
+    context_bounds: CodeAnalysisBounds,
     trace_depth: int = 3,
     include_tests: bool = False,
 ) -> Dict[str, Any]:
@@ -42,7 +44,7 @@ async def explore_symbol_usage(
 
     Args:
         symbol_name: Symbol name to explore (class/function name)
-        context_bounds: Context bounds configuration
+        context_bounds: Code analysis bounds (from capability config)
         trace_depth: Depth of trace (default 3)
         include_tests: Include test files in search
 
