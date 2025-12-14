@@ -232,8 +232,8 @@ def count_tokens_approx(text: str) -> int:
     return len(text) // 4
 
 
-# Legacy fallback - use get_excluded_dirs() instead
-EXCLUDED_DIRS = {
+# Default directories to exclude from code analysis
+DEFAULT_EXCLUDED_DIRS = {
     ".git",
     "node_modules",
     "__pycache__",
@@ -245,8 +245,8 @@ EXCLUDED_DIRS = {
     "build",
 }
 
-# Legacy fallback - use get_code_extensions() instead
-CODE_EXTENSIONS = {
+# Default code file extensions
+DEFAULT_CODE_EXTENSIONS = {
     ".py",
     ".ts",
     ".tsx",

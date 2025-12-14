@@ -479,16 +479,4 @@ async def find_related(
     }
 
 
-# ============================================================
-# Deprecated: find_code
-# ============================================================
-# REMOVED: find_code was just a pass-through wrapper around `locate`.
-# Per consolidation, use `locate` directly instead.
-# This reduces redundant indirection and aligns with Amendment XXI
-# which specifies 5 composite tools (including locate) + 3 resilient tools.
-
-
-# Export the main functions
-# Note: Tools are registered in tools/registration.py (centralized registration)
-# Per Phase 2/4 Constitutional Compliance - No auto-registration at import time
 __all__ = ["read_code", "find_related"]
