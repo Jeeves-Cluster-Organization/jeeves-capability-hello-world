@@ -1,43 +1,35 @@
 # Documentation Index
 
-**Parent:** [Repository Root](../INDEX.md)
+**Parent:** [README.md](../README.md)
 
 ---
 
-## Governing Documents
+## Core Documents
 
 | Document | Purpose |
 |----------|---------|
-| [CONSTITUTION.md](CONSTITUTION.md) | Capability layer constitution and rules |
-| [TESTING_STRATEGY.md](TESTING_STRATEGY.md) | Test tiers and strategy |
-| [CI_STRATEGY.md](CI_STRATEGY.md) | CI/CD pipeline configuration |
-
----
-
-## Architecture & Design
-
-| Document | Purpose |
-|----------|---------|
-| [architecture/](architecture/) | Architecture Decision Records (ADRs) |
+| [CONSTITUTION.md](CONSTITUTION.md) | Capability layer constitution and governing rules |
+| [CAPABILITY_INTEGRATION_GUIDE.md](CAPABILITY_INTEGRATION_GUIDE.md) | How to integrate with jeeves-core submodule |
+| [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md) | Runtime contract for jeeves-core capabilities |
 | [envelope_json_schema.md](envelope_json_schema.md) | JSON schema for envelope state exchange |
 
 ---
 
-## Capability Documentation
+## Audit Reports
 
 | Document | Purpose |
 |----------|---------|
-| [CAPABILITY_INTEGRATION_GUIDE.md](CAPABILITY_INTEGRATION_GUIDE.md) | How to integrate the capability |
-| [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md) | Runtime contract (if using jeeves-core) |
+| [CAPABILITY_LAYER_AUDIT_REPORT.md](CAPABILITY_LAYER_AUDIT_REPORT.md) | Import wiring and compatibility audit |
 
 ---
 
-## Operations
+## Package Documentation
 
 | Document | Purpose |
 |----------|---------|
-| [RESET_PROCEDURE.md](RESET_PROCEDURE.md) | Project reset procedures |
+| [../jeeves-capability-code-analyser/CONSTITUTION.md](../jeeves-capability-code-analyser/CONSTITUTION.md) | Detailed capability rules and architecture |
+| [../jeeves-capability-code-analyser/tests/README.md](../jeeves-capability-code-analyser/tests/README.md) | Test suite documentation |
 
 ---
 
-*Last Updated: 2025-12-14*
+*Last Updated: 2025-12-16*
