@@ -244,9 +244,10 @@ COPY --chown=jeeves:jeeves jeeves-core/jeeves_protocols/ ./jeeves_protocols/
 COPY --chown=jeeves:jeeves jeeves-core/jeeves_shared/ ./jeeves_shared/
 COPY --chown=jeeves:jeeves jeeves-core/jeeves_mission_system/config/ ./jeeves_mission_system/config/
 # Copy static files to ./static/ (gateway looks for "static" relative to /app)
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_mission_system/static/ ./static/
+# Frontend assets are now capability-owned (migrated from jeeves-core)
+COPY --chown=jeeves:jeeves frontend/static/ ./static/
 # Copy templates to ./gateway/templates/ (primary path gateway checks)
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_mission_system/api/templates/ ./gateway/templates/
+COPY --chown=jeeves:jeeves frontend/templates/ ./gateway/templates/
 
 # Create directories
 RUN mkdir -p /app/data && chown -R jeeves:jeeves /app/data /home/jeeves
