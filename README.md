@@ -111,6 +111,22 @@ jeeves-capability-code-analysis/
 |   +-- deployment/                     # Docker infrastructure tests
 |   +-- ui_ux/                          # API endpoint tests
 |
++-- frontend/                           # Web UI assets (capability-owned)
+|   +-- static/
+|   |   +-- js/                         # JavaScript modules
+|   |   |   +-- config.js               # API & WebSocket configuration
+|   |   |   +-- chat.js                 # Chat interface logic
+|   |   |   +-- shared.js               # Shared utilities
+|   |   |   +-- governance.js           # Governance dashboard
+|   |   +-- css/                        # Stylesheets
+|   |       +-- chat.css
+|   |       +-- governance.css
+|   |       +-- shared.css
+|   +-- templates/                      # Jinja2 HTML templates
+|       +-- base.html                   # Base template with navigation
+|       +-- chat.html                   # Code analysis chat UI
+|       +-- governance.html             # Governance dashboard
+|
 +-- docs/                               # Documentation
 +-- docker/                             # Docker configuration
 +-- requirements/                       # Python dependencies

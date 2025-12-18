@@ -2,9 +2,9 @@
 
 
 
-**Version:** 1.1
+**Version:** 1.2
 
-**Last Updated:** 2025-12-13
+**Last Updated:** 2025-12-18
 
 
 
@@ -1514,6 +1514,58 @@ COPY jeeves-core/jeeves_mission_system/ ./jeeves_mission_system/
 
 
 
+### Frontend Assets (Capability-Owned)
+
+
+
+**Important:** `jeeves-core` no longer provides frontend UI assets. Each capability must own its own web UI.
+
+
+
+Capabilities should create a `frontend/` directory with:
+
+
+
+```
+
+frontend/
+
+├── static/
+
+│   ├── js/           # JavaScript modules (config.js, chat.js, etc.)
+
+│   └── css/          # Stylesheets
+
+└── templates/        # Jinja2 HTML templates
+
+```
+
+
+
+Dockerfile should copy from the capability's `frontend/` directory:
+
+
+
+```dockerfile
+
+# Copy capability-owned frontend assets (NOT from jeeves-core)
+
+COPY frontend/static/ ./static/
+
+COPY frontend/templates/ ./gateway/templates/
+
+```
+
+
+
+The gateway expects:
+
+- Static files at `./static/` (served at `/static/`)
+
+- Templates at `./gateway/templates/` (for Jinja2 rendering)
+
+
+
 ### Required Services
 
 
@@ -1543,6 +1595,8 @@ COPY jeeves-core/jeeves_mission_system/ ./jeeves_mission_system/
 | Version | Date | Changes |
 
 |---------|------|---------|
+
+| 1.2 | 2025-12-18 | Added Frontend Assets section - capabilities now own their own UI |
 
 | 1.1 | 2025-12-13 | Added Docker configuration section |
 
