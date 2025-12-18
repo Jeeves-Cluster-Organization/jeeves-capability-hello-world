@@ -39,6 +39,7 @@ class TestNodeProfile:
         """Test VRAM utilization calculation."""
         profile = NodeProfile(
             name="test",
+            base_url="http://localhost:8080",
             vram_gb=10,
             ram_gb=20,
             model="test.gguf",
@@ -53,6 +54,7 @@ class TestNodeProfile:
         """Test model name extraction without extensions."""
         profile = NodeProfile(
             name="test",
+            base_url="http://localhost:8080",
             vram_gb=10,
             ram_gb=20,
             model="qwen2.5-14b-instruct-q4_K_M.gguf",
@@ -67,6 +69,7 @@ class TestNodeProfile:
         """Test load capacity checking."""
         profile = NodeProfile(
             name="test",
+            base_url="http://localhost:8080",
             vram_gb=10,
             ram_gb=20,
             model="test.gguf",
@@ -85,6 +88,7 @@ class TestNodeProfile:
         with pytest.raises(ValueError, match="Model size .* exceeds VRAM capacity"):
             NodeProfile(
                 name="test",
+                base_url="http://localhost:8080",
                 vram_gb=6,
                 ram_gb=20,
                 model="too-large.gguf",
@@ -98,6 +102,7 @@ class TestNodeProfile:
         with pytest.raises(ValueError, match="max_parallel must be >= 1"):
             NodeProfile(
                 name="test",
+                base_url="http://localhost:8080",
                 vram_gb=6,
                 ram_gb=20,
                 model="test.gguf",
