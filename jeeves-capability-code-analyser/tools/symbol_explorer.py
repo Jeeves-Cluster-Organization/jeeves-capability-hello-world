@@ -88,11 +88,11 @@ async def explore_symbol_usage(
             "citations": [],
         }
 
-    # Step 1: Find definitions (exact match)
+    # Step 1: Find definitions (exact match) - include_body=True for code snippets
     definitions = []
     if tool_catalog.has_tool_id(ToolId.FIND_SYMBOL):
         find_symbol = tool_catalog.get_function(ToolId.FIND_SYMBOL)
-        result = await find_symbol(name=symbol_name, exact=True, include_body=False)
+        result = await find_symbol(name=symbol_name, exact=True, include_body=True)
         attempt_history.append({"step": "find_symbol (exact)", "status": result.get("status")})
 
         if result.get("status") == "success" and result.get("symbols"):
@@ -102,13 +102,14 @@ async def explore_symbol_usage(
                     "line": sym.get("line", 0),
                     "name": sym.get("name", symbol_name),
                     "type": sym.get("type", "unknown"),
+                    "snippet": sym.get("body", sym.get("snippet", "")),  # Include code snippet
                 })
                 all_citations.add(f"{sym.get('file')}:{sym.get('line', 1)}")
 
-    # Step 2: If no exact match, try partial
+    # Step 2: If no exact match, try partial - include_body=True for code snippets
     if not definitions and tool_catalog.has_tool_id(ToolId.FIND_SYMBOL):
         find_symbol = tool_catalog.get_function(ToolId.FIND_SYMBOL)
-        result = await find_symbol(name=symbol_name, exact=False, include_body=False)
+        result = await find_symbol(name=symbol_name, exact=False, include_body=True)
         attempt_history.append({"step": "find_symbol (partial)", "status": result.get("status")})
 
         if result.get("status") == "success" and result.get("symbols"):
@@ -118,6 +119,7 @@ async def explore_symbol_usage(
                     "line": sym.get("line", 0),
                     "name": sym.get("name", symbol_name),
                     "type": sym.get("type", "unknown"),
+                    "snippet": sym.get("body", sym.get("snippet", "")),  # Include code snippet
                 })
                 all_citations.add(f"{sym.get('file')}:{sym.get('line', 1)}")
 

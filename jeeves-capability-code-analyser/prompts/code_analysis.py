@@ -7,7 +7,9 @@ They follow the Constitutional principles:
 - P2 (Code Context Priority): Understand code in context before claims
 - Amendment XI (Context Bounds): Respect token limits
 
-Pipeline: Perception -> Intent -> Planner -> Traverser (no prompt) -> Synthesizer -> Critic -> Integration
+Pipeline: Perception (no LLM) -> Intent -> Planner -> Executor (no LLM) -> Synthesizer -> Critic -> Integration
+
+Note: Perception and Executor agents have has_llm=False, so no prompts are needed for them.
 
 Constitutional Compliance:
 - Prompts are inline in code (not external files) per Forbidden Patterns
@@ -21,57 +23,35 @@ Context builder functions provide the values via str.format().
 from jeeves_mission_system.prompts.core.registry import register_prompt
 
 
-# --- PERCEPTION PROMPTS (Agent 1) - Context Loading ---
-
-def code_analysis_perception() -> str:
-    """Perception prompt - normalize query and extract scope."""
-    return """{system_identity}
-
-**Query:** {user_query}
-**Session:** {session_state}
-
-Normalize query, extract scope (files/dirs), identify type (explore/explain/search/trace).
-
-Output ONE JSON object only: {{"normalized_query": "...", "scope": "...", "query_type": "..."}}"""
-
-
 # --- INTENT PROMPTS (Agent 2) - Query Classification ---
+# Note: Perception (Agent 1) has has_llm=False, so no prompt needed
 
 def code_analysis_intent() -> str:
     """Intent prompt - classify query and extract goals."""
-    return """{system_identity}
+    return """{role_description}
 
 **Query:** {normalized_input}
 **Context:** {context_summary}
 **Languages:** {detected_languages}
 
-{capabilities_summary}
+Extract search targets that will find code:
 
-Analyze the query and extract:
+**search_targets rules:**
+- SINGLE terms only: ClassName, function_name, keyword
+- NO phrases like "event handler" - split into ["event", "handler", "EventHandler"]
+- Extract CamelCase: FlowEvent, WebSocket, EventBus
+- Extract snake_case: emit_event, handle_message
+- Extract directories: gateway/, events/
 
-1. **intent**: What the user wants to accomplish:
-   - "find_symbol" - locate a specific class, function, or variable
-   - "explore_module" - understand a directory or module structure
-   - "trace_flow" - follow execution from entry point to implementation
-   - "explain_code" - understand what specific code does
-   - "search_concept" - find code related to a concept/feature
+**intent types:** find_symbol, explore_module, trace_flow, explain_code, search_concept
 
-2. **search_targets**: Keywords/symbols to search for (CRITICAL for planner):
-   - Extract specific names: class names, function names, variable names
-   - Extract keywords: "authentication", "database", "routing"
-   - Extract directory hints: "agents/", "tools/", "src/"
-
-3. **goals**: Specific questions to answer (actionable, verifiable)
-
-4. **constraints**: Any limits mentioned (specific files, directories, languages)
-
-Output ONE JSON object:
+Output JSON:
 {{
-  "intent": "<one of the 5 intents above>",
-  "search_targets": ["<symbol or keyword 1>", "<symbol or keyword 2>"],
-  "goals": ["<specific goal 1>", "<specific goal 2>"],
-  "constraints": {{"directories": [], "file_types": [], "exclude": []}},
-  "confidence": 0.9
+  "intent": "find_symbol|explore_module|trace_flow|explain_code|search_concept",
+  "search_targets": ["<term_extracted_from_query>", "<another_term>"],
+  "goals": ["<specific_goal_from_user_query>"],
+  "constraints": {{"directories": [], "file_types": []}},
+  "confidence": <0.0_to_1.0>
 }}"""
 
 
@@ -79,165 +59,112 @@ Output ONE JSON object:
 
 def code_analysis_planner() -> str:
     """Planner prompt - create tool execution plan."""
-    return """{system_identity}
+    return """{role_description}
 
-**User Query:** {user_query}
-**Repository:** {repo_path}
-**Intent:** {intent}
+**Query:** {user_query}
 **Search Targets:** {search_targets}
 **Goals:** {goals}
-**Scope:** {scope_path}
-**Prior exploration:** {exploration_summary}
-
-**Tools:** {available_tools}
-
 **Bounds:** files {files_explored}/{max_files}, tokens {tokens_used}/{max_tokens}
-
 {retry_feedback}
 
-TWO-TOOL ARCHITECTURE - Use the search_targets extracted by Intent:
+Create search steps using the search_targets above.
 
-1. SEARCH using the provided search_targets:
-   - Use search_code(query) with each search target
-   - The Intent agent already extracted: {search_targets}
-   - Use these targets DIRECTLY - don't invent new paths
+Tools:
+- search_code(query): Find files matching query. ALWAYS use this first.
+- read_code(path): Read file content. ONLY use paths from search results.
 
-2. READ ONLY after search returns paths:
-   - Use read_code(path) ONLY on paths returned by search_code
-   - Never guess paths
+Rules:
+- Use search_targets DIRECTLY - one search_code call per target
+- NEVER invent paths like "/workspace/foo.py"
 
-CRITICAL RULES:
-- Use the search_targets from Intent - they are already extracted for you
-- NEVER invent file paths like "/workspace/path/to/File.py"
-- search_code finds files; read_code reads confirmed paths
-
-Output EXACTLY ONE JSON object (no duplicates, no code fences, no explanation):
-{{"steps": [{{"tool": "search_code", "parameters": {{"query": "<use a search_target from above>"}}, "reasoning": "searching for this target"}}], "rationale": "search strategy based on intent"}}"""
+Output JSON:
+{{"steps": [{{"tool": "search_code", "parameters": {{"query": "target_from_above"}}, "reasoning": "why"}}], "rationale": "strategy"}}"""
 
 
 # --- SYNTHESIZER PROMPTS (Agent 5 - after Traverser) - Structured Understanding ---
 
 def code_analysis_synthesizer() -> str:
     """Synthesizer prompt - structure findings with citations."""
-    return """{system_identity}
+    return """{role_description}
 
 **Query:** {user_query}
-**Intent:** {intent}
-**Search Targets:** {search_targets}
 **Goals:** {goals}
-
 **Execution Results:** {execution_results}
 **Code Snippets:** {relevant_snippets}
 
-Synthesize the search results into structured findings:
+Synthesize findings from the code snippets above.
 
-1. **findings**: What was discovered about each search target
-   - Include file:line citations for EVERY claim
-   - Mark which goals are satisfied vs. still open
+Rules:
+- If Code Snippets is empty: findings=[], quality_score=0.0, all goals="unsatisfied"
+- Every finding MUST cite file:line from actual snippets above
+- NEVER invent file paths or citations
 
-2. **goal_status**: For each goal, indicate:
-   - "satisfied" - found clear answer with evidence
-   - "partial" - found some information but incomplete
-   - "unsatisfied" - no relevant information found
-
-3. **gaps**: What's missing that would fully answer the query?
-   - Missing search targets that weren't found
-   - Files that should be read but weren't
-   - Connections that couldn't be traced
-
-4. **quality_score**: 0.0-1.0 indicating completeness of findings
-
-Output ONE JSON object:
+Output JSON:
 {{
-  "findings": [{{"target": "...", "summary": "...", "citations": ["file:line", ...]}}],
-  "goal_status": {{"<goal>": "satisfied|partial|unsatisfied"}},
-  "gaps": ["<gap 1>", "<gap 2>"],
-  "quality_score": 0.8,
-  "suggested_next_searches": ["<term>"]
+  "findings": [{{"target": "X", "summary": "...", "citations": ["file.py:42"]}}],
+  "goal_status": {{"goal1": "satisfied|partial|unsatisfied"}},
+  "gaps": ["what's missing"],
+  "quality_score": 0.0-1.0,
+  "suggested_next_searches": ["alternative terms if gaps exist"]
 }}"""
 
 
 # --- CRITIC PROMPTS (Agent 6 - after Synthesizer) - Anti-Hallucination ---
 
 def code_analysis_critic() -> str:
-    """Critic prompt - validate claims against code, provide feedback (no routing).
-
-    The Critic provides FEEDBACK ONLY. Integration decides whether to answer or reintent.
-    """
-    return """{system_identity}
+    """Critic prompt - validate claims against code."""
+    return """{role_description}
 
 **Query:** {user_query}
-**Intent:** {intent}
 **Goals:** {goals}
-
 **Synthesizer Output:** {synthesizer_output}
-**Execution Results:** {execution_results}
 **Code Snippets:** {relevant_snippets}
 
-Validate the synthesis and provide feedback for Integration:
+Validate the synthesizer findings.
 
-1. **Verify citations**: Do file:line references actually exist in the snippets?
-2. **Check goal coverage**: Are all goals addressed with evidence?
-3. **Detect hallucination**: Are there claims without supporting code?
-4. **Assess completeness**: Is this enough to answer the user's query?
+Rules:
+- If Code Snippets is empty: recommendation="insufficient", confidence<0.3
+- Check: Do citations match actual files in snippets?
+- Check: Are all goals addressed with evidence?
+- Detect any claims without supporting code
 
-**Recommendation levels** (Integration decides what to do):
-- "sufficient" - Findings are accurate and complete. Ready to answer.
-- "partial" - Some findings, but gaps remain. May still be enough to answer.
-- "insufficient" - Major gaps or no results. May need different search approach.
-
-Output ONE JSON object (keep it concise):
+Output JSON:
 {{
   "recommendation": "sufficient|partial|insufficient",
-  "confidence": 0.9,
-  "issues": ["<brief issue 1>"],
-  "refine_hint": "<if insufficient: what to search instead>"
+  "confidence": 0.0-1.0,
+  "issues": ["issue if any"],
+  "refine_hint": "alternative search terms if insufficient"
 }}"""
 
 
 # --- INTEGRATION PROMPTS (Agent 7) - Response Building ---
 
 def code_analysis_integration() -> str:
-    """Integration prompt - decide answer vs reintent, build final response.
-
-    Integration is the DECISION MAKER: answer with current findings OR reintent for better search.
-    """
-    return """{system_identity}
+    """Integration prompt - decide answer vs reintent, build final response."""
+    return """{role_description}
 
 **Query:** {user_query}
 **Critic Recommendation:** {critic_recommendation}
 **Critic Feedback:** {critic_feedback}
-
 **Synthesizer Findings:** {synthesizer_output}
 **Code Snippets:** {relevant_snippets}
 **Files Examined:** {files_examined}
+**Prior Cycle:** {cycle_context}
 
-**Prior Cycle Context (if reintent):** {cycle_context}
+Decide: answer with findings OR reintent for better search.
 
-DECIDE: Can you answer the user's query with current findings?
+**Reintent if:** Code Snippets empty AND first attempt (no Prior Cycle)
+**Answer if:** Real snippets exist OR already reintented OR critic says sufficient
 
-**Decision criteria:**
-- If findings exist and address the query (even partially): **answer**
-- If search completely failed (no files examined) AND this is first attempt: **reintent**
-- If already reintented once: **answer** with whatever we have (avoid infinite loops)
+Rules:
+- NEVER invent file paths not in Code Snippets
+- NEVER cite lines you cannot see
+- If no results: say "search did not find relevant code" and list tried terms
+- If results: cite only files from snippets above
 
-**If action=answer:**
-1. Answer the query directly - Start with the key finding
-2. Cite every claim - Use format `path/to/file.py:42`
-3. Include relevant code snippets - Quote key lines when helpful
-4. Acknowledge gaps - If something wasn't found, say so honestly
-5. Keep it concise - Don't repeat information
-
-**If action=reintent:**
-- Explain why current search failed
-- Suggest what Intent should look for instead
-
-Output ONE JSON object:
-{{
-  "action": "answer|reintent",
-  "final_response": "<if answer: the response text with citations>",
-  "reason": "<if reintent: why reintenting and what to search instead>"
-}}"""
+Output JSON (one of):
+{{"action": "answer", "final_response": "response with file:line citations"}}
+{{"action": "reintent", "reason": "why and what to try instead"}}"""
 
 
 def register_code_analysis_prompts() -> None:
@@ -245,15 +172,9 @@ def register_code_analysis_prompts() -> None:
 
     This function should be called during capability registration
     to make prompts available to the pipeline.
-    """
-    # Use the decorator to register each prompt
-    register_prompt(
-        name="code_analysis.perception",
-        version="2.0",
-        description="Normalize user query and load session context for code analysis",
-        constitutional_compliance="P1 (Accuracy First), P2 (Code Context Priority)"
-    )(code_analysis_perception)
 
+    Note: Perception and Executor agents have has_llm=False, so no prompts registered for them.
+    """
     register_prompt(
         name="code_analysis.intent",
         version="2.0",

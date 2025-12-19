@@ -71,6 +71,7 @@ services:
       # LLM Configuration (llama-server)
       - LLAMASERVER_HOST=http://llama-server:8080
       - LLM_PROVIDER=${LLM_PROVIDER:-llamaserver}
+      - LLM_TIMEOUT=${LLM_TIMEOUT:-300}
       # Database Configuration (PostgreSQL)
       - DATABASE_BACKEND=postgres
       - VECTOR_BACKEND=pgvector
@@ -101,8 +102,12 @@ services:
       #   HOST_REPO_PATH=/home/user/projects/my-target-repo
       #
       # Tools will search within REPO_PATH (default: /workspace)
+      #
+      # Default fallback uses ".." (project root) since docker-compose.yml
+      # is in the docker/ subdirectory. This ensures proper mounting even if
+      # .env is not loaded (e.g., running from docker/ without --env-file).
       # ══════════════════════════════════════════════════════════════════════
-      - ${HOST_REPO_PATH:-.}:/workspace:ro
+      - ${HOST_REPO_PATH:-..}:/workspace:ro
 
     # Resource limits
     deploy:

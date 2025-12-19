@@ -27,20 +27,19 @@ from typing import Dict, List, Set
 AGENT_PROMPTS: Dict[str, List[str]] = {
     # --- CODE ANALYSIS AGENTS (7-agent read-only pipeline) ---
     #
-    # All code analysis prompts use the context builder for dynamic context:
-    #   - Perception: agents.code_analysis.context_builder.build_perception_context()
+    # LLM agents use context builders for dynamic context:
     #   - Intent: agents.code_analysis.context_builder.build_intent_context()
     #   - Planner: agents.code_analysis.context_builder.build_planner_context()
     #   - Critic: agents.code_analysis.context_builder.build_critic_context()
     #   - Integration: agents.code_analysis.context_builder.build_integration_context()
     #
+    # Non-LLM agents (perception, executor) use hooks in pipeline_config.py
+    #
     # Pipeline flow: perception -> intent -> planner -> executor -> synthesizer -> critic -> integration
 
-    # Code Analysis Agent 1: Perception
-    # Loads session context, normalizes query
-    "perception": [
-        "code_analysis.perception",
-    ],
+    # Code Analysis Agent 1: Perception (has_llm=False - no prompts needed)
+    # Uses perception_pre_process hook in pipeline_config.py
+    "perception": [],
 
     # Code Analysis Agent 2: Intent
     # Classifies query type, extracts goals
@@ -87,21 +86,23 @@ SHARED_PROMPT_BLOCKS: Dict[str, str] = {
 }
 
 
-# Context builder functions for each agent
+# Context builder functions for LLM agents
+# Note: perception and executor have has_llm=False, use hooks in pipeline_config.py
 CONTEXT_BUILDERS: Dict[str, str] = {
-    "perception": "agents.code_analysis.context_builder.build_perception_context",
     "intent": "agents.code_analysis.context_builder.build_intent_context",
     "planner": "agents.code_analysis.context_builder.build_planner_context",
+    "synthesizer": "agents.code_analysis.context_builder.build_synthesizer_context",
     "critic": "agents.code_analysis.context_builder.build_critic_context",
     "integration": "agents.code_analysis.context_builder.build_integration_context",
 }
 
 
 # Primary prompts (main prompts used in production)
+# Note: perception and executor have has_llm=False, so no primary prompts
 PRIMARY_PROMPTS: Dict[str, str] = {
-    "perception": "code_analysis.perception",
     "intent": "code_analysis.intent",
     "planner": "code_analysis.planner",
+    "synthesizer": "code_analysis.synthesizer",
     "critic": "code_analysis.critic",
     "integration": "code_analysis.integration",
 }

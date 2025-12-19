@@ -26,6 +26,10 @@ from agents.prompt_mapping import (
 )
 from jeeves_mission_system.prompts.core.registry import PromptRegistry
 
+# Ensure code analysis prompts are registered before tests run
+from prompts.code_analysis import register_code_analysis_prompts
+register_code_analysis_prompts()
+
 
 class TestAgentPromptsMapping:
     """Test AGENT_PROMPTS dictionary structure and consistency."""
@@ -52,7 +56,9 @@ class TestAgentPromptsMapping:
 
     def test_deterministic_agents_have_no_prompts(self):
         """Ensure agents without LLM calls have empty prompt lists."""
+        # perception and executor have has_llm=False
         deterministic_agents = [
+            "perception",  # Deterministic - uses pre_process hook
             "executor",  # Deterministic tool executor
         ]
 
@@ -61,10 +67,11 @@ class TestAgentPromptsMapping:
 
     def test_llm_agents_have_prompts(self):
         """Ensure agents with LLM calls have non-empty prompt lists."""
+        # Note: perception removed - has_llm=False
         llm_agents = [
-            "perception",
             "intent",
             "planner",
+            "synthesizer",
             "critic",
             "integration",
         ]
@@ -93,10 +100,11 @@ class TestPromptRegistryIntegration:
         registry = PromptRegistry.get_instance()
         registered_prompts = registry.list_prompts()
 
+        # Note: perception removed - has_llm=False, no prompt needed
         expected_prompts = [
-            "code_analysis.perception",
             "code_analysis.intent",
             "code_analysis.planner",
+            "code_analysis.synthesizer",
             "code_analysis.critic",
             "code_analysis.integration",
         ]
@@ -184,10 +192,11 @@ class TestContextBuilders:
 
     def test_code_analysis_agents_have_context_builders(self):
         """Ensure code analysis LLM agents have context builders."""
+        # Note: perception removed - has_llm=False, uses hook in pipeline_config.py
         expected = {
-            "perception": "agents.code_analysis.context_builder.build_perception_context",
             "intent": "agents.code_analysis.context_builder.build_intent_context",
             "planner": "agents.code_analysis.context_builder.build_planner_context",
+            "synthesizer": "agents.code_analysis.context_builder.build_synthesizer_context",
             "critic": "agents.code_analysis.context_builder.build_critic_context",
             "integration": "agents.code_analysis.context_builder.build_integration_context",
         }
@@ -197,8 +206,10 @@ class TestContextBuilders:
                 f"{agent} should have context builder '{builder}'"
             )
 
-    def test_executor_has_no_context_builder(self):
-        """Ensure executor has no context builder (deterministic)."""
+    def test_deterministic_agents_have_no_context_builder(self):
+        """Ensure deterministic agents have no context builder."""
+        # perception and executor have has_llm=False
+        assert "perception" not in CONTEXT_BUILDERS
         assert "executor" not in CONTEXT_BUILDERS
 
 
@@ -226,6 +237,9 @@ class TestPromptStats:
 
         assert llm + det == total, "LLM + deterministic agents should equal total"
         assert total == 7, f"Should have 7 agents total, got {total}"
+        # perception and executor are deterministic (has_llm=False)
+        assert det == 2, f"Should have 2 deterministic agents, got {det}"
+        assert llm == 5, f"Should have 5 LLM agents, got {llm}"
 
     def test_stats_code_analysis_count(self):
         """Ensure code analysis agents count matches."""

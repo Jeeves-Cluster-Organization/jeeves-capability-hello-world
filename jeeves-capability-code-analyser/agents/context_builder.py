@@ -155,21 +155,8 @@ def get_pipeline_overview() -> str:
 Data flows through GenericEnvelope - each agent reads predecessors' output and writes its own."""
 
 
-def build_perception_context(
-    user_query: str,
-    session_state: Dict[str, Any],
-) -> Dict[str, str]:
-    """Build context dictionary for Perception agent."""
-    return {
-        "system_identity": get_system_identity(),
-        "user_query": user_query,
-        "session_state": _format_session_state(session_state),
-        "role_description": """Your role: PERCEPTION AGENT
-- Normalize the user's query (clean up, focus on core question)
-- Detect if query targets specific directories or files
-- Load any relevant session context
-- Identify programming languages mentioned or implied""",
-    }
+# Note: build_perception_context() removed - Perception agent has has_llm=False,
+# so it doesn't need a context builder. See pipeline_config.py perception_pre_process()
 
 
 def build_intent_context(
@@ -211,7 +198,6 @@ Do NOT repeat the same search targets. Try different keywords, synonyms, or appr
         context_with_reintent += reintent_str
 
     return {
-        "system_identity": get_system_identity(),
         "normalized_input": normalized_input,
         "context_summary": context_with_reintent,
         "detected_languages": ", ".join(detected_languages) if detected_languages else "Not specified",
@@ -260,7 +246,6 @@ def build_planner_context(
     targets_formatted = ", ".join(f'"{t}"' for t in search_targets) if search_targets else "none extracted"
 
     context = {
-        "system_identity": get_system_identity(),
         "user_query": user_query or "Unknown query",
         "repo_path": repo_path or "/workspace",
         "intent": intent,
@@ -331,7 +316,6 @@ def build_synthesizer_context(
 ) -> Dict[str, str]:
     """Build context dictionary for Synthesizer agent."""
     return {
-        "system_identity": get_system_identity(),
         "user_query": user_query,
         "intent": intent,
         "goals": "\n".join(f"- {g}" for g in goals) if goals else "- Answer the query",
@@ -341,8 +325,6 @@ def build_synthesizer_context(
 - Extract entities (classes, functions, modules) from execution results
 - Identify key code flows (call chains, data flows)
 - Surface open questions that remain unanswered
-- Detect contradictions in the discovered code
-- Provide hints for goal refinement
 - Build accumulated evidence with file:line citations
 
 You bridge raw execution data to structured understanding for the Critic.""",
@@ -355,15 +337,16 @@ def build_critic_context(
     goals: List[str],
     execution_results: str,
     relevant_snippets: str,
+    synthesizer_output: str = "",
 ) -> Dict[str, str]:
     """Build context dictionary for Critic agent."""
     return {
-        "system_identity": get_system_identity(),
         "user_query": user_query,
         "intent": intent,
         "goals": "\n".join(f"- {g}" for g in goals) if goals else "- Answer the query",
         "execution_results": execution_results,
         "relevant_snippets": relevant_snippets,
+        "synthesizer_output": synthesizer_output,
         "role_description": """Your role: CRITIC AGENT (Anti-Hallucination Gate)
 - Verify execution results address all stated goals
 - Check that every potential claim has code evidence
@@ -371,9 +354,9 @@ def build_critic_context(
 - NEVER approve claims not backed by retrieved code
 
 Verdict options:
-- APPROVED: Results support an accurate answer (provide suggested response)
-- REPLAN: Need more information (provide feedback for planner)
-- CLARIFY: Query too ambiguous (provide clarification question)""",
+- sufficient: Results support an accurate answer
+- partial: Some evidence but gaps remain
+- insufficient: Need more information or search failed""",
     }
 
 
@@ -422,7 +405,6 @@ def build_integration_context(
                 cycle_context_str += f" Reason for reintent: {reason}"
 
     return {
-        "system_identity": get_system_identity(),
         "user_query": user_query,
         "critic_recommendation": critic_recommendation,
         "critic_feedback": critic_feedback_str or "No specific feedback",

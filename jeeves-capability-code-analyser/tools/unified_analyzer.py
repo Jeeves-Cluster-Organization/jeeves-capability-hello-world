@@ -106,12 +106,14 @@ async def _analyze_symbol(symbol: str, include_usages: bool = True) -> Dict[str,
             })
 
             if explore_result.get("status") == "success":
-                result["definition"] = explore_result.get("definition")
+                # explore_symbol_usage returns 'definitions' (plural), extract first as primary
+                definitions = explore_result.get("definitions", [])
+                result["definition"] = definitions[0] if definitions else None
                 result["usages"] = explore_result.get("usages", [])
 
-                # Collect citations
-                if explore_result.get("definition"):
-                    defn = explore_result["definition"]
+                # Collect citations from definition
+                if result["definition"]:
+                    defn = result["definition"]
                     all_citations.add(f"{defn.get('file', '')}:{defn.get('line', 0)}")
                 for usage in explore_result.get("usages", [])[:5]:
                     all_citations.add(f"{usage.get('file', '')}:{usage.get('line', 0)}")
@@ -129,7 +131,9 @@ async def _analyze_symbol(symbol: str, include_usages: bool = True) -> Dict[str,
             if module_path:
                 map_module = tool_catalog.get_function(ToolId.MAP_MODULE)
                 try:
-                    module_result = await map_module(module_path=module_path, depth=1)
+                    # Use domain-specific bounds (per Constitution R6)
+                    context_bounds = get_code_analysis_bounds()
+                    module_result = await map_module(module_path=module_path, context_bounds=context_bounds)
                     attempt_history.append({
                         "tool": "map_module",
                         "status": "success" if module_result.get("status") == "success" else "partial",
@@ -174,7 +178,9 @@ async def _analyze_module(module_path: str) -> Dict[str, Any]:
     if tool_catalog.has_tool_id(ToolId.MAP_MODULE):
         map_module = tool_catalog.get_function(ToolId.MAP_MODULE)
         try:
-            module_result = await map_module(module_path=module_path, depth=2)
+            # Use domain-specific bounds (per Constitution R6)
+            context_bounds = get_code_analysis_bounds()
+            module_result = await map_module(module_path=module_path, context_bounds=context_bounds)
             attempt_history.append({
                 "tool": "map_module",
                 "status": "success" if module_result.get("status") == "success" else "partial",
@@ -408,11 +414,27 @@ async def search_code(
     else:  # QUERY
         result = await _analyze_query(query)
 
+    # Compute results count based on result type
+    target_type = result.get("target_type", "unknown")
+    if target_type == "symbol":
+        # Symbol search: count definitions + usages
+        results_count = (1 if result.get("definition") else 0) + len(result.get("usages", []))
+    elif target_type == "module":
+        # Module analysis: count key files
+        results_count = len(result.get("key_files", []))
+    elif target_type == "file":
+        # File analysis: count symbols or fallback matches
+        results_count = len(result.get("symbols", [])) or len(result.get("matches", []))
+    else:
+        # Query/other: count matches
+        results_count = len(result.get("matches", []))
+
     _logger.info(
         "search_code_complete",
         query=query,
         status=result.get("status"),
-        matches_count=len(result.get("matches", [])),
+        target_type=target_type,
+        results_count=results_count,
         citations_count=len(result.get("citations", [])),
     )
 

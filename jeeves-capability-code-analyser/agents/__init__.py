@@ -21,13 +21,13 @@ Architecture:
 """
 
 # Context building functions (refactored from ContextBuilder class)
+# Note: build_perception_context removed - perception has has_llm=False
 from .context_builder import (
     RepositoryContext,
     get_system_identity,
     get_available_tools_description,
     get_context_bounds_description,
     get_pipeline_overview,
-    build_perception_context,
     build_intent_context,
     build_planner_context,
     build_synthesizer_context,
@@ -55,13 +55,12 @@ from .summarizer import (
 )
 
 __all__ = [
-    # Context building
+    # Context building (build_perception_context removed - has_llm=False)
     "RepositoryContext",
     "get_system_identity",
     "get_available_tools_description",
     "get_context_bounds_description",
     "get_pipeline_overview",
-    "build_perception_context",
     "build_intent_context",
     "build_planner_context",
     "build_synthesizer_context",

@@ -501,6 +501,18 @@ class CodeAnalysisService:
             # (LLM output parsing may fallback to {"response": ...} if JSON is truncated)
             final_response = integration.get("final_response") or integration.get("response")
 
+            # Debug log integration output structure for diagnostics
+            integration_keys = list(integration.keys()) if isinstance(integration, dict) else []
+            self._logger.debug(
+                "code_analysis_integration_output",
+                envelope_id=envelope.envelope_id,
+                integration_keys=integration_keys,
+                has_final_response="final_response" in integration_keys,
+                has_response="response" in integration_keys,
+                action=integration.get("action"),
+                final_response_length=len(final_response) if final_response else 0,
+            )
+
             self._logger.info(
                 "code_analysis_completed",
                 envelope_id=envelope.envelope_id,

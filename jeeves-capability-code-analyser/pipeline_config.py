@@ -11,6 +11,13 @@ Migration:
 
 Capability-specific logic (prompts, mock handlers, normalizers) is provided
 via hook functions defined here.
+
+Context Injection Architecture:
+- LLM agents use pre_process hooks to call context builders
+- Context builders return rich, capability-specific context dicts
+- Hooks store context in envelope.metadata
+- Runtime's _call_llm() merges metadata into prompt context via context.update(envelope.metadata)
+- Prompts use {placeholder} syntax to access context fields
 """
 
 from typing import Any, Dict, List, Optional
@@ -21,6 +28,17 @@ from jeeves_mission_system.contracts_core import (
     ToolAccess,
     TerminalReason,
 )
+from jeeves_capability_code_analyser.config import get_code_analysis_bounds
+
+
+# ─────────────────────────────────────────────────────────────────
+# CAPABILITY-SPECIFIC LIMITS
+# ─────────────────────────────────────────────────────────────────
+
+# Maximum number of reintent cycles before forcing an answer.
+# This prevents infinite loops when LLM keeps deciding to reintent.
+# Set to 2: allows one retry after initial attempt, then must answer.
+MAX_REINTENT_CYCLES = 2
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -52,6 +70,139 @@ def perception_mock_handler(envelope: Any) -> Dict[str, Any]:
         "session_scope": envelope.session_id,
         "detected_languages": ["python"],
     }
+
+
+# ─────────────────────────────────────────────────────────────────
+# LLM AGENT PRE-PROCESS HOOKS - Context Builder Injection
+# ─────────────────────────────────────────────────────────────────
+
+def intent_pre_process(envelope: Any, agent: Any = None) -> Any:
+    """Build rich context for Intent agent via context builder."""
+    from agents.context_builder import build_intent_context
+
+    perception = envelope.outputs.get("perception", {})
+
+    context = build_intent_context(
+        normalized_input=perception.get("normalized_input", envelope.raw_input),
+        context_summary=perception.get("context_summary", ""),
+        detected_languages=perception.get("detected_languages", []),
+        reintent_context=envelope.metadata.get("reintent_context"),
+    )
+
+    envelope.metadata.update(context)
+    return envelope
+
+
+def planner_pre_process(envelope: Any, agent: Any = None) -> Any:
+    """Build rich context for Planner agent via context builder."""
+    from agents.context_builder import build_planner_context
+
+    intent_output = envelope.outputs.get("intent", {})
+    perception = envelope.outputs.get("perception", {})
+    bounds = get_code_analysis_bounds()
+
+    context = build_planner_context(
+        intent=intent_output.get("intent", ""),
+        goals=intent_output.get("goals", []),
+        scope_path=perception.get("scope", ""),
+        exploration_summary="",
+        # NOTE: Cast to int because context builders return string values for prompt templates,
+        # which get merged back into metadata. On reintent, we'd read strings without this cast.
+        tokens_used=int(envelope.metadata.get("tokens_used", 0)),
+        files_explored=int(envelope.metadata.get("files_explored", 0)),
+        context_bounds=bounds,
+        retry_feedback=envelope.metadata.get("retry_feedback"),
+        user_query=envelope.raw_input,
+        search_targets=intent_output.get("search_targets", []),
+    )
+
+    envelope.metadata.update(context)
+    return envelope
+
+
+def synthesizer_pre_process(envelope: Any, agent: Any = None) -> Any:
+    """Build rich context for Synthesizer agent via context builder.
+
+    NOTE: We summarize execution results here to prevent prompt explosion.
+    Raw executor output can be 1-2M chars; summarizer caps to ~50K.
+    """
+    from agents.context_builder import build_synthesizer_context
+    from agents.summarizer import summarize_execution_results, extract_citations_from_results
+    import json
+
+    intent_output = envelope.outputs.get("intent", {})
+    execution = envelope.outputs.get("execution", {})
+
+    # Summarize raw execution results to prevent prompt explosion
+    # Raw results can be 1-2M chars; this caps to manageable size
+    raw_results = execution.get("results", [])
+    if isinstance(raw_results, list):
+        summarized = summarize_execution_results(raw_results)
+        execution_results_str = json.dumps(summarized, indent=2, default=str)
+    else:
+        execution_results_str = str(raw_results)[:50000]  # Fallback cap
+
+    # Extract citations for the synthesizer to use
+    citations = extract_citations_from_results(raw_results) if isinstance(raw_results, list) else []
+    citations_str = json.dumps(citations[:50], indent=2) if citations else "[]"
+
+    # Snippets are usually already bounded, but cap just in case
+    snippets = execution.get("snippets", "")
+    snippets_str = str(snippets)[:30000] if snippets else ""
+
+    context = build_synthesizer_context(
+        user_query=envelope.raw_input,
+        intent=intent_output.get("intent", ""),
+        goals=intent_output.get("goals", []),
+        execution_results=execution_results_str,
+        relevant_snippets=f"{snippets_str}\n\n**Extracted Citations:**\n{citations_str}",
+    )
+
+    envelope.metadata.update(context)
+    return envelope
+
+
+def critic_pre_process(envelope: Any, agent: Any = None) -> Any:
+    """Build rich context for Critic agent via context builder."""
+    from agents.context_builder import build_critic_context
+
+    intent_output = envelope.outputs.get("intent", {})
+    execution = envelope.outputs.get("execution", {})
+    synthesizer = envelope.outputs.get("synthesizer", {})
+
+    context = build_critic_context(
+        user_query=envelope.raw_input,
+        intent=intent_output.get("intent", ""),
+        goals=intent_output.get("goals", []),
+        execution_results=str(execution.get("results", "")),
+        relevant_snippets=str(execution.get("snippets", "")),
+        synthesizer_output=str(synthesizer),
+    )
+
+    envelope.metadata.update(context)
+    return envelope
+
+
+def integration_pre_process(envelope: Any, agent: Any = None) -> Any:
+    """Build rich context for Integration agent via context builder."""
+    from agents.context_builder import build_integration_context
+
+    critic = envelope.outputs.get("critic", {})
+    synthesizer = envelope.outputs.get("synthesizer", {})
+    execution = envelope.outputs.get("execution", {})
+
+    context = build_integration_context(
+        user_query=envelope.raw_input,
+        critic_recommendation=critic.get("recommendation", ""),
+        critic_feedback=critic,
+        synthesizer_output=str(synthesizer),
+        relevant_snippets=str(execution.get("snippets", "")),
+        files_examined=execution.get("files_examined", []),
+        cycle_context=envelope.metadata.get("_cycle_data"),
+    )
+
+    envelope.metadata.update(context)
+    return envelope
 
 
 def intent_mock_handler(envelope: Any) -> Dict[str, Any]:
@@ -122,7 +273,22 @@ def intent_mock_handler(envelope: Any) -> Dict[str, Any]:
 
 
 def intent_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
-    """Initialize goals after intent."""
+    """Initialize goals after intent.
+
+    FALLBACK: If LLM returns {"response": "..."} instead of structured output,
+    we extract search targets from the raw query using the mock handler logic.
+    """
+    # Handle malformed LLM output - LLM may return {"response": "..."} instead of structured fields
+    if "intent" not in output or "search_targets" not in output:
+        # Use mock handler to generate fallback structured output
+        fallback = intent_mock_handler(envelope)
+        if "intent" not in output:
+            output["intent"] = fallback["intent"]
+        if "search_targets" not in output:
+            output["search_targets"] = fallback["search_targets"]
+        if "goals" not in output or not output["goals"]:
+            output["goals"] = fallback["goals"]
+
     raw_goals = output.get("goals", [])
     # Normalize goals to strings (LLM may return dicts with metadata)
     goals = []
@@ -134,8 +300,12 @@ def intent_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None
             goals.append(g.get("goal") or g.get("description") or str(g))
         else:
             goals.append(str(g))
-    if goals:
-        envelope.initialize_goals(goals)
+
+    # Ensure we have at least one goal
+    if not goals:
+        goals = [f"Analyze: {envelope.raw_input[:100]}"]
+
+    envelope.initialize_goals(goals)
 
     # Check for clarification
     if output.get("clarification_needed"):
@@ -276,9 +446,134 @@ def _extract_files_from_result(tool_result: Any) -> List[str]:
     return files
 
 
+def _extract_snippets_from_tool_results(tool_results: List[Any]) -> str:
+    """
+    Extract code snippets from tool results for LLM context.
+
+    Transforms raw tool output into a formatted string that LLM agents
+    can use to answer questions with accurate citations.
+
+    This function bridges the gap between executor tool output and the
+    {relevant_snippets} placeholder expected by synthesizer/critic/integration prompts.
+
+    Returns:
+        Formatted string with file paths, line numbers, and code content.
+        Empty string if no snippets found.
+    """
+    snippets = []
+
+    for result in tool_results:
+        tool_result = result.get("result", {})
+
+        if not isinstance(tool_result, dict):
+            continue
+
+        # Extract from definition (singular - from _analyze_symbol after processing)
+        if tool_result.get("definition"):
+            defn = tool_result["definition"]
+            file_path = defn.get("file", "")
+            line = defn.get("line", 0)
+            snippet = defn.get("snippet", defn.get("body", defn.get("context", "")))
+            name = defn.get("name", "")
+            kind = defn.get("type", defn.get("kind", "symbol"))
+            if file_path:
+                header = f"**{file_path}:{line}** - {kind}: `{name}`" if name else f"**{file_path}:{line}**"
+                if snippet:
+                    snippets.append(f"{header}\n```\n{snippet}\n```")
+                else:
+                    snippets.append(header)
+
+        # Extract from definitions (plural - from explore_symbol_usage directly)
+        for defn in tool_result.get("definitions", [])[:5]:
+            file_path = defn.get("file", "")
+            line = defn.get("line", 0)
+            snippet = defn.get("snippet", defn.get("body", defn.get("context", "")))
+            name = defn.get("name", "")
+            kind = defn.get("type", defn.get("kind", "symbol"))
+            if file_path:
+                header = f"**{file_path}:{line}** - {kind}: `{name}`" if name else f"**{file_path}:{line}**"
+                if snippet:
+                    snippets.append(f"{header}\n```\n{snippet}\n```")
+                else:
+                    snippets.append(header)
+
+        # Extract from usages (symbol usage search)
+        for usage in tool_result.get("usages", [])[:10]:
+            file_path = usage.get("file", "")
+            line = usage.get("line", 0)
+            snippet = usage.get("snippet", usage.get("body", usage.get("context", "")))
+            if file_path:
+                if snippet:
+                    snippets.append(f"**{file_path}:{line}**\n```\n{snippet}\n```")
+                else:
+                    snippets.append(f"**{file_path}:{line}** - usage")
+
+        # Extract from matches (grep/locate results)
+        for match in tool_result.get("matches", [])[:15]:
+            file_path = match.get("file", "")
+            line = match.get("line", 0)
+            snippet = match.get("match", match.get("body", match.get("context", match.get("snippet", ""))))
+            if file_path and snippet:
+                snippets.append(f"**{file_path}:{line}**\n```\n{snippet}\n```")
+
+        # Extract from content (file read via read_code)
+        if tool_result.get("content"):
+            file_path = tool_result.get("path", tool_result.get("file", "unknown"))
+            start_line = tool_result.get("start_line", 1)
+            content = str(tool_result["content"])[:3000]  # Cap content size
+            snippets.append(f"**{file_path}:{start_line}**\n```\n{content}\n```")
+
+        # Extract from symbols (parse_symbols, get_file_symbols, find_symbol)
+        for sym in tool_result.get("symbols", [])[:10]:
+            file_path = sym.get("file", "")
+            line = sym.get("line", 0)
+            name = sym.get("name", "")
+            kind = sym.get("kind", "symbol")
+            snippet = sym.get("snippet", sym.get("body", sym.get("context", "")))
+            if file_path and name:
+                if snippet:
+                    snippets.append(f"**{file_path}:{line}** - {kind}: `{name}`\n```\n{snippet}\n```")
+                else:
+                    snippets.append(f"**{file_path}:{line}** - {kind}: `{name}`")
+
+        # Extract from module structure (map_module)
+        if tool_result.get("structure"):
+            path = tool_result.get("target", tool_result.get("path", "module"))
+            structure = str(tool_result["structure"])[:2000]
+            snippets.append(f"**Module: {path}**\n```\n{structure}\n```")
+
+        # Extract key_files (map_module)
+        key_files = tool_result.get("key_files", [])
+        if key_files:
+            files_list = ", ".join(f"`{f}`" for f in key_files[:5])
+            snippets.append(f"**Key files:** {files_list}")
+
+        # Extract exports (map_module)
+        exports = tool_result.get("exports", [])
+        if exports:
+            exports_list = ", ".join(f"`{e}`" for e in exports[:10])
+            snippets.append(f"**Exports:** {exports_list}")
+
+        # Note: citations are file:line strings without code content
+        # They're already included via definitions/usages/matches extraction above
+        # No need to add bare citations - LLM needs actual code to cite
+
+    # Join all snippets with separators
+    if not snippets:
+        return ""
+
+    return "\n\n---\n\n".join(snippets)
+
+
 def executor_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
-    """Post-process executor results."""
-    # Update traversal state in metadata from tool_results
+    """
+    Post-process executor results.
+
+    Extracts and stores:
+    1. files_examined - list of file paths for tracking
+    2. snippets - formatted code snippets for LLM context (CRITICAL for downstream agents)
+    3. results - raw tool results for downstream access
+    """
     tool_results = output.get("tool_results", [])
     explored_files = []
 
@@ -296,13 +591,14 @@ def executor_post_process(envelope: Any, output: Dict[str, Any], agent: Any = No
             seen.add(f)
             unique_files.append(f)
 
-    if "traversal_state" not in envelope.metadata:
-        envelope.metadata["traversal_state"] = {}
-    envelope.metadata["traversal_state"]["explored_files"] = unique_files
+    # CRITICAL: Extract code snippets for downstream LLM agents
+    # This populates the {relevant_snippets} placeholder in synthesizer/critic/integration prompts
+    snippets_str = _extract_snippets_from_tool_results(tool_results)
 
-    # Store results in output for downstream agents
+    # Store all results for downstream agents
     output["results"] = tool_results
     output["files_examined"] = unique_files
+    output["snippets"] = snippets_str  # Required by synthesizer/critic/integration context builders
 
     return envelope
 
@@ -346,15 +642,43 @@ def synthesizer_post_process(envelope: Any, output: Dict[str, Any], agent: Any =
 
     NOTE: We store fields directly in metadata so they're available to prompts
     via context.update(envelope.metadata) in jeeves-core. This avoids core changes.
+
+    FALLBACK: If LLM returns {"response": "..."} instead of structured output,
+    we create a minimal findings structure from the response.
     """
+    # Handle malformed LLM output - LLM may return {"response": "..."} instead of structured fields
+    findings = output.get("findings")
+    quality_score = output.get("quality_score")
+    gaps = output.get("gaps")
+
+    if findings is None:
+        # Fallback: try to create findings from "response" field
+        response_text = output.get("response", "")
+        if response_text:
+            # Create a single finding from the response
+            findings = [{
+                "target": "query",
+                "summary": response_text[:500] if len(response_text) > 500 else response_text,
+                "citations": [],
+            }]
+            quality_score = quality_score or 0.5
+        else:
+            findings = []
+            quality_score = quality_score or 0.0
+
+    if gaps is None:
+        gaps = [] if findings else ["No findings from search"]
+
+    if quality_score is None:
+        quality_score = 0.5 if findings else 0.0
+
     # Store synthesizer output as string for critic prompt
-    findings = output.get("findings", [])
     envelope.metadata["synthesizer_output"] = str(findings) if findings else "No findings"
 
     # Also store structured data for downstream access
     envelope.metadata["synthesizer_findings"] = findings
-    envelope.metadata["synthesizer_quality_score"] = output.get("quality_score", 0.5)
-    envelope.metadata["synthesizer_gaps"] = output.get("gaps", [])
+    envelope.metadata["synthesizer_quality_score"] = quality_score
+    envelope.metadata["synthesizer_gaps"] = gaps
 
     return envelope
 
@@ -407,10 +731,77 @@ def critic_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None
 
     NOTE: We store fields directly in metadata so they're available to prompts
     via context.update(envelope.metadata) in jeeves-core. This avoids core changes.
+
+    FALLBACK: If LLM returns {"response": "..."} instead of structured output,
+    we check synthesizer quality and infer recommendation intelligently.
+    Key insight: If synthesizer found good results, don't trigger reintent.
     """
+    # Handle malformed LLM output - LLM may return {"response": "..."} instead of structured fields
+    recommendation = output.get("recommendation")
+    confidence = output.get("confidence")
+
+    if recommendation is None:
+        # Log the fallback trigger
+        from jeeves_mission_system.adapters import get_logger
+        logger = get_logger()
+
+        # Get synthesizer results to make intelligent fallback decision
+        synthesizer = envelope.outputs.get("synthesizer", {})
+        synth_quality = synthesizer.get("quality_score", 0.5)
+        synth_findings = synthesizer.get("findings", [])
+        synth_gaps = synthesizer.get("gaps", [])
+
+        # Also check if we have files examined (search succeeded)
+        execution = envelope.outputs.get("execution", {})
+        files_examined = execution.get("files_examined", [])
+
+        # Fallback: try to infer from "response" field if present
+        response_text = output.get("response", "").lower()
+
+        logger.info(
+            "critic_fallback_triggered",
+            envelope_id=envelope.envelope_id,
+            synth_quality=synth_quality,
+            synth_findings_count=len(synth_findings),
+            synth_gaps_count=len(synth_gaps),
+            files_examined_count=len(files_examined),
+            has_response_text=bool(response_text),
+        )
+
+        # Intelligent fallback based on synthesizer results + response text
+        if synth_quality >= 0.7 and synth_findings and not synth_gaps:
+            # Synthesizer found good results with no gaps - likely sufficient
+            recommendation = "sufficient"
+            confidence = synth_quality
+        elif response_text and any(word in response_text for word in ["sufficient", "complete", "adequate", "good"]):
+            recommendation = "sufficient"
+            confidence = confidence or 0.7
+        elif response_text and any(word in response_text for word in ["insufficient", "fail", "missing", "none", "empty"]):
+            recommendation = "insufficient"
+            confidence = confidence or 0.3
+        elif synth_quality >= 0.5 and files_examined:
+            # We have files and reasonable quality - default to sufficient to avoid reintent loop
+            recommendation = "sufficient"
+            confidence = synth_quality
+        elif not files_examined or synth_quality < 0.3:
+            # No files found or very low quality - insufficient
+            recommendation = "insufficient"
+            confidence = confidence or 0.3
+        else:
+            # Default case - partial but with higher confidence to avoid aggressive reintent
+            recommendation = "partial"
+            confidence = confidence or 0.6
+
+        logger.info(
+            "critic_fallback_decision",
+            envelope_id=envelope.envelope_id,
+            recommendation=recommendation,
+            confidence=confidence,
+        )
+
     # Store critic fields directly in metadata for prompt template access
     # These become {critic_recommendation}, {critic_feedback} in prompts
-    envelope.metadata["critic_recommendation"] = output.get("recommendation", "partial")
+    envelope.metadata["critic_recommendation"] = recommendation
 
     # Format critic feedback as string for prompt
     issues = output.get("issues", [])
@@ -422,9 +813,10 @@ def critic_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None
         feedback_parts.append(f"Hint: {refine_hint}")
     envelope.metadata["critic_feedback"] = "\n".join(feedback_parts) if feedback_parts else "No issues"
 
-    # Store complete cycle context for potential reintent
+    # Store complete cycle data for potential reintent
     # Integration will pass this to Intent if it decides to reintent
-    envelope.metadata["cycle_context"] = {
+    # NOTE: Use "_cycle_data" (not "cycle_context") to avoid collision with prompt display string
+    envelope.metadata["_cycle_data"] = {
         "critic_feedback": {
             "recommendation": output.get("recommendation", "partial"),
             "confidence": output.get("confidence", 0.5),
@@ -454,17 +846,14 @@ def integration_mock_handler(envelope: Any) -> Dict[str, Any]:
     synthesizer = envelope.outputs.get("synthesizer", {})
     execution = envelope.outputs.get("execution", {})
     critic = envelope.outputs.get("critic", {})
-    cycle_context = envelope.metadata.get("cycle_context", {})
+    cycle_context = envelope.metadata.get("_cycle_data", {})
 
     # Get critic's assessment
     recommendation = critic.get("recommendation", "partial")
     issues = critic.get("issues", [])
 
-    # Get files_examined from execution output or traversal_state metadata
-    files_examined = (
-        execution.get("files_examined", []) or
-        envelope.metadata.get("traversal_state", {}).get("explored_files", [])
-    )
+    # Get files_examined from execution output
+    files_examined = execution.get("files_examined", [])
 
     # Integration decides: answer or reintent
     # - "sufficient" from critic → answer
@@ -503,15 +892,73 @@ def integration_post_process(envelope: Any, output: Dict[str, Any], agent: Any =
 
     NOTE: We store formatted context in metadata so it's available to prompts
     via context.update(envelope.metadata) in jeeves-core. This avoids core changes.
+
+    REINTENT LIMIT: Enforces MAX_REINTENT_CYCLES to prevent infinite loops.
     """
     from jeeves_mission_system.contracts_core import TerminalReason
+    from jeeves_mission_system.adapters import get_logger
 
+    logger = get_logger()
     action = output.get("action", "answer")
 
+    # Track reintent count
+    reintent_count = envelope.metadata.get("reintent_count", 0)
+
+    # Log the integration decision and output structure
+    logger.info(
+        "integration_decision",
+        envelope_id=envelope.envelope_id,
+        action=action,
+        reintent_count=reintent_count,
+        max_reintent_cycles=MAX_REINTENT_CYCLES,
+        has_final_response="final_response" in output,
+        has_reason="reason" in output,
+        output_keys=list(output.keys()) if isinstance(output, dict) else [],
+    )
+
+    # Enforce reintent limit - prevent infinite loops
+    # NOTE: Check >= MAX - 1 because reintent_count is checked BEFORE increment.
+    # If we've already done (MAX-1) reintents, the next one would hit MAX, so force answer now.
+    if action == "reintent" and reintent_count >= MAX_REINTENT_CYCLES - 1:
+        logger.warning(
+            "reintent_limit_reached",
+            envelope_id=envelope.envelope_id,
+            reintent_count=reintent_count,
+            max_reintent_cycles=MAX_REINTENT_CYCLES,
+        )
+        # Force answer with best-effort response
+        action = "answer"
+        output["action"] = "answer"
+        output["final_response"] = output.get("final_response") or (
+            "I was unable to find the specific code you're looking for after multiple search attempts. "
+            "The search terms may not match the codebase, or the code may not exist. "
+            "Please try rephrasing your question with different terms or specifying file paths directly."
+        )
+
+    # Validate output based on action
+    if action == "answer" and "final_response" not in output:
+        logger.error(
+            "integration_missing_final_response",
+            envelope_id=envelope.envelope_id,
+            output_keys=list(output.keys()),
+            hint="LLM output did not include required 'final_response' field for action=answer",
+        )
+
     if action == "reintent":
+        # Increment reintent counter
+        new_count = reintent_count + 1
+        envelope.metadata["reintent_count"] = new_count
+
+        logger.info(
+            "reintent_triggered",
+            envelope_id=envelope.envelope_id,
+            reintent_count=new_count,
+            max_reintent_cycles=MAX_REINTENT_CYCLES,
+        )
+
         # Pass cycle context to Intent for the next cycle
         # The routing_rules will handle the actual routing to intent
-        cycle_context = output.get("cycle_context", envelope.metadata.get("cycle_context", {}))
+        cycle_context = output.get("cycle_context", envelope.metadata.get("_cycle_data", {}))
         reason = output.get("reason", "Need different search approach")
 
         envelope.metadata["reintent_context"] = {
@@ -554,9 +1001,9 @@ Do NOT repeat the same search targets. Try different keywords, synonyms, or appr
 
 CODE_ANALYSIS_PIPELINE = PipelineConfig(
     name="code_analysis",
-    max_iterations=3,
-    max_llm_calls=10,
-    max_agent_hops=21,
+    max_iterations=5,
+    max_llm_calls=30,
+    max_agent_hops=50,
     enable_arbiter=False,  # Read-only pipeline, no arbiter needed
     # Capability-defined resume stages (not hardcoded in runtime)
     clarification_resume_stage="intent",  # REINTENT architecture: clarifications go through Intent
@@ -583,9 +1030,10 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             model_role="planner",
             prompt_key="code_analysis.intent",
             output_key="intent",
-            required_output_fields=["intent", "goals"],
-            max_tokens=2000,
+            required_output_fields=["intent", "goals", "search_targets"],
+            max_tokens=8000,
             temperature=0.3,
+            pre_process=intent_pre_process,
             mock_handler=intent_mock_handler,
             post_process=intent_post_process,
             routing_rules=[
@@ -604,8 +1052,9 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             tool_access=ToolAccess.READ,  # For tool listing
             output_key="plan",
             required_output_fields=["steps"],
-            max_tokens=2500,
+            max_tokens=8000,
             temperature=0.3,
+            pre_process=planner_pre_process,
             mock_handler=planner_mock_handler,
             default_next="executor",
         ),
@@ -631,10 +1080,12 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             model_role="planner",
             prompt_key="code_analysis.synthesizer",
             output_key="synthesizer",
-            max_tokens=2000,
+            required_output_fields=["findings", "goal_status"],
+            max_tokens=8000,
             temperature=0.3,
+            pre_process=synthesizer_pre_process,
             mock_handler=synthesizer_mock_handler,
-            post_process=synthesizer_post_process,  # Store output in metadata for critic
+            post_process=synthesizer_post_process,
             default_next="critic",
         ),
 
@@ -648,17 +1099,19 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             model_role="critic",
             prompt_key="code_analysis.critic",
             output_key="critic",
-            required_output_fields=["recommendation"],  # Changed from verdict
-            max_tokens=2500,
+            required_output_fields=["recommendation", "confidence"],
+            max_tokens=8000,
             temperature=0.2,
+            pre_process=critic_pre_process,
             mock_handler=critic_mock_handler,
             post_process=critic_post_process,
-            # NO routing rules - critic provides feedback only
             default_next="integration",
         ),
 
         # ─── Agent 7: Integration ───
         # Integration DECIDES: answer OR reintent (with cycle context)
+        # When action=answer, must include final_response
+        # When action=reintent, must include reason
         AgentConfig(
             name="integration",
             stage_order=6,
@@ -668,8 +1121,9 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
             tool_access=ToolAccess.WRITE,
             output_key="integration",
             required_output_fields=["action"],  # action: answer|reintent
-            max_tokens=2000,
+            max_tokens=8000,
             temperature=0.3,
+            pre_process=integration_pre_process,
             mock_handler=integration_mock_handler,
             post_process=integration_post_process,
             routing_rules=[

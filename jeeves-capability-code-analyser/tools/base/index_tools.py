@@ -47,9 +47,30 @@ _repo_path_error_response = repo_path_error_response
 class PythonSymbolExtractor(ast.NodeVisitor):
     """Extract symbols from Python AST."""
 
-    def __init__(self):
+    def __init__(self, source_code: str = ""):
         self.symbols: List[Dict[str, Any]] = []
         self.imports: List[str] = []
+        self.source_code = source_code
+
+    def _extract_body(self, node: ast.AST, max_chars: int = 500) -> str:
+        """Extract source code for a node.
+
+        Args:
+            node: The AST node to extract source from
+            max_chars: Maximum characters to return (default: 500)
+
+        Returns:
+            The source code segment, truncated if necessary
+        """
+        if not self.source_code:
+            return ""
+        try:
+            body = ast.get_source_segment(self.source_code, node) or ""
+            if len(body) > max_chars:
+                return body[:max_chars] + "..."
+            return body
+        except Exception:
+            return ""
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         self.symbols.append({
@@ -57,6 +78,7 @@ class PythonSymbolExtractor(ast.NodeVisitor):
             "kind": "class",
             "line": node.lineno,
             "end_line": node.end_lineno or node.lineno,
+            "body": self._extract_body(node),
         })
         self.generic_visit(node)
 
@@ -66,6 +88,7 @@ class PythonSymbolExtractor(ast.NodeVisitor):
             "kind": "function",
             "line": node.lineno,
             "end_line": node.end_lineno or node.lineno,
+            "body": self._extract_body(node),
         })
         self.generic_visit(node)
 
@@ -75,6 +98,7 @@ class PythonSymbolExtractor(ast.NodeVisitor):
             "kind": "async_function",
             "line": node.lineno,
             "end_line": node.end_lineno or node.lineno,
+            "body": self._extract_body(node),
         })
         self.generic_visit(node)
 
@@ -92,7 +116,7 @@ def _extract_python_symbols(filepath: Path) -> Dict[str, Any]:
     try:
         content = filepath.read_text(encoding="utf-8", errors="replace")
         tree = ast.parse(content, filename=str(filepath))
-        extractor = PythonSymbolExtractor()
+        extractor = PythonSymbolExtractor(source_code=content)
         extractor.visit(tree)
         return {
             "symbols": extractor.symbols,
@@ -346,12 +370,12 @@ async def find_symbol(
                         "end_line": symbol.get("end_line", symbol["line"]),
                     }
 
-                    # Include body preview if requested
+                    # Include body if requested (truncated for response size)
                     if include_body and "body" in symbol:
-                        body_preview = symbol["body"][:200]
+                        body = symbol["body"][:200]
                         if len(symbol.get("body", "")) > 200:
-                            body_preview += "..."
-                        match_info["body_preview"] = body_preview
+                            body += "..."
+                        match_info["body"] = body
 
                     matches.append(match_info)
 
@@ -453,12 +477,12 @@ async def get_file_symbols(
                 "end_line": sym.get("end_line", sym["line"]),
             }
 
-            # Include body preview if requested
+            # Include body if requested (truncated for response size)
             if include_body and "body" in sym:
-                body_preview = sym["body"][:300]
+                body = sym["body"][:300]
                 if len(sym.get("body", "")) > 300:
-                    body_preview += "..."
-                sym_info["body_preview"] = body_preview
+                    body += "..."
+                sym_info["body"] = body
 
             symbols.append(sym_info)
 

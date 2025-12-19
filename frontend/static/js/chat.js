@@ -321,6 +321,18 @@ class ChatClient {
             }
         }
 
+        // Build collapsible payload section for CoT visibility
+        const payloadKeys = Object.keys(payload || {});
+        const hasPayload = payloadKeys.length > 0;
+        const payloadSection = hasPayload ? `
+            <details class="mt-2">
+                <summary class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200">
+                    📦 Payload (${payloadKeys.length} fields)
+                </summary>
+                <pre class="text-xs bg-gray-100 dark:bg-slate-900 p-2 rounded mt-1 overflow-x-auto max-h-48 overflow-y-auto">${this._formatPayload(payload)}</pre>
+            </details>
+        ` : '';
+
         return `
             <div class="${statusClass} rounded-lg p-2 mb-2">
                 <div class="flex items-center gap-1.5 mb-1">
@@ -332,6 +344,7 @@ class ChatClient {
                     ${event.split('.').pop()}
                 </div>
                 ${details ? `<div class="text-gray-500 dark:text-gray-400 text-xs mt-1">${details}</div>` : ''}
+                ${payloadSection}
             </div>
         `;
     }
@@ -340,6 +353,45 @@ class ChatClient {
         // Capitalize first letter of agent name
         if (!name) return 'Agent';
         return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+
+    _formatPayload(payload) {
+        // Format payload for display with syntax highlighting hints
+        // Truncate large values for readability
+        const truncate = (val, maxLen = 500) => {
+            const str = typeof val === 'string' ? val : JSON.stringify(val);
+            if (str && str.length > maxLen) {
+                return str.substring(0, maxLen) + '... [truncated]';
+            }
+            return str;
+        };
+
+        const formatValue = (val) => {
+            if (val === null) return 'null';
+            if (val === undefined) return 'undefined';
+            if (typeof val === 'string') return truncate(val);
+            if (Array.isArray(val)) {
+                if (val.length === 0) return '[]';
+                if (val.length > 10) {
+                    return `[${val.slice(0, 10).map(v => truncate(JSON.stringify(v), 100)).join(', ')}... +${val.length - 10} more]`;
+                }
+                return truncate(JSON.stringify(val, null, 2));
+            }
+            if (typeof val === 'object') {
+                return truncate(JSON.stringify(val, null, 2));
+            }
+            return String(val);
+        };
+
+        try {
+            const formatted = {};
+            for (const [key, val] of Object.entries(payload)) {
+                formatted[key] = formatValue(val);
+            }
+            return this.escapeHtml(JSON.stringify(formatted, null, 2));
+        } catch (e) {
+            return this.escapeHtml(String(payload));
+        }
     }
 
     _buildAgentDetails(payload) {
@@ -437,13 +489,12 @@ class ChatClient {
     handleWebSocketMessage(message) {
         console.log('Received WebSocket message:', message);
 
-        // Support both 'event' and 'type' fields for compatibility
-        const event = message.event || message.type;
+        const event = message.event_type;
         const payload = message.payload || {};
 
         // Guard against undefined event
         if (!event) {
-            console.warn('WebSocket message has no event/type field:', message);
+            console.warn('WebSocket message has no event_type field:', message);
             return;
         }
 

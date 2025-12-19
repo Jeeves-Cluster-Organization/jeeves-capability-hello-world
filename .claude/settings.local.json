@@ -9,7 +9,13 @@
       "Bash(docker restart:*)",
       "Bash(docker compose build:*)",
       "Bash(python:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(docker compose:*)",
+      "Bash(set PYTHONPATH=.)",
+      "Bash(jeeves-capability-code-analyser)",
+      "Bash(jeeves-core)",
+      "Bash(docker ps:*)",
+      "Bash($env:PYTHONPATH=\".\")"
     ]
   }
 }
