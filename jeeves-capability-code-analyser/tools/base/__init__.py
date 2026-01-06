@@ -10,11 +10,11 @@ This module exports tool functions that are registered by tools/registration.py.
 
 from typing import Any, Dict, Optional
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts_core import (
-    PersistenceProtocol,
-    tool_catalog,
-)
+from jeeves_protocols import PersistenceProtocol
+import structlog
+def get_logger(name=None):
+    return structlog.get_logger(name) if name else structlog.get_logger()
+from tools.catalog import tool_catalog
 from .path_helpers import validate_repo_path, get_repo_path
 
 

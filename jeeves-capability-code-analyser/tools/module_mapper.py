@@ -13,8 +13,8 @@ Per Amendment XVII (Composite Tool Contracts), this tool:
 from typing import Any, Dict, List, Optional
 from collections import defaultdict
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import ToolId, tool_catalog, LoggerProtocol
+from jeeves_protocols import LoggerProtocol
+from .catalog import ToolId, tool_catalog
 from jeeves_protocols import RiskLevel, OperationStatus
 from config.tool_profiles import detect_semantic_mismatch
 # Domain-specific bounds from capability config (per Constitution R6)

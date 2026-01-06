@@ -18,8 +18,8 @@ about code_analysis capability specifics.
 import json
 from typing import Any, AsyncIterator, Optional
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import LoggerProtocol
+from jeeves_protocols import LoggerProtocol
+from jeeves_capability_code_analyser.logging import get_logger
 from jeeves_mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
 from orchestration.types import CodeAnalysisResult
 

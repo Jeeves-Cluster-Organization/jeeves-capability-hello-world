@@ -12,16 +12,11 @@ Architecture: File Navigator -> Code Parser -> Semantic Search (L5 Graph)
 
 from typing import Optional, List, Dict, Any
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import (
-    LoggerProtocol,
-    ContextBounds,
-    PersistenceProtocol,
-    tool_catalog,
-    ToolId,
-    EXPOSED_TOOL_IDS,
-)
-from jeeves_protocols import ToolCategory
+from jeeves_protocols import LoggerProtocol, ToolCategory, PersistenceProtocol
+from jeeves_mission_system.contracts_core import ContextBounds
+
+# Import from capability's own catalog
+from tools.catalog import tool_catalog, ToolId, EXPOSED_TOOL_IDS
 
 from tools.registration import (
     register_all_tools,
@@ -38,6 +33,7 @@ from tools.base import ToolInitializationError, validate_tool_dependencies
 def initialize_all_tools(
     db: Optional[PersistenceProtocol] = None,
     skip_validation: bool = False,
+    logger: Optional[LoggerProtocol] = None,
 ) -> Dict[str, Any]:
     """
     Initialize and register all available tools for code analysis.
@@ -49,11 +45,16 @@ def initialize_all_tools(
     Args:
         db: Database client instance (optional for tools that don't need it)
         skip_validation: Skip dependency validation (for testing only)
+        logger: Optional logger instance. If not provided, uses structlog.
 
     Returns:
         dict: Tool registration results
     """
-    _logger = get_logger()
+    if logger is None:
+        import structlog
+        _logger = structlog.get_logger("tools")
+    else:
+        _logger = logger
 
     # Validate dependencies first
     validation = validate_tool_dependencies(db)
@@ -72,8 +73,8 @@ def initialize_all_tools(
         db_valid=validation["db_valid"],
     )
 
-    # Register all tools with the canonical tool_catalog
-    registration_result = register_all_tools()
+    # Register all tools with the capability's tool_catalog
+    registration_result = register_all_tools(logger=_logger)
 
     _logger.info(
         "tools_initialized",
@@ -140,7 +141,7 @@ INTERNAL_TOOLS = [
 
 def get_code_analysis_tools_for_llm() -> str:
     """Get formatted tool list for LLM context using tool_catalog."""
-    return tool_catalog.generate_planner_prompt(EXPOSED_TOOL_IDS)
+    return tool_catalog.generate_prompt_section()
 
 
 def get_code_analysis_tool_names() -> List[str]:

@@ -18,8 +18,8 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import LoggerProtocol
+from jeeves_protocols import LoggerProtocol
+from jeeves_capability_code_analyser.logging import get_logger
 from tools.registry import RiskLevel, tool_registry
 from tools.base.path_helpers import (
     get_repo_path,

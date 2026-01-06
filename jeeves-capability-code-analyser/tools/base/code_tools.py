@@ -20,8 +20,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import LoggerProtocol
+from jeeves_protocols import LoggerProtocol
+from jeeves_capability_code_analyser.logging import get_logger
 from .path_helpers import (
     get_repo_path,
     is_safe_path,

@@ -6,8 +6,8 @@ This module is kept for future system-level tools that don't fit elsewhere.
 
 from typing import Optional
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import LoggerProtocol
+from jeeves_protocols import LoggerProtocol
+from jeeves_capability_code_analyser.logging import get_logger
 # Constitutional imports - from mission_system contracts layer
 from jeeves_mission_system.contracts import PersistenceProtocol
 from tools.registry import ToolRegistry, tool_registry

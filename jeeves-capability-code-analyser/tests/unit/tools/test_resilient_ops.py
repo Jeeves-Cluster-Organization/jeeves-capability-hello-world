@@ -273,7 +273,7 @@ class TestReadCode:
 
         # Import to trigger registration
         from tools.base import resilient_ops
-        from jeeves_mission_system.contracts import tool_catalog as tool_registry
+        from tools.catalog import tool_catalog as tool_registry
 
         assert tool_registry.has_tool("read_code")
         tool = tool_registry.get_tool("read_code")
@@ -340,7 +340,7 @@ class TestFindRelated:
 
         # Import to trigger registration
         from tools.base import resilient_ops
-        from jeeves_mission_system.contracts import tool_catalog as tool_registry
+        from tools.catalog import tool_catalog as tool_registry
 
         assert tool_registry.has_tool("find_related")
         tool = tool_registry.get_tool("find_related")
@@ -492,6 +492,6 @@ class TestFindCodeRemoval:
 
         # Import to trigger registration
         from tools.base import resilient_ops
-        from jeeves_mission_system.contracts import tool_catalog as tool_registry
+        from tools.catalog import tool_catalog as tool_registry
 
         assert not tool_registry.has_tool("find_code")

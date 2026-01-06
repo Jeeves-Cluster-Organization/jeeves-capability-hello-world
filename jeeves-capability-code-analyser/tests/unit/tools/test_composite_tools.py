@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 # Skip entire module - composite tool modules are not implemented
 pytestmark = pytest.mark.skip(reason="Composite tool modules (safe_locator, symbol_explorer, git_historian, module_mapper, flow_tracer, robust_tool_base) not implemented")
 
-from jeeves_mission_system.contracts import tool_catalog
+from tools.catalog import tool_catalog
 from tests.fixtures.mocks.tools import MockToolRegistry
 
 
@@ -472,7 +472,7 @@ class TestCompositeToolContracts:
         for tool_name in INTERNAL_TOOLS:
             if tool_catalog.has_tool(tool_name):
                 # Use get_entry() to access risk_level (ToolCatalogEntry has it, ToolDefinition doesn't)
-                from jeeves_avionics.tools.catalog import resolve_tool_id
+                from tools.catalog import resolve_tool_id
                 tool_id = resolve_tool_id(tool_name)
                 if tool_id:
                     entry = tool_catalog.get_entry(tool_id)

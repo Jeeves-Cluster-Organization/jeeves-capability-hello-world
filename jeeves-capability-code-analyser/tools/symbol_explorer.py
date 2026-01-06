@@ -19,8 +19,8 @@ Constitutional Pattern:
 import re
 from typing import Any, Dict, List
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import LoggerProtocol, ToolId, tool_catalog
+from jeeves_protocols import LoggerProtocol
+from .catalog import ToolId, tool_catalog
 from jeeves_protocols import RiskLevel, OperationStatus
 from config.tool_profiles import detect_semantic_mismatch
 # Domain-specific bounds from capability config (per Constitution R6)

@@ -20,7 +20,7 @@ from typing import Optional, Set, Tuple
 
 from jeeves_capability_code_analyser.config import LanguageConfig
 from jeeves_mission_system.contracts import get_config_registry, ConfigKeys
-from jeeves_mission_system.adapters import get_logger
+from jeeves_capability_code_analyser.logging import get_logger
 
 # Cache for repo path validation status
 _repo_path_validated: bool = False

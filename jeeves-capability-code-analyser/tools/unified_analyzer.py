@@ -22,8 +22,8 @@ import re
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import ToolId, tool_catalog
+from jeeves_protocols import LoggerProtocol
+from .catalog import ToolId, tool_catalog
 from jeeves_protocols import RiskLevel, OperationStatus, ToolCategory
 # Domain-specific bounds from capability config (per Constitution R6)
 from jeeves_capability_code_analyser.config import CodeAnalysisBounds, get_code_analysis_bounds

@@ -53,8 +53,8 @@ from typing import Optional
 import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
-from jeeves_mission_system.adapters import get_logger
-from jeeves_mission_system.contracts import LoggerProtocol
+from jeeves_protocols import LoggerProtocol
+from jeeves_capability_code_analyser.logging import get_logger
 
 
 class CodeAnalysisServer:

@@ -18,7 +18,7 @@ from jeeves_mission_system.contracts_core import (
     PersistenceProtocol,
     ToolExecutorProtocol,
 )
-from jeeves_mission_system.adapters import get_logger
+from jeeves_capability_code_analyser.logging import get_logger
 
 
 def create_code_analysis_service(
