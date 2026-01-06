@@ -367,7 +367,8 @@ def executor_pre_process(envelope: Any, agent: Any = None) -> Any:
         logger = agent._logger
     else:
         try:
-            from jeeves_capability_code_analyser.logging import get_logger
+            import structlog
+            logger = structlog.get_logger()
             logger = get_logger()
         except Exception:
             pass
@@ -803,7 +804,8 @@ def critic_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None
 
     if recommendation is None:
         # Log the fallback trigger
-        from jeeves_capability_code_analyser.logging import get_logger
+        import structlog
+            logger = structlog.get_logger()
         logger = get_logger()
 
         # Get synthesizer results to make intelligent fallback decision
@@ -957,7 +959,8 @@ def integration_post_process(envelope: Any, output: Dict[str, Any], agent: Any =
     REINTENT LIMIT: Enforces MAX_REINTENT_CYCLES to prevent infinite loops.
     """
     from jeeves_mission_system.contracts_core import TerminalReason
-    from jeeves_capability_code_analyser.logging import get_logger
+    import structlog
+            logger = structlog.get_logger()
 
     logger = get_logger()
     action = output.get("action", "answer")

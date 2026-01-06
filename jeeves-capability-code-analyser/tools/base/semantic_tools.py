@@ -24,7 +24,8 @@ from contextvars import ContextVar
 from typing import Any, Dict, List, Optional
 
 from jeeves_protocols import LoggerProtocol
-from jeeves_capability_code_analyser.logging import get_logger
+import structlog
+get_logger = structlog.get_logger
 from jeeves_protocols import RiskLevel
 from tools.base.path_helpers import (
     get_repo_path,

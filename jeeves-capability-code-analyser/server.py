@@ -54,7 +54,8 @@ import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
 from jeeves_protocols import LoggerProtocol
-from jeeves_capability_code_analyser.logging import get_logger
+import structlog
+get_logger = structlog.get_logger
 
 
 class CodeAnalysisServer:

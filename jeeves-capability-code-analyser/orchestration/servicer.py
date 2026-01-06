@@ -19,7 +19,8 @@ import json
 from typing import Any, AsyncIterator, Optional
 
 from jeeves_protocols import LoggerProtocol
-from jeeves_capability_code_analyser.logging import get_logger
+import structlog
+get_logger = structlog.get_logger
 from jeeves_mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
 from orchestration.types import CodeAnalysisResult
 
