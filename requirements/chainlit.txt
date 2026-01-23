@@ -1,0 +1,2 @@
+# Chainlit console layer dependencies
+chainlit>=2.0.0

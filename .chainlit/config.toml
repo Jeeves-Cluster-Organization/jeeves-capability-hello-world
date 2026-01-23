@@ -1,0 +1,14 @@
+[project]
+name = "Jeeves Code Analysis"
+enable_telemetry = false
+
+[features]
+prompt_playground = false
+
+[UI]
+name = "Jeeves"
+description = "AI-powered code analysis assistant"
+default_theme = "dark"
+
+[meta]
+generated_by = "jeeves"

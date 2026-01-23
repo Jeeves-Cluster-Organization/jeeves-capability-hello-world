@@ -111,21 +111,16 @@ jeeves-capability-code-analysis/
 |   +-- deployment/                     # Docker infrastructure tests
 |   +-- ui_ux/                          # API endpoint tests
 |
-+-- frontend/                           # Web UI assets (capability-owned)
-|   +-- static/
-|   |   +-- js/                         # JavaScript modules
-|   |   |   +-- config.js               # API & WebSocket configuration
-|   |   |   +-- chat.js                 # Chat interface logic
-|   |   |   +-- shared.js               # Shared utilities
-|   |   |   +-- governance.js           # Governance dashboard
-|   |   +-- css/                        # Stylesheets
-|   |       +-- chat.css
-|   |       +-- governance.css
-|   |       +-- shared.css
-|   +-- templates/                      # Jinja2 HTML templates
-|       +-- base.html                   # Base template with navigation
-|       +-- chat.html                   # Code analysis chat UI
-|       +-- governance.html             # Governance dashboard
+|   +-- console/                        # Console layer (UI abstraction)
+|       +-- __init__.py                 # Console layer exports
+|       +-- messages.py                 # CommBus message types
+|       +-- handler.py                  # CommBus handler for service
+|       +-- adapters/                   # UI-specific adapters
+|           +-- chainlit_adapter.py     # Chainlit UI adapter
+|
++-- chainlit_app.py                     # Chainlit entry point
++-- .chainlit/                          # Chainlit configuration
+|   +-- config.toml                     # Chainlit settings
 |
 +-- docs/                               # Documentation
 +-- docker/                             # Docker configuration
@@ -172,6 +167,19 @@ pip install -r requirements/all.txt
 
 # 3. Run tests
 pytest jeeves-capability-code-analyser/tests -v
+
+# 4. Install Chainlit dependencies
+pip install -r requirements/chainlit.txt
+```
+
+### Running the Chat UI
+
+```bash
+# Start Chainlit (requires services running)
+chainlit run chainlit_app.py
+
+# Opens at http://localhost:8000
+# Use /status command for system status
 ```
 
 ### Docker Deployment

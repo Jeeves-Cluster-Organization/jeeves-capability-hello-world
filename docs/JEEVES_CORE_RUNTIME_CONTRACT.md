@@ -1518,51 +1518,33 @@ COPY jeeves-core/jeeves_mission_system/ ./jeeves_mission_system/
 
 
 
-**Important:** `jeeves-core` no longer provides frontend UI assets. Each capability must own its own web UI.
+**Important:** `jeeves-core` no longer provides frontend UI assets. Each capability owns its presentation layer.
 
+### Console Layer Architecture
 
-
-Capabilities should create a `frontend/` directory with:
-
-
+Capabilities implement a **console layer** that provides UI abstraction via CommBus:
 
 ```
-
-frontend/
-
-├── static/
-
-│   ├── js/           # JavaScript modules (config.js, chat.js, etc.)
-
-│   └── css/          # Stylesheets
-
-└── templates/        # Jinja2 HTML templates
-
+console/
+├── __init__.py           # Console layer exports
+├── messages.py           # CommBus message types (ProcessQuery, ConsoleEvent)
+├── handler.py            # CommBus handler bridging service to UI
+└── adapters/             # UI-specific adapters
+    └── chainlit_adapter.py   # Chainlit UI adapter
 ```
 
+**Communication Pattern (JSF/DDS-style):**
+- UI adapters send queries via CommBus (`ProcessQuery`, `SubmitClarification`)
+- Handler processes queries, publishes `ConsoleEvent` for each pipeline step
+- UI adapters subscribe to events and render in their UI framework
 
-
-Dockerfile should copy from the capability's `frontend/` directory:
-
-
-
-```dockerfile
-
-# Copy capability-owned frontend assets (NOT from jeeves-core)
-
-COPY frontend/static/ ./static/
-
-COPY frontend/templates/ ./gateway/templates/
-
+**Running with Chainlit:**
+```bash
+chainlit run chainlit_app.py
+# Opens at http://localhost:8000
 ```
 
-
-
-The gateway expects:
-
-- Static files at `./static/` (served at `/static/`)
-
-- Templates at `./gateway/templates/` (for Jinja2 rendering)
+This architecture allows swapping UI frameworks without modifying core services
 
 
 
