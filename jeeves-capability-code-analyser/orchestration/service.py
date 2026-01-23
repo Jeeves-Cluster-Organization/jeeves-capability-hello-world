@@ -28,7 +28,7 @@ from jeeves_mission_system.contracts_core import (
     LLMProviderProtocol,
 )
 from jeeves_mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
-from pipeline_config import CODE_ANALYSIS_PIPELINE
+from pipeline_config import CODE_ANALYSIS_PIPELINE, get_pipeline_for_mode, PipelineConfig
 from orchestration.types import CodeAnalysisResult
 
 if TYPE_CHECKING:
@@ -60,6 +60,7 @@ class CodeAnalysisService:
         persistence: Optional[PersistenceProtocol] = None,
         control_tower: Optional["ControlTowerProtocol"] = None,
         use_mock: bool = False,
+        pipeline_config: Optional[PipelineConfig] = None,
     ):
         """
         Initialize CodeAnalysisService.
@@ -71,13 +72,17 @@ class CodeAnalysisService:
             persistence: Optional persistence for state storage
             control_tower: Optional Control Tower for resource tracking
             use_mock: Use mock handlers for testing
+            pipeline_config: Pipeline configuration (defaults to CODE_ANALYSIS_PIPELINE)
         """
         # Get the global prompt registry
         from jeeves_mission_system.prompts.core.registry import PromptRegistry
         prompt_registry = PromptRegistry.get_instance()
 
+        # Use provided pipeline config or default to full pipeline
+        config = pipeline_config or CODE_ANALYSIS_PIPELINE
+
         self._runtime = create_runtime_from_config(
-            config=CODE_ANALYSIS_PIPELINE,
+            config=config,
             llm_provider_factory=llm_provider_factory,
             tool_executor=tool_executor,
             logger=logger,

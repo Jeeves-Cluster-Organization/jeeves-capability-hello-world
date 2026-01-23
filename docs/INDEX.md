@@ -15,6 +15,15 @@
 
 ---
 
+## Deployment Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [../k8s/README.md](../k8s/README.md) | Kubernetes deployment manifests and configuration |
+| [../docker/docker-compose.yml](../docker/docker-compose.yml) | Docker Compose for local development |
+
+---
+
 ## Audit Reports
 
 | Document | Purpose |
@@ -32,4 +41,4 @@
 
 ---
 
-*Last Updated: 2025-12-18*
+*Last Updated: 2026-01-23*

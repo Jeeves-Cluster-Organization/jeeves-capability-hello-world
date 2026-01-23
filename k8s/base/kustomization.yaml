@@ -1,0 +1,13 @@
+# Kustomize base for single-node deployment
+# Derived from config/deployment.py PROFILES["single_node"]
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - configmap.yaml
+
+commonLabels:
+  app.kubernetes.io/name: jeeves-code-analysis
+  app.kubernetes.io/component: orchestrator

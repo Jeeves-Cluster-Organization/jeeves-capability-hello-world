@@ -7,9 +7,11 @@ Exports:
 - Context bounds (CodeAnalysisBounds - domain-specific resource limits)
 - Language config (LanguageId, LanguageSpec, LanguageConfig)
 - Tool access matrix (AgentToolAccess, TOOL_CATEGORIES)
-- Pipeline modes (AGENT_MODES)
-- Deployment profiles (CODE_ANALYSIS_AGENTS, PROFILES)
+- Agent list (CODE_ANALYSIS_AGENTS)
 - Product identity (PRODUCT_NAME, etc.)
+
+Note: Deployment profiles (NodeProfile, PROFILES) extracted to k8s/ manifests.
+Note: Pipeline modes now defined in pipeline_config.py as PipelineConfig variants.
 """
 
 from jeeves_capability_code_analyser.config.context_bounds import (
@@ -42,23 +44,8 @@ from jeeves_capability_code_analyser.config.tool_access import (
 # Re-export ToolAccess from jeeves_protocols for convenience
 from jeeves_protocols import ToolAccess
 
-from jeeves_capability_code_analyser.config.modes import (
-    AGENT_MODES,
-    get_agent_mode,
-    list_modes,
-)
-
 from jeeves_capability_code_analyser.config.deployment import (
-    NodeProfile,
     CODE_ANALYSIS_AGENTS,
-    PROFILES,
-    get_deployment_mode,
-    get_active_profile_names,
-    get_node_for_agent,
-    get_profile_for_agent,
-    get_all_agents,
-    get_node_summary,
-    validate_configuration,
 )
 
 from jeeves_capability_code_analyser.config.identity import (
@@ -95,21 +82,8 @@ __all__ = [
     "can_agent_use_tool",
     "get_agents_for_tool",
     "get_tools_by_category",
-    # Pipeline modes
-    "AGENT_MODES",
-    "get_agent_mode",
-    "list_modes",
-    # Deployment
-    "NodeProfile",
+    # Agent list
     "CODE_ANALYSIS_AGENTS",
-    "PROFILES",
-    "get_deployment_mode",
-    "get_active_profile_names",
-    "get_node_for_agent",
-    "get_profile_for_agent",
-    "get_all_agents",
-    "get_node_summary",
-    "validate_configuration",
     # Identity
     "PRODUCT_NAME",
     "PRODUCT_NAME_FULL",

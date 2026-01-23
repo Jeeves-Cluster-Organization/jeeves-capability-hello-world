@@ -129,14 +129,21 @@ from tools.catalog import ToolId  # Capability-owned ToolId
 1. **config/** — Domain-specific configuration (OWNED by capability)
    - `language_config.py` — LanguageId, LanguageSpec, LANGUAGE_SPECS
    - `tool_access.py` — AgentToolAccess, TOOL_CATEGORIES
-   - `modes.py` — AGENT_MODES, pipeline mode configuration
-   - `deployment.py` — NodeProfile, PROFILES, CODE_ANALYSIS_AGENTS
+   - `tool_profiles.py` — Tool selection based on (Operation, TargetKind)
+   - `deployment.py` — CODE_ANALYSIS_AGENTS list
    - `identity.py` — PRODUCT_NAME, PRODUCT_VERSION, PRODUCT_DESCRIPTION
 
 2. **pipeline_config.py** — Pipeline configuration
-   - `CODE_ANALYSIS_PIPELINE` — PipelineConfig with 7 agents
-   - `get_code_analysis_pipeline()` — Factory function
+   - `CODE_ANALYSIS_PIPELINE` — PipelineConfig with 7 agents (full mode)
+   - `CODE_ANALYSIS_PIPELINE_STANDARD` — 6 agents, skips critic (faster)
+   - `PIPELINE_MODES` — Dict mapping mode names to PipelineConfig
+   - `get_pipeline_for_mode(mode)` — Get pipeline by mode name
+   - `get_code_analysis_pipeline()` — Factory function (returns full pipeline)
    - Hook functions for each agent
+
+3. **k8s/** — Kubernetes deployment manifests (infrastructure-as-code)
+   - `base/` — Single-node deployment (development)
+   - `overlays/distributed/` — Multi-node deployment (node1, node2, node3)
 
 3. **tools/** — Code analysis tools
    - Composite tools: locate, explore_symbol_usage, map_module, etc.
@@ -375,14 +382,21 @@ from jeeves_capability_code_analyser.config import (
     LanguageId,
     LanguageConfig,
     AgentToolAccess,
-    PROFILES,
+    CODE_ANALYSIS_AGENTS,
     PRODUCT_NAME,
 )
 
+# ✅ CORRECT - Import pipeline modes from pipeline_config
+from pipeline_config import get_pipeline_for_mode, PIPELINE_MODES
+
 # ❌ INCORRECT - Import from mission_system (removed)
 from jeeves_mission_system.config.language_config import LanguageId  # Deleted
-from jeeves_mission_system.config.node_profiles import PROFILES       # Deleted
 ```
+
+**Deployment configuration extracted to k8s/ manifests:**
+- Node profiles, GPU assignments, resource limits now in k8s/
+- Python code only defines agent list (CODE_ANALYSIS_AGENTS)
+- See `k8s/README.md` for deployment documentation
 
 **Mission system provides generic mechanisms only:**
 - `ConfigRegistry` — Generic config injection
@@ -403,10 +417,14 @@ class CodeAnalysisService:
         tool_executor: ToolExecutorProtocol,  # Injected via protocol
         logger: LoggerProtocol,         # Injected via protocol
         persistence: Optional[PersistenceProtocol] = None,
+        pipeline_config: Optional[PipelineConfig] = None,  # Mode-selected pipeline
     ):
+        # Use provided pipeline or default to full
+        config = pipeline_config or CODE_ANALYSIS_PIPELINE
+
         # Use injected dependencies - no avionics imports
         self._runtime = create_runtime_from_config(
-            config=CODE_ANALYSIS_PIPELINE,
+            config=config,
             llm_provider_factory=llm_provider_factory,
             tool_executor=tool_executor,
             logger=logger,

@@ -22,6 +22,9 @@ import re
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+import structlog
+get_logger = structlog.get_logger
+
 from jeeves_protocols import LoggerProtocol
 from .catalog import ToolId, tool_catalog
 from jeeves_protocols import RiskLevel, OperationStatus, ToolCategory

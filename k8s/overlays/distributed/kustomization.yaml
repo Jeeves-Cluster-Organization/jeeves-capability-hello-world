@@ -1,0 +1,22 @@
+# Kustomize overlay for distributed multi-node deployment
+# Derived from config/deployment.py PROFILES["node1"], ["node2"], ["node3"]
+#
+# This overlay deploys agents across 3 nodes:
+#   Node 1: perception, intent, integration (fast agents, 6GB VRAM)
+#   Node 2: traverser (code-specialized model, 6GB VRAM)
+#   Node 3: planner, synthesizer, critic (reasoning hub, 12GB VRAM)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - node1-deployment.yaml
+  - node2-deployment.yaml
+  - node3-deployment.yaml
+
+# Patch base to not deploy the single-node orchestrator
+patchesStrategicMerge:
+  - patch-disable-single-node.yaml
+
+commonLabels:
+  deployment-mode: distributed

@@ -79,10 +79,9 @@ jeeves-capability-code-analysis/
 |   |   +-- language_config.py          # Language-specific settings
 |   |   +-- tool_profiles.py            # Tool profile definitions
 |   |   +-- tool_access.py              # Tool access control
-|   |   +-- deployment.py               # Deployment configuration
-|   |   +-- modes.py                    # Operational modes
+|   |   +-- deployment.py               # Agent list (CODE_ANALYSIS_AGENTS)
 |   |   +-- identity.py                 # Product identity
-|   |   +-- llm_config.py               # LLM provider settings
+|   |   +-- context_bounds.py           # Context bounds configuration
 |   |
 |   +-- orchestration/                  # LangGraph workflow
 |   |   +-- service.py                  # CodeAnalysisService
@@ -124,6 +123,9 @@ jeeves-capability-code-analysis/
 |
 +-- docs/                               # Documentation
 +-- docker/                             # Docker configuration
++-- k8s/                                # Kubernetes deployment manifests
+|   +-- base/                           # Single-node deployment
+|   +-- overlays/distributed/           # Multi-node deployment
 +-- requirements/                       # Python dependencies
 +-- scripts/                            # Utility scripts
 +-- jeeves-core/                        # Core infrastructure (git submodule)

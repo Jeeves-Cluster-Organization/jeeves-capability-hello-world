@@ -32,7 +32,6 @@ class ToolId(str, Enum):
     # PRIMARY SEARCH TOOL - Two-path architecture (Amendment XXII v2)
     # ═══════════════════════════════════════════════════════════════════════════
     SEARCH_CODE = "search_code"
-    ANALYZE = "analyze"  # Legacy unified tool
 
     # ═══════════════════════════════════════════════════════════════════════════
     # COMPOSITE TOOLS (Amendment XVII) - Multi-step workflows with fallbacks
@@ -98,8 +97,8 @@ class ToolId(str, Enum):
 # EXPOSED TOOL IDS - Tools visible to agents
 # ═══════════════════════════════════════════════════════════════════════════════
 EXPOSED_TOOL_IDS: FrozenSet[ToolId] = frozenset({
-    # Unified Analyzer - Primary entry point
-    ToolId.ANALYZE,
+    # Two-tool architecture: search_code + read_code (Amendment XXII v2)
+    ToolId.SEARCH_CODE,
     # Composite tools
     ToolId.LOCATE,
     ToolId.EXPLORE_SYMBOL_USAGE,

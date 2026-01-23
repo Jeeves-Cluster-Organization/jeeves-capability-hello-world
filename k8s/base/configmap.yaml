@@ -1,0 +1,27 @@
+# Configuration for Jeeves Code Analysis
+# Derived from config/deployment.py PROFILES
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jeeves-config
+  labels:
+    app.kubernetes.io/name: jeeves-code-analysis
+data:
+  # LLM Configuration
+  llamaserver_host: "http://llama-server:8080"
+  llm_provider: "llamaserver"
+  
+  # Database Configuration
+  postgres_host: "postgres"
+  postgres_port: "5432"
+  postgres_database: "assistant"
+  
+  # Pipeline Configuration
+  pipeline_mode: "full"
+  
+  # Logging
+  log_level: "INFO"
+  log_format: "json"
+  
+  # Agent Configuration (from CODE_ANALYSIS_AGENTS)
+  agents: "perception,intent,planner,traverser,synthesizer,critic,integration"

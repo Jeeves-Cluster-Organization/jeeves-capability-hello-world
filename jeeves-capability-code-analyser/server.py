@@ -175,10 +175,15 @@ class CodeAnalysisServer:
         )
 
         # Create code analysis service using capability's own wiring
-        self._logger.info("creating_code_analysis_service")
+        # PIPELINE_MODE env var controls speed/quality tradeoff:
+        #   "full" (default): Thorough with critic validation
+        #   "standard": Faster, skips critic
+        pipeline_mode = os.getenv("PIPELINE_MODE", "full")
+        self._logger.info("creating_code_analysis_service", pipeline_mode=pipeline_mode)
         self.code_analysis_service = create_code_analysis_service(
             runtime=runtime,
             database_url=database_url,
+            mode=pipeline_mode,
         )
 
         # Create gRPC server

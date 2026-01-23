@@ -30,7 +30,7 @@ All protocol imports are from `jeeves_protocols` as required:
 | `OperationStatus` | models/__init__.py, types.py, symbol_explorer.py, unified_analyzer.py, module_mapper.py |
 | `ToolCategory` | tools/__init__.py, unified_analyzer.py, resilient_ops.py, registration.py |
 | `ToolAccess` | config/__init__.py, tool_access.py |
-| `NodeProfile` | config/deployment.py |
+| ~~`NodeProfile`~~ | ~~config/deployment.py~~ (removed in 2026-01-23 cleanup; now in k8s/) |
 | `AgentLLMConfig` | config/llm_config.py |
 | `CapabilityResourceRegistry` types | registration.py |
 
@@ -154,6 +154,35 @@ pytest tests/ -v
 python scripts/diagnostics/verify_configuration.py
 ```
 
+## Cleanup Update (2026-01-23)
+
+Following the initial audit, a k8s-aligned cleanup was performed:
+
+### Removed/Simplified
+
+| File | Change | Reason |
+|------|--------|--------|
+| `config/modes.py` | Deleted | Modes are now PipelineConfig variants in `pipeline_config.py` |
+| `config/deployment.py` | Simplified | Functions extracted to `k8s/` manifests; only `CODE_ANALYSIS_AGENTS` remains |
+| `tests/unit/config/test_deployment.py` | Deleted | Tested Python functions now in k8s manifests |
+| `models/types.py` | Trimmed | Unused Pydantic models removed; kept `TargetKind`, `Operation` |
+
+### Added
+
+| File | Purpose |
+|------|---------|
+| `k8s/base/` | Single-node Kubernetes manifests |
+| `k8s/overlays/distributed/` | Multi-node deployment manifests |
+| `pipeline_config.py` | Added `PIPELINE_MODES`, `get_pipeline_for_mode()` |
+
+### Updated Imports
+
+- `NodeProfile` no longer imported from `jeeves_protocols` in capability code
+- `PROFILES` dict removed from capability (now in k8s manifests)
+- Validation wired into `synthesizer_pre_process` via `contracts.validation`
+
+---
+
 ## Conclusion
 
 The capability layer is **correctly wired** according to the Capability Layer Integration Guide. The import hierarchy respects the constitutional boundaries:
@@ -164,3 +193,7 @@ The capability layer is **correctly wired** according to the Capability Layer In
 - L3 (capability) - Uses L0 and L2 only in core code
 
 The capability is ready for layer extraction and can be deployed as a standalone package.
+
+---
+
+*Last Updated: 2026-01-23*

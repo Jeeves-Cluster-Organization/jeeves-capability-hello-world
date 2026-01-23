@@ -27,6 +27,7 @@ def create_code_analysis_service(
     runtime: Any,
     database_url: Optional[str] = None,
     control_tower: Optional[Any] = None,
+    mode: str = "full",
 ) -> "CodeAnalysisService":
     """
     Factory function to create a CodeAnalysisService instance.
@@ -40,6 +41,9 @@ def create_code_analysis_service(
                  persistence, and settings
         database_url: Optional database URL for checkpointing
         control_tower: Optional Control Tower instance for resource tracking
+        mode: Pipeline mode ("standard" or "full"). Default is "full".
+              - "standard": Faster, skips critic validation
+              - "full": Thorough, includes critic validation
 
     Returns:
         Configured CodeAnalysisService instance
@@ -58,10 +62,12 @@ def create_code_analysis_service(
         service = create_code_analysis_service(
             runtime=runtime,
             database_url=database_url,
+            mode="full",  # or "standard" for faster responses
         )
         ```
     """
     from orchestration.service import CodeAnalysisService
+    from pipeline_config import get_pipeline_for_mode
 
     logger = get_logger()
 
@@ -73,6 +79,9 @@ def create_code_analysis_service(
     # Extract use_mock from runtime (MissionRuntime.use_mock property)
     use_mock = getattr(runtime, 'use_mock', False)
 
+    # Get pipeline config for the specified mode
+    pipeline_config = get_pipeline_for_mode(mode)
+
     logger.info(
         "creating_code_analysis_service",
         has_llm_factory=llm_provider_factory is not None,
@@ -80,6 +89,8 @@ def create_code_analysis_service(
         has_persistence=persistence is not None,
         has_control_tower=control_tower is not None,
         use_mock=use_mock,
+        pipeline_mode=mode,
+        pipeline_name=pipeline_config.name,
     )
 
     return CodeAnalysisService(
@@ -89,6 +100,7 @@ def create_code_analysis_service(
         persistence=persistence,
         control_tower=control_tower,
         use_mock=use_mock,
+        pipeline_config=pipeline_config,
     )
 
 

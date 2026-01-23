@@ -1,0 +1,40 @@
+# Services for Jeeves Code Analysis
+apiVersion: v1
+kind: Service
+metadata:
+  name: jeeves-orchestrator
+  labels:
+    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/component: orchestrator
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: grpc
+      protocol: TCP
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/component: orchestrator
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llama-server
+  labels:
+    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/component: llm
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/component: llm

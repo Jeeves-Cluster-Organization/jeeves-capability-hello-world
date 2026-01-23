@@ -128,14 +128,25 @@ def synthesizer_pre_process(envelope: Any, agent: Any = None) -> Any:
     """
     from agents.context_builder import build_synthesizer_context
     from agents.summarizer import summarize_execution_results, extract_citations_from_results
+    from contracts.validation import validate_and_log
     import json
+    import structlog
 
+    logger = structlog.get_logger()
     intent_output = envelope.outputs.get("intent", {})
     execution = envelope.outputs.get("execution", {})
 
+    # Validate tool results before LLM sees them (prevents hallucinations from malformed outputs)
+    raw_results = execution.get("results", [])
+    if isinstance(raw_results, list):
+        for result in raw_results:
+            if isinstance(result, dict):
+                tool_name = result.get("tool") or result.get("tool_name")
+                if tool_name:
+                    validate_and_log(tool_name, result, logger)
+
     # Summarize raw execution results to prevent prompt explosion
     # Raw results can be 1-2M chars; this caps to manageable size
-    raw_results = execution.get("results", [])
     if isinstance(raw_results, list):
         summarized = summarize_execution_results(raw_results)
         execution_results_str = json.dumps(summarized, indent=2, default=str)
@@ -1199,13 +1210,160 @@ CODE_ANALYSIS_PIPELINE = PipelineConfig(
 )
 
 
+# ─────────────────────────────────────────────────────────────────
+# PIPELINE MODE VARIANTS
+# ─────────────────────────────────────────────────────────────────
+# Per k8s-aligned architecture: PipelineConfig IS the mode.
+# Different modes = different pipeline configurations.
+
+# Standard mode: faster, skips critic validation
+# Use for simple queries where quick responses are preferred
+CODE_ANALYSIS_PIPELINE_STANDARD = PipelineConfig(
+    name="code_analysis_standard",
+    max_iterations=3,  # Fewer iterations
+    max_llm_calls=20,  # Fewer LLM calls
+    max_agent_hops=30,
+    enable_arbiter=False,
+    clarification_resume_stage="intent",
+    confirmation_resume_stage="executor",
+    agents=[
+        # Perception (same as full)
+        AgentConfig(
+            name="perception",
+            stage_order=0,
+            has_llm=False,
+            has_tools=False,
+            tool_access=ToolAccess.READ,
+            output_key="perception",
+            pre_process=perception_pre_process,
+            mock_handler=perception_mock_handler,
+            default_next="intent",
+        ),
+        # Intent (same as full)
+        AgentConfig(
+            name="intent",
+            stage_order=1,
+            has_llm=True,
+            model_role="planner",
+            prompt_key="code_analysis.intent",
+            output_key="intent",
+            required_output_fields=["intent", "goals", "search_targets"],
+            max_tokens=8000,
+            temperature=0.3,
+            pre_process=intent_pre_process,
+            mock_handler=intent_mock_handler,
+            post_process=intent_post_process,
+            routing_rules=[
+                RoutingRule("clarification_needed", True, "clarification"),
+            ],
+            default_next="planner",
+        ),
+        # Planner (same as full)
+        AgentConfig(
+            name="planner",
+            stage_order=2,
+            has_llm=True,
+            model_role="planner",
+            prompt_key="code_analysis.planner",
+            tool_access=ToolAccess.READ,
+            output_key="plan",
+            required_output_fields=["steps"],
+            max_tokens=8000,
+            temperature=0.3,
+            pre_process=planner_pre_process,
+            mock_handler=planner_mock_handler,
+            default_next="executor",
+        ),
+        # Executor (same as full)
+        AgentConfig(
+            name="executor",
+            stage_order=3,
+            has_llm=False,
+            has_tools=True,
+            tool_access=ToolAccess.ALL,
+            output_key="execution",
+            pre_process=executor_pre_process,
+            post_process=executor_post_process,
+            default_next="synthesizer",
+        ),
+        # Synthesizer (same as full)
+        AgentConfig(
+            name="synthesizer",
+            stage_order=4,
+            has_llm=True,
+            model_role="planner",
+            prompt_key="code_analysis.synthesizer",
+            output_key="synthesizer",
+            required_output_fields=["findings", "goal_status"],
+            max_tokens=8000,
+            temperature=0.3,
+            pre_process=synthesizer_pre_process,
+            mock_handler=synthesizer_mock_handler,
+            post_process=synthesizer_post_process,
+            default_next="integration",  # Skip critic in standard mode
+        ),
+        # Integration (modified - no critic feedback in standard mode)
+        AgentConfig(
+            name="integration",
+            stage_order=5,  # Stage 5 (not 6) since critic is skipped
+            has_llm=True,
+            model_role="planner",
+            prompt_key="code_analysis.integration",
+            tool_access=ToolAccess.WRITE,
+            output_key="integration",
+            required_output_fields=["action"],
+            max_tokens=8000,
+            temperature=0.3,
+            pre_process=integration_pre_process,
+            mock_handler=integration_mock_handler,
+            post_process=integration_post_process,
+            routing_rules=[
+                RoutingRule("action", "reintent", "intent"),
+            ],
+            default_next="end",
+        ),
+    ],
+)
+
+# Full mode: thorough, with critic validation
+# This is the default CODE_ANALYSIS_PIPELINE
+CODE_ANALYSIS_PIPELINE_FULL = CODE_ANALYSIS_PIPELINE
+
+# Mode registry
+PIPELINE_MODES: Dict[str, PipelineConfig] = {
+    "standard": CODE_ANALYSIS_PIPELINE_STANDARD,
+    "full": CODE_ANALYSIS_PIPELINE_FULL,
+}
+
+
+def get_pipeline_for_mode(mode: str = "full") -> PipelineConfig:
+    """Get pipeline configuration for a specific mode.
+
+    Args:
+        mode: Pipeline mode ("standard" or "full")
+
+    Returns:
+        PipelineConfig for the specified mode
+
+    Raises:
+        ValueError: If mode is not recognized
+    """
+    if mode not in PIPELINE_MODES:
+        raise ValueError(f"Unknown pipeline mode: {mode}. Valid modes: {list(PIPELINE_MODES.keys())}")
+    return PIPELINE_MODES[mode]
+
+
 def get_code_analysis_pipeline() -> PipelineConfig:
-    """Get the code analysis pipeline configuration."""
+    """Get the default (full) code analysis pipeline configuration."""
     return CODE_ANALYSIS_PIPELINE
 
 
 __all__ = [
     "CODE_ANALYSIS_PIPELINE",
+    "CODE_ANALYSIS_PIPELINE_STANDARD",
+    "CODE_ANALYSIS_PIPELINE_FULL",
+    "PIPELINE_MODES",
     "CodeAnalysisError",
     "get_code_analysis_pipeline",
+    "get_pipeline_for_mode",
 ]
