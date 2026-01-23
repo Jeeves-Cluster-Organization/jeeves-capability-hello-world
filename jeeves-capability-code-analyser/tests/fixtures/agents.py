@@ -2,7 +2,7 @@
 
 Centralized Architecture (v4.0):
 - No concrete agent fixtures (agents are config-driven)
-- Provides PipelineConfig and UnifiedRuntime fixtures
+- Provides PipelineConfig and Runtime fixtures
 - Mock services remain for isolation
 """
 

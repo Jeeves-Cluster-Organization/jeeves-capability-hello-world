@@ -17,7 +17,7 @@ Architecture:
 - No concrete agent classes (all via AgentConfig)
 - GenericEnvelope with dynamic outputs
 - Hooks define capability-specific logic
-- UnifiedRuntime executes pipeline from config
+- Runtime (v4.0) executes pipeline from config
 """
 
 # Context building functions (refactored from ContextBuilder class)
