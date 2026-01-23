@@ -2,7 +2,7 @@
 Code Analysis Orchestration Package.
 
 Centralized Architecture (v4.0):
-- CodeAnalysisService wraps UnifiedRuntime + CODE_ANALYSIS_PIPELINE
+- CodeAnalysisService wraps Runtime + CODE_ANALYSIS_PIPELINE
 - CodeAnalysisResult is the output container
 - Factory functions in wiring.py for proper dependency injection
 
