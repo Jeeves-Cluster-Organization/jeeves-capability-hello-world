@@ -2,7 +2,7 @@
 Code Analysis Pipeline Configuration - Declarative agent definitions.
 
 This replaces the 7 concrete agent classes with configuration-driven definitions.
-The UnifiedRuntime uses this config to execute the pipeline.
+The Runtime (v4.0) uses this config to execute the pipeline.
 
 Migration:
 - CodeAnalysisPerceptionAgent → AgentConfig(name="perception", ...)

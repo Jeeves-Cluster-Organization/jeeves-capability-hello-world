@@ -1,8 +1,8 @@
 """
-CodeAnalysisService - Clean wrapper for UnifiedRuntime.
+CodeAnalysisService - Clean wrapper for Runtime.
 
 Provides the same interface as the old CodeAnalysisFlowService but uses
-the centralized architecture (v4.0) with UnifiedRuntime + PipelineConfig.
+the centralized architecture (v4.0) with Runtime + PipelineConfig.
 
 Includes Control Tower dispatch handler for kernel-level orchestration.
 
@@ -17,7 +17,7 @@ from typing import Any, AsyncIterator, Callable, Dict, Optional, TYPE_CHECKING
 from uuid import uuid4
 
 from jeeves_mission_system.contracts_core import (
-    UnifiedRuntime,
+    Runtime,
     create_runtime_from_config,
     create_generic_envelope,
     GenericEnvelope,
@@ -40,10 +40,10 @@ DispatchHandler = Callable[[GenericEnvelope], "asyncio.Future[GenericEnvelope]"]
 
 class CodeAnalysisService:
     """
-    Service wrapper for UnifiedRuntime executing code analysis pipeline.
+    Service wrapper for Runtime executing code analysis pipeline.
 
     This replaces the old CodeAnalysisFlowService which used concrete agent
-    classes. Now uses configuration-driven UnifiedRuntime.
+    classes. Now uses configuration-driven Runtime (v4.0).
 
     Resource Tracking:
     - When control_tower is provided, records all resource usage
