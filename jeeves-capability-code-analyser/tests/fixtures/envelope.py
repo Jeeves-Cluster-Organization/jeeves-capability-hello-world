@@ -12,7 +12,6 @@ from typing import Optional, Dict, Any
 from jeeves_protocols import (
     GenericEnvelope,
     create_generic_envelope,
-    CriticVerdict,
 )
 
 
