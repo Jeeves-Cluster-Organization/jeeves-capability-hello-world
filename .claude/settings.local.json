@@ -26,7 +26,16 @@
       "Bash(git checkout:*)",
       "Bash(git log:*)",
       "Bash(pip install:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git pull:*)",
+      "Bash(git rebase:*)",
+      "Bash(git fetch:*)",
+      "Bash(git push:*)",
+      "Bash(git submodule:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

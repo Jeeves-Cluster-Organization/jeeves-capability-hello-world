@@ -17,6 +17,8 @@ htmlcov/
 setup_report_*.txt
 simulation_output*.txt
 test_results.txt
+*test-results*.txt
+*test*output*.txt
 debug_messages.py
 test_validator_serialization.py
 
