@@ -5,7 +5,17 @@ import pytest
 
 from airframe.adapters.llama_server import LlamaServerAdapter
 from airframe.endpoints import EndpointSpec, BackendKind
-from airframe.types import InferenceRequest, Message, ErrorCategory, StreamEventType
+from airframe.airframe_types import InferenceRequest, Message, ErrorCategory, StreamEventType
+
+
+class MockTimeout:
+    """Mock httpx.Timeout for testing."""
+    def __init__(self, timeout=None, connect=None, read=None, write=None, pool=None):
+        self.timeout = timeout
+        self.connect = connect
+        self.read = read
+        self.write = write
+        self.pool = pool
 
 
 class ErrorStreamResponse:
@@ -40,7 +50,7 @@ async def test_backend_http_error_emits_error_event(monkeypatch):
     # Patch httpx.AsyncClient inside adapter module
     import airframe.adapters.llama_server as ls
 
-    monkeypatch.setattr(ls, "httpx", types.SimpleNamespace(AsyncClient=ErrorClient))
+    monkeypatch.setattr(ls, "httpx", types.SimpleNamespace(AsyncClient=ErrorClient, Timeout=MockTimeout))
 
     adapter = LlamaServerAdapter(timeout=1, max_retries=1)
     endpoint = EndpointSpec(

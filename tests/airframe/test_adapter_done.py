@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from airframe.adapters.llama_server import LlamaServerAdapter
-from airframe.types import StreamEventType
+from airframe.airframe_types import StreamEventType
 
 
 class FakeResponse:

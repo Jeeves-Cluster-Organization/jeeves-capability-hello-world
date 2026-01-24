@@ -4,7 +4,7 @@ import pytest
 
 from airframe.adapters.openai_chat import OpenAIChatAdapter, _categorize_exception, _parse_sse_lines
 from airframe.endpoints import EndpointSpec, BackendKind
-from airframe.types import InferenceRequest, Message, ErrorCategory
+from airframe.airframe_types import InferenceRequest, Message, ErrorCategory
 
 
 class DummyTimeoutError(Exception):
@@ -79,7 +79,7 @@ def test_build_payload_no_model():
 
 
 def test_build_payload_with_tools():
-    from airframe.types import ToolSpec
+    from airframe.airframe_types import ToolSpec
 
     adapter = OpenAIChatAdapter()
     request = InferenceRequest(

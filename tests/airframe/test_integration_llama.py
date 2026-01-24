@@ -5,7 +5,7 @@ import pytest
 
 from airframe.adapters.llama_server import LlamaServerAdapter
 from airframe.endpoints import EndpointSpec, BackendKind
-from airframe.types import InferenceRequest, Message, StreamEventType
+from airframe.airframe_types import InferenceRequest, Message, StreamEventType
 
 
 pytestmark = pytest.mark.skipif(

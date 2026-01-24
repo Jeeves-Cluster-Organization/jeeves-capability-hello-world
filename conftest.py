@@ -184,22 +184,6 @@ if jeeves_core_path.exists() and str(jeeves_core_path) not in sys.path:
     sys.path.insert(0, str(jeeves_core_path))
 
 
-def pytest_addoption(parser):
-    """Add custom command-line options for snapshot testing."""
-    parser.addoption(
-        "--snapshot-update",
-        action="store_true",
-        default=False,
-        help="Update baseline snapshots instead of comparing"
-    )
-    parser.addoption(
-        "--snapshot-show-diff",
-        action="store_true",
-        default=False,
-        help="Show detailed diff for snapshot mismatches"
-    )
-
-
 def pytest_configure(config):
     """Configure pytest with custom markers."""
     config.addinivalue_line(

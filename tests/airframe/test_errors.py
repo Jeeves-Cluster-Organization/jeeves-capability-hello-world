@@ -1,5 +1,5 @@
 from airframe.adapters.llama_server import _categorize_exception
-from airframe.types import ErrorCategory
+from airframe.airframe_types import ErrorCategory
 
 
 class DummyTimeoutError(Exception):
