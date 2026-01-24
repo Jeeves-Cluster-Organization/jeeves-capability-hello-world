@@ -174,6 +174,27 @@ class CodeAnalysisServer:
             use_mock=use_mock,
         )
 
+        # Optional: route LLM calls through jeeves-airframe (stream-first adapter layer)
+        from airframe_settings import is_airframe_enabled, is_airframe_strict
+        airframe_enabled = is_airframe_enabled()
+        if airframe_enabled and not use_mock:
+            try:
+                from airframe_bridge import create_airframe_registry_from_env, create_airframe_llm_factory
+
+                registry = create_airframe_registry_from_env()
+                runtime.llm_provider_factory = create_airframe_llm_factory(registry)
+                self._logger.info("airframe_enabled", endpoint_count=len(registry.list_endpoints()))
+            except Exception as e:
+                self._logger.warning(
+                    "airframe_init_failed_falling_back",
+                    entrypoint="server",
+                    airframe_enabled=airframe_enabled,
+                    exception_class=type(e).__name__,
+                    exception_message=str(e),
+                )
+                if is_airframe_strict():
+                    raise
+
         # Create code analysis service using capability's own wiring
         # PIPELINE_MODE env var controls speed/quality tradeoff:
         #   "full" (default): Thorough with critic validation

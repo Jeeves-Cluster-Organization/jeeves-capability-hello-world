@@ -167,9 +167,33 @@ def create_handler(service=None):
         from orchestration.wiring import create_code_analysis_service_from_components
         from jeeves_avionics.wiring import create_tool_executor
         from jeeves_avionics.llm.factory import create_llm_provider_factory
+        import os
+
+        # Optional airframe path for Chainlit/CommBus runs
+        from airframe_settings import is_airframe_enabled, is_airframe_strict
+        airframe_enabled = is_airframe_enabled()
+        if airframe_enabled:
+            try:
+                from airframe_bridge import create_airframe_registry_from_env, create_airframe_llm_factory
+                registry = create_airframe_registry_from_env()
+                llm_factory = create_airframe_llm_factory(registry)
+                logger.info("airframe_enabled_console", endpoint_count=len(registry.list_endpoints()))
+            except Exception as e:
+                logger.warning(
+                    "airframe_init_failed_falling_back",
+                    entrypoint="chainlit",
+                    airframe_enabled=airframe_enabled,
+                    exception_class=type(e).__name__,
+                    exception_message=str(e),
+                )
+                if is_airframe_strict():
+                    raise
+                llm_factory = create_llm_provider_factory()
+        else:
+            llm_factory = create_llm_provider_factory()
 
         service = create_code_analysis_service_from_components(
-            llm_provider_factory=create_llm_provider_factory(),
+            llm_provider_factory=llm_factory,
             tool_executor=create_tool_executor(),
             use_mock=False,
         )

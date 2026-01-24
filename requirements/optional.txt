@@ -19,3 +19,7 @@ anthropic>=0.18.0      # Anthropic API (Claude)
 
 # Monitoring (optional - graceful fallback in common/metrics.py)
 prometheus-client==0.19.0
+
+# Kubernetes (optional - airframe.k8s)
+kubernetes==29.0.0
+PyYAML==6.0.1

@@ -20,7 +20,7 @@ testcontainers[postgres]>=3.7.0
 
 # HTTP/WebSocket clients for integration tests
 websockets>=12.0
-httpx>=0.25.0  # Modern HTTP client for async testing
+httpx==0.27.2  # Modern HTTP client for async testing
 aiofiles>=23.2.0  # Async file operations
 
 # Mocking and fixtures
