@@ -8,11 +8,14 @@ Centralized Architecture (v4.0):
 
 import pytest
 from typing import Optional, Dict, Any
+from uuid import uuid4
 
 from jeeves_protocols import (
     GenericEnvelope,
     create_generic_envelope,
+    RequestContext,
 )
+from registration import CAPABILITY_ID
 
 
 # Test constants
@@ -36,11 +39,15 @@ def envelope_factory():
         session_id: str = TEST_SESSION_ID,
         request_id: Optional[str] = None,
     ) -> GenericEnvelope:
-        return create_generic_envelope(
-            user_message=user_message,
-            user_id=user_id,
+        request_context = RequestContext(
+            request_id=request_id or f"req_{uuid4().hex[:16]}",
+            capability=CAPABILITY_ID,
             session_id=session_id,
-            request_id=request_id,
+            user_id=user_id,
+        )
+        return create_generic_envelope(
+            raw_input=user_message,
+            request_context=request_context,
         )
 
     return _create

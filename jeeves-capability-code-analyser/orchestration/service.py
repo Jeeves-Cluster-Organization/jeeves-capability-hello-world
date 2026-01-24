@@ -27,9 +27,11 @@ from jeeves_mission_system.contracts_core import (
     ToolExecutorProtocol,
     LLMProviderProtocol,
 )
+from jeeves_protocols import RequestContext
 from jeeves_mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
 from pipeline_config import CODE_ANALYSIS_PIPELINE, get_pipeline_for_mode, PipelineConfig
 from orchestration.types import CodeAnalysisResult
+from registration import CAPABILITY_ID
 
 if TYPE_CHECKING:
     from jeeves_control_tower.protocols import ControlTowerProtocol
@@ -158,12 +160,16 @@ class CodeAnalysisService:
             AgentEvent or CodeAnalysisResult instances
         """
         request_id = f"req_{uuid4().hex[:16]}"
+        request_context = RequestContext(
+            request_id=request_id,
+            capability=CAPABILITY_ID,
+            session_id=session_id,
+            user_id=user_id,
+        )
 
         envelope = create_generic_envelope(
             raw_input=query,
-            user_id=user_id,
-            session_id=session_id,
-            request_id=request_id,
+            request_context=request_context,
             metadata=metadata,
         )
 
@@ -182,9 +188,7 @@ class CodeAnalysisService:
 
         # Create event orchestrator for streaming (no gateway injection needed)
         orchestrator = create_event_orchestrator(
-            session_id=session_id,
-            request_id=request_id,
-            user_id=user_id,
+            request_context=request_context,
             enable_streaming=True,
             enable_persistence=False,
         )
@@ -196,6 +200,7 @@ class CodeAnalysisService:
         yield AgentEvent(
             event_type=AgentEventType.FLOW_STARTED,
             agent_name="orchestrator",
+            request_context=request_context,
             request_id=request_id,
             session_id=session_id,
             timestamp_ms=int(time.time() * 1000),
@@ -284,7 +289,7 @@ class CodeAnalysisService:
         envelope_data = state.get("envelope")
         if not envelope_data:
             raise ValueError(f"Invalid thread state: missing envelope for {thread_id}")
-        envelope = GenericEnvelope.model_validate(envelope_data)
+        envelope = GenericEnvelope.from_dict(envelope_data)
 
         # Update with clarification
         envelope.interrupt_pending = False

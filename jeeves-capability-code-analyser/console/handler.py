@@ -77,7 +77,7 @@ class ConsoleHandler:
             query=query.query,
         ):
             if isinstance(event, AgentEvent):
-                console_event = self._map_agent_event(event, query.request_id, query.session_id)
+                console_event = self._map_agent_event(event)
                 await self.bus.publish(console_event)
             else:
                 # CodeAnalysisResult
@@ -88,7 +88,7 @@ class ConsoleHandler:
             if result.status == "clarification_needed":
                 await self.bus.publish(ConsoleEvent(
                     event_type="console.clarification",
-                    request_id=query.request_id,
+                    request_id=result.request_id or "",
                     session_id=query.session_id,
                     content=result.clarification_question,
                     metadata={"thread_id": result.thread_id},
@@ -96,7 +96,7 @@ class ConsoleHandler:
             elif result.status == "complete":
                 await self.bus.publish(ConsoleEvent(
                     event_type="console.response",
-                    request_id=query.request_id,
+                    request_id=result.request_id or "",
                     session_id=query.session_id,
                     content=result.response,
                     metadata={
@@ -107,7 +107,7 @@ class ConsoleHandler:
             elif result.status == "error":
                 await self.bus.publish(ConsoleEvent(
                     event_type="console.error",
-                    request_id=query.request_id,
+                    request_id=result.request_id or "",
                     session_id=query.session_id,
                     content=result.error,
                 ))
@@ -142,19 +142,20 @@ class ConsoleHandler:
             ],
         }
 
-    def _map_agent_event(
-        self, event: AgentEvent, request_id: str, session_id: str
-    ) -> ConsoleEvent:
+    def _map_agent_event(self, event: AgentEvent) -> ConsoleEvent:
         """Map AgentEvent to ConsoleEvent."""
         event_type = _EVENT_TYPE_MAP.get(event.event_type, f"console.{event.event_type.value}")
 
         return ConsoleEvent(
             event_type=event_type,
-            request_id=request_id,
-            session_id=session_id,
+            request_id=event.request_id,
+            session_id=event.session_id,
             agent_name=event.agent_name,
             content=event.payload.get("summary") or event.payload.get("output"),
-            metadata=event.payload,
+            metadata={
+                **event.payload,
+                "request_context": event.request_context.to_dict(),
+            },
         )
 
 
