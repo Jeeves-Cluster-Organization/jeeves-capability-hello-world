@@ -166,8 +166,7 @@ def create_handler(service=None):
     """
     if service is None:
         from orchestration.wiring import create_code_analysis_service_from_components
-        from jeeves_avionics.wiring import create_tool_executor
-        from jeeves_avionics.llm.factory import create_llm_provider_factory
+        from jeeves_mission_system.adapters import create_tool_executor, create_llm_provider_factory
         import os
 
         # Optional airframe path for Chainlit/CommBus runs
