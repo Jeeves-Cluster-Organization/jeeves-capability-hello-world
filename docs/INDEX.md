@@ -11,6 +11,7 @@
 | [CONSTITUTION.md](CONSTITUTION.md) | Capability layer constitution and governing rules |
 | [CAPABILITY_INTEGRATION_GUIDE.md](CAPABILITY_INTEGRATION_GUIDE.md) | How to integrate with jeeves-core submodule |
 | [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md) | Runtime contract for jeeves-core capabilities |
+| [AIRFRAME.md](AIRFRAME.md) | Airframe LLM adapter infrastructure documentation |
 | [envelope_json_schema.md](envelope_json_schema.md) | JSON schema for envelope state exchange |
 
 ---
@@ -29,6 +30,9 @@
 | Document | Purpose |
 |----------|---------|
 | [CAPABILITY_LAYER_AUDIT_REPORT.md](CAPABILITY_LAYER_AUDIT_REPORT.md) | Import wiring and compatibility audit |
+| [analysis-reports/COVERAGE_ANALYSIS.md](analysis-reports/COVERAGE_ANALYSIS.md) | Code coverage analysis report |
+| [analysis-reports/DOCUMENTATION_AUDIT_2026-01-23.md](analysis-reports/DOCUMENTATION_AUDIT_2026-01-23.md) | Documentation audit report |
+| [analysis-reports/JEEVES_CORE_ANALYSIS.md](analysis-reports/JEEVES_CORE_ANALYSIS.md) | jeeves-core submodule analysis |
 
 ---
 

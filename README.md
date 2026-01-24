@@ -101,7 +101,12 @@ jeeves-capability-code-analysis/
 |   +-- prompts/                        # LLM prompts
 |   |   +-- code_analysis.py            # Code analysis prompts
 |   |
-|   +-- tests/                          # Test suite
+|   +-- console/                        # Console layer (UI abstraction)
+|   |   +-- handler.py                  # CommBus handler for service
+|   |   +-- messages.py                 # CommBus message types
+|   |   +-- adapters/                   # UI-specific adapters
+|   |
+|   +-- tests/                          # Unit tests
 |       +-- unit/                       # Unit tests
 |       +-- fixtures/                   # Test fixtures and mocks
 |
@@ -109,13 +114,6 @@ jeeves-capability-code-analysis/
 |   +-- integration/                    # Service integration tests
 |   +-- deployment/                     # Docker infrastructure tests
 |   +-- ui_ux/                          # API endpoint tests
-|
-|   +-- console/                        # Console layer (UI abstraction)
-|       +-- __init__.py                 # Console layer exports
-|       +-- messages.py                 # CommBus message types
-|       +-- handler.py                  # CommBus handler for service
-|       +-- adapters/                   # UI-specific adapters
-|           +-- chainlit_adapter.py     # Chainlit UI adapter
 |
 +-- chainlit_app.py                     # Chainlit entry point
 +-- .chainlit/                          # Chainlit configuration
@@ -128,12 +126,20 @@ jeeves-capability-code-analysis/
 |   +-- overlays/distributed/           # Multi-node deployment
 +-- requirements/                       # Python dependencies
 +-- scripts/                            # Utility scripts
++-- airframe/                           # LLM adapter infrastructure (git submodule)
 +-- jeeves-core/                        # Core infrastructure (git submodule)
 ```
 
 ## Dependencies
 
-This capability depends on the `jeeves-core` submodule which provides:
+This capability depends on two git submodules:
+
+**`airframe`** - LLM adapter infrastructure:
+- Endpoint management and backend adapters
+- Health monitoring and observability hooks
+- Stream-first inference contract
+
+**`jeeves-core`** - Core infrastructure:
 - `jeeves_protocols` - Protocol definitions and type bridge
 - `jeeves_mission_system` - Orchestration primitives and contracts
 - `jeeves_avionics` - Infrastructure adapters (LLM, database, gateway)

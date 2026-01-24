@@ -243,10 +243,10 @@ runtime.llm_provider_factory = llm_factory
 python -m airframe.selftest
 
 # Unit tests
-pytest tests/airframe -v
+pytest airframe/tests -v
 
 # Integration test (requires llama-server)
-AIRFRAME_INTEGRATION=1 pytest tests/airframe/test_integration_llama.py -v
+AIRFRAME_INTEGRATION=1 pytest airframe/tests/test_integration_llama.py -v
 ```
 
 ### Docker
