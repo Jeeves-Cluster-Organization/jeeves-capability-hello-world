@@ -5,6 +5,7 @@ This keeps capability ownership of selection policy while reusing the
 jeezes-airframe platform for endpoint representation and invocation.
 """
 
+import os
 from typing import Callable, Optional
 
 from airframe import (

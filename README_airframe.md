@@ -1,65 +1,289 @@
 # jeeves-airframe (embedded)
 
-This repository now contains a minimal **airframe** package that factors
+This repository contains an embedded **airframe** package that factors
 inference-platform concerns away from capabilities. Airframe owns endpoint
 representation, backend adapters, health signals, observability hooks, and a
 stable stream-first inference contract. Capabilities keep control of agent
 logic, prompts, pipelines, tool execution, and endpoint selection policy.
 
-## Integrating an existing capability
+## Quick Start
 
-1) Build an `InferenceRequest` with your chat messages (and optional tools/model):
 ```python
-from airframe.types import InferenceRequest, Message
-req = InferenceRequest(messages=[Message(role="user", content="Hello")])
+from airframe import (
+    AirframeClient,
+    StaticRegistry,
+    EndpointSpec,
+    BackendKind,
+    InferenceRequest,
+    Message,
+    StreamEventType,
+)
+
+# 1. Define endpoint(s)
+endpoint = EndpointSpec(
+    name="local-llama",
+    base_url="http://localhost:8080",
+    backend_kind=BackendKind.LLAMA_SERVER,
+    api_type="native",  # or "openai" for /v1/completions
+)
+
+# 2. Create registry and client
+registry = StaticRegistry([endpoint])
+client = AirframeClient(registry)
+
+# 3. Build request
+request = InferenceRequest(
+    messages=[Message(role="user", content="Hello, world!")],
+    temperature=0.7,
+    max_tokens=512,
+    stream=True,
+)
+
+# 4. Stream inference
+async for event in client.stream_infer(endpoint, request):
+    if event.type == StreamEventType.TOKEN:
+        print(event.content, end="", flush=True)
+    elif event.type == StreamEventType.ERROR:
+        print(f"Error: {event.error}")
+    elif event.type == StreamEventType.DONE:
+        break
 ```
 
-2) Apply your own endpoint-selection policy using the registry:
+## Supported Backends
+
+| Backend Kind | Adapter | Status | Notes |
+|--------------|---------|--------|-------|
+| `LLAMA_SERVER` | `LlamaServerAdapter` | Full | llama.cpp server (native or OpenAI-compat mode) |
+| `OPENAI_CHAT` | `OpenAIChatAdapter` | Full | OpenAI, Azure OpenAI, vLLM, LocalAI |
+| `ANTHROPIC_MESSAGES` | — | Placeholder | Not yet implemented |
+
+### LlamaServerAdapter
+
+Supports llama.cpp server with two API modes:
+
+- **Native mode** (`api_type="native"`): Uses `/completion` endpoint with llama.cpp-specific parameters
+- **OpenAI mode** (`api_type="openai"`): Uses `/v1/completions` endpoint
+
 ```python
-from airframe.registry import StaticRegistry
-endpoint = StaticRegistry([endpoint_spec]).list_endpoints()[0]
+endpoint = EndpointSpec(
+    name="llama",
+    base_url="http://localhost:8080",
+    backend_kind=BackendKind.LLAMA_SERVER,
+    api_type="native",  # or "openai"
+)
 ```
 
-3) Invoke streaming inference:
+### OpenAIChatAdapter
+
+Supports OpenAI Chat Completions API and compatible endpoints:
+
 ```python
-from airframe.client import AirframeClient
-client = AirframeClient(StaticRegistry([endpoint]))
-async for event in client.stream_infer(endpoint, req):
-    ...
+endpoint = EndpointSpec(
+    name="openai",
+    base_url="https://api.openai.com",
+    backend_kind=BackendKind.OPENAI_CHAT,
+    metadata={"api_key": "sk-..."},  # API key in metadata
+)
+
+# For Azure OpenAI
+endpoint = EndpointSpec(
+    name="azure",
+    base_url="https://your-resource.openai.azure.com",
+    backend_kind=BackendKind.OPENAI_CHAT,
+    metadata={"azure_api_key": "..."},  # Azure uses different header
+)
 ```
 
-Airframe never decides which endpoint to use; it only provides watchable
-registries and normalized adapters.
+## Health Checking
 
-## Kubernetes (optional)
+Airframe provides HTTP-based health probing for endpoints:
 
-`K8sRegistry` is an optional, read-only registry that loads endpoint specs from
-a single ConfigMap key. JSON is required; YAML is supported only if PyYAML is installed.
-`watch()` requires an active asyncio event loop.
-Import via `from airframe.k8s import K8sRegistry`.
+```python
+from airframe import StaticRegistry, HttpHealthProbe
 
-Fixed schema:
-- ConfigMap `data["endpoints"]` contains a JSON string representing a list of EndpointSpec dicts.
+# Create registry with health probe
+probe = HttpHealthProbe(timeout=5.0)
+registry = StaticRegistry([endpoint], health_probe=probe)
 
-Optional dependency:
-- Install with `airframe[k8s]` (when packaged) to pull in the Kubernetes client.
-- If Kubernetes deps are absent, `K8sRegistry` raises `ImportError` on init with a clear message.
+# One-time health check
+await registry.check_health()
 
-## Sanity Checks
+# Get health state
+health = registry.get_health("local-llama")
+print(health.status)  # "healthy", "degraded", "unhealthy", or "unknown"
 
-- `python -m airframe.selftest` — should print "airframe selftest: ok" if httpx is installed and imports succeed.
-- `pytest tests/airframe` — unit suite should pass (SSE parsing, error categorization, registry watch).
-- `AIRFRAME_ENABLED=true python -m airframe.selftest` — confirms env parsing does not raise; no external network calls made.
-- Default: `AIRFRAME_ENABLED` is treated as true unless set to `0/false/no`; fallback to legacy provider is logged with warning if airframe init fails.
-- Docker compose: `docker compose -f docker/docker-compose.yml run --rm orchestrator python -m airframe.selftest` — same check inside the container image.
-- Local python: `AIRFRAME_ENABLED=true python -m airframe.selftest` — verifies the bridge/env path without containers.
-- Integration (opt-in): `AIRFRAME_INTEGRATION=1 pytest tests/airframe/test_integration_llama.py` — exercises real llama-server streaming if available.
+# List only healthy endpoints
+healthy = registry.list_healthy_endpoints()
 
-## Hardening Checks
+# Background health monitoring (every 30 seconds)
+handle = registry.start_health_monitor(interval=30.0)
+# ... later ...
+registry.stop_health_monitor()
+```
 
-- `pytest tests/airframe` — should pass deterministically; includes import, SSE, cancellation, and k8s registry tests.
-- `python -m airframe.selftest` — prints versions for httpx and optional k8s deps; no network calls.
-- `AIRFRAME_INTEGRATION=1 pytest tests/airframe/test_integration_llama.py` — optional real llama-server streaming check.
-- Note: `from airframe.k8s import K8sRegistry` raises ImportError when k8s deps are not installed.
-- Note: `watch()` requires an active asyncio loop.
-- Optional: `AIRFRAME_STRICT=true` prevents fallback when airframe init fails (useful for CI/staging).
+Health check paths per backend:
+- `LLAMA_SERVER`: `GET /health`
+- `OPENAI_CHAT`: `GET /v1/models`
+- `ANTHROPIC_MESSAGES`: `HEAD /v1/messages`
+
+## Endpoint Registry
+
+### StaticRegistry
+
+For fixed endpoint configurations:
+
+```python
+from airframe import StaticRegistry, EndpointSpec, BackendKind
+
+endpoints = [
+    EndpointSpec(name="gpu-1", base_url="http://gpu1:8080", backend_kind=BackendKind.LLAMA_SERVER),
+    EndpointSpec(name="gpu-2", base_url="http://gpu2:8080", backend_kind=BackendKind.LLAMA_SERVER),
+]
+registry = StaticRegistry(endpoints)
+```
+
+### K8sRegistry (Optional)
+
+For Kubernetes-based dynamic discovery:
+
+```python
+from airframe.k8s import K8sRegistry
+
+registry = K8sRegistry(
+    configmap_name="llm-endpoints",
+    namespace="inference",
+    key="endpoints",
+    poll_interval=15.0,
+)
+
+# Watch for changes
+handle = registry.watch(async_callback)
+```
+
+ConfigMap schema:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-endpoints
+data:
+  endpoints: |
+    [
+      {
+        "name": "gpu-node-1",
+        "base_url": "http://llm-gpu-1:8080",
+        "backend_kind": "llama_server",
+        "api_type": "native",
+        "capacity": {"max_concurrency": 4, "tier": "A100-80GB"}
+      }
+    ]
+```
+
+## Error Handling
+
+Errors are categorized into a stable taxonomy:
+
+```python
+from airframe import ErrorCategory
+
+# Categories:
+# - TIMEOUT: Request timed out
+# - CONNECTION: Network/connection error
+# - BACKEND: HTTP 4xx/5xx from backend
+# - PARSE: JSON/SSE parsing error
+# - UNKNOWN: Uncategorized error
+
+async for event in client.stream_infer(endpoint, request):
+    if event.type == StreamEventType.ERROR:
+        if event.error.category == ErrorCategory.TIMEOUT:
+            # Retry logic
+            pass
+        elif event.error.category == ErrorCategory.CONNECTION:
+            # Mark endpoint unhealthy
+            pass
+        # Raw backend response available in event.error.raw_backend
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AIRFRAME_ENABLED` | `true` | Enable airframe layer |
+| `AIRFRAME_STRICT` | `false` | Fail if airframe init fails (no fallback) |
+| `AIRFRAME_DEBUG` | `false` | Enable debug logging |
+| `LLAMASERVER_HOST` | `http://localhost:8080` | Default llama-server URL |
+| `LLAMASERVER_API_TYPE` | `native` | API mode (`native` or `openai`) |
+
+### Capability Bridge
+
+The `airframe_bridge.py` module provides integration with the capability:
+
+```python
+from airframe_bridge import (
+    create_airframe_registry_from_env,
+    create_airframe_llm_factory,
+)
+
+# Create registry from environment
+registry = create_airframe_registry_from_env()
+
+# Create LLM factory for runtime
+llm_factory = create_airframe_llm_factory(registry)
+runtime.llm_provider_factory = llm_factory
+```
+
+## Verification
+
+### Sanity Checks
+
+```bash
+# Basic import and selftest
+python -m airframe.selftest
+
+# Unit tests
+pytest tests/airframe -v
+
+# Integration test (requires llama-server)
+AIRFRAME_INTEGRATION=1 pytest tests/airframe/test_integration_llama.py -v
+```
+
+### Docker
+
+```bash
+# Selftest in container
+docker compose -f docker/docker-compose.yml run --rm orchestrator python -m airframe.selftest
+```
+
+## Architecture
+
+```
+airframe/
+├── __init__.py          # Public exports
+├── types.py             # InferenceRequest, Message, StreamEvent, etc.
+├── endpoints.py         # EndpointSpec, HealthState, BackendKind
+├── registry.py          # EndpointRegistry, StaticRegistry
+├── client.py            # AirframeClient (adapter dispatch)
+├── health.py            # HealthProbe, HttpHealthProbe
+├── telemetry.py         # Observability hooks (placeholder)
+├── selftest.py          # Import verification
+├── adapters/
+│   ├── base.py          # BackendAdapter ABC
+│   ├── llama_server.py  # llama.cpp server adapter
+│   └── openai_chat.py   # OpenAI Chat Completions adapter
+└── k8s/
+    ├── __init__.py      # K8sRegistry export
+    ├── registry.py      # ConfigMap-based registry
+    └── types.py         # K8s-specific types
+```
+
+## Constitution
+
+See `airframe/CONSTITUTION.md` for the architectural principles:
+
+1. **Ownership**: Airframe owns endpoints, adapters, health; capabilities own routing policy
+2. **Stream-first**: All inference exposed as async streams
+3. **Error taxonomy**: Stable categories (timeout/connection/backend/parse/unknown)
+4. **Backend isolation**: Adapters normalize protocol differences
+5. **Optional K8s**: Kubernetes integration never required
