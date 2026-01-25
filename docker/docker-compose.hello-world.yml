@@ -51,9 +51,7 @@ services:
   # ==========================================================================
   llama-server:
     container_name: chatbot-llm
-    # Use CPU-only image for broader compatibility
-    # For GPU: change to ghcr.io/ggerganov/llama.cpp:server-cuda
-    image: ghcr.io/ggerganov/llama.cpp:server
+    image: ghcr.io/ggerganov/llama.cpp:server-cuda
     ports:
       - "8080:8080"
     volumes:
@@ -63,25 +61,24 @@ services:
       - --port=8080
       - --model=/models/qwen2.5-3b-instruct-q4_k_m.gguf
       - --ctx-size=8192
-      - --n-gpu-layers=0
+      - --n-gpu-layers=35
       - --parallel=1
       - --threads=4
-    # Uncomment for GPU support (requires nvidia-container-toolkit)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-    environment:
-      - CUDA_VISIBLE_DEVICES=-1
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 90s
+      start_period: 60s
     restart: unless-stopped
     networks:
       - chatbot-network
