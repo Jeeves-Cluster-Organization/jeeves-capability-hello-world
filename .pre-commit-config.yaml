@@ -27,11 +27,11 @@ repos:
         
       - id: test-avionics-lightweight
         name: Test Avionics (lightweight, < 2s)
-        entry: bash -c 'pytest jeeves_avionics/tests/unit/llm -m "not heavy and not requires_ml and not requires_docker" -v'
+        entry: bash -c 'pytest avionics/tests/unit/llm -m "not heavy and not requires_ml and not requires_docker" -v'
         language: system
         pass_filenames: false
         # Only run if avionics files changed
-        files: ^jeeves_avionics/
+        files: ^avionics/
         
       - id: test-app-layer
         name: Test App Layer (all mocked, < 3s)

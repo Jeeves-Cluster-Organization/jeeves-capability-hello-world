@@ -1,7 +1,7 @@
 """Code Analysis Capability Configuration.
 
 Domain-specific configuration for the code analysis vertical.
-Generic config types are in jeeves_mission_system.config.
+Generic config types are in mission_system.config.
 
 Exports:
 - Context bounds (CodeAnalysisBounds - domain-specific resource limits)

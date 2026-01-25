@@ -1,7 +1,7 @@
 """Tests for tool registry with risk levels.
 
 Updated to use MockToolRegistry from test fixtures after refactoring.
-The canonical ToolCatalog is in jeeves_avionics.tools.catalog.
+The canonical ToolCatalog is in avionics.tools.catalog.
 """
 
 import pytest

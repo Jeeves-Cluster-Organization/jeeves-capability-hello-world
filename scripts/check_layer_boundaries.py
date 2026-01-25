@@ -2,11 +2,11 @@
 """CI Check: Layer Boundary Enforcement.
 
 This script enforces the Jeeves layer architecture invariants:
-- L0 (jeeves_protocols, jeeves_shared): imports nothing from higher layers
-- L1 (jeeves_control_tower): imports only from L0
-- L2 (jeeves_memory_module): imports only from L0
-- L3 (jeeves_avionics): imports from L0, L1, L2
-- L4 (jeeves_mission_system): imports from L0, L1, L2, L3
+- L0 (protocols, shared): imports nothing from higher layers
+- L1 (control_tower): imports only from L0
+- L2 (memory_module): imports only from L0
+- L3 (avionics): imports from L0, L1, L2
+- L4 (mission_system): imports from L0, L1, L2, L3
 
 See jeeves-core/docs/CONTRACTS.md for layer architecture diagram.
 
@@ -31,33 +31,33 @@ from typing import Dict, List, Optional, Set
 
 # Layer definitions (order matters - higher index = higher layer)
 LAYERS: Dict[str, int] = {
-    "jeeves_protocols": 0,
-    "jeeves_shared": 0,
-    "jeeves_control_tower": 1,
-    "jeeves_memory_module": 2,
-    "jeeves_avionics": 3,
-    "jeeves_mission_system": 4,
+    "protocols": 0,
+    "shared": 0,
+    "control_tower": 1,
+    "memory_module": 2,
+    "avionics": 3,
+    "mission_system": 4,
 }
 
 # Allowed imports per layer (can only import from layers with LOWER or EQUAL numbers)
-# Exception: L0 packages (jeeves_protocols, jeeves_shared) can import from each other
+# Exception: L0 packages (protocols, shared) can import from each other
 LAYER_RULES: Dict[str, List[str]] = {
-    "jeeves_protocols": ["jeeves_shared"],  # L0: can use shared utilities
-    "jeeves_shared": ["jeeves_protocols"],  # L0: can use protocols
-    "jeeves_control_tower": ["jeeves_protocols", "jeeves_shared"],  # L1
-    "jeeves_memory_module": ["jeeves_protocols", "jeeves_shared"],  # L2
-    "jeeves_avionics": [
-        "jeeves_protocols",
-        "jeeves_shared",
-        "jeeves_control_tower",
-        "jeeves_memory_module",
+    "protocols": ["shared"],  # L0: can use shared utilities
+    "shared": ["protocols"],  # L0: can use protocols
+    "control_tower": ["protocols", "shared"],  # L1
+    "memory_module": ["protocols", "shared"],  # L2
+    "avionics": [
+        "protocols",
+        "shared",
+        "control_tower",
+        "memory_module",
     ],  # L3
-    "jeeves_mission_system": [
-        "jeeves_protocols",
-        "jeeves_shared",
-        "jeeves_control_tower",
-        "jeeves_memory_module",
-        "jeeves_avionics",
+    "mission_system": [
+        "protocols",
+        "shared",
+        "control_tower",
+        "memory_module",
+        "avionics",
     ],  # L4
 }
 
@@ -123,7 +123,7 @@ class LayerBoundaryChecker:
 
     def _check_import(self, module_name: str, lineno: int) -> None:
         """Check if an import violates layer boundaries."""
-        # Extract the base package (e.g., "jeeves_avionics" from "jeeves_avionics.tools")
+        # Extract the base package (e.g., "avionics" from "avionics.tools")
         base_package = module_name.split(".")[0]
 
         # Only check jeeves_* imports
@@ -231,19 +231,19 @@ def print_layer_diagram() -> None:
 Layer Architecture (see docs/CONTRACTS.md):
 
 +-------------------------------------------------------------------+
-| L4: jeeves_mission_system                                         |
+| L4: mission_system                                         |
 |     (API layer - orchestration, services, adapters)               |
 +-------------------------------------------------------------------+
-| L3: jeeves_avionics                                               |
+| L3: avionics                                               |
 |     (Infrastructure - LLM, DB, Gateway, Observability)            |
 +-------------------------------------------------------------------+
-| L2: jeeves_memory_module                                          |
+| L2: memory_module                                          |
 |     (Event sourcing, semantic memory, repositories)               |
 +-------------------------------------------------------------------+
-| L1: jeeves_control_tower                                          |
+| L1: control_tower                                          |
 |     (OS-like kernel - process lifecycle, resources, IPC)          |
 +-------------------------------------------------------------------+
-| L0: jeeves_shared, jeeves_protocols                               |
+| L0: shared, protocols                               |
 |     (Zero dependencies - types, utilities, protocols)             |
 +-------------------------------------------------------------------+
 
@@ -304,10 +304,10 @@ def main() -> int:
             print("=" * 70)
             print("""
 Option 1: Move the import to an allowed layer
-  - If jeeves_control_tower needs DB access, use jeeves_protocols interfaces
+  - If control_tower needs DB access, use protocols interfaces
 
-Option 2: Extract to jeeves_protocols
-  - If multiple layers need a type, define it in L0 (jeeves_protocols)
+Option 2: Extract to protocols
+  - If multiple layers need a type, define it in L0 (protocols)
 
 Option 3: Use dependency injection
   - Instead of importing concrete implementations, accept protocols

@@ -232,7 +232,7 @@ services:
     # Volume mounts
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ../jeeves-core/jeeves_avionics/database/schemas:/docker-entrypoint-initdb.d/001:ro
+      - ../jeeves-core/avionics/database/schemas:/docker-entrypoint-initdb.d/001:ro
       - ../jeeves-capability-code-analyser/database/schemas:/docker-entrypoint-initdb.d/002:ro
 
     # Resource limits

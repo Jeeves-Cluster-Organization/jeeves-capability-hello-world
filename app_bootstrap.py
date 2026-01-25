@@ -5,7 +5,7 @@ The core can start with zero verticals.
 
 No magic, no import side-effects. Call bootstrap_all_verticals() at startup.
 
-IMPORTANT: Host app code uses only jeeves_protocols public API.
+IMPORTANT: Host app code uses only protocols public API.
 
 ADR-001 Decision 3: All bootstrap functions receive AppContext for DI.
 """

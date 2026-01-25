@@ -4,8 +4,8 @@ This file configures pytest for the app layer test suite.
 It ensures proper import paths and shared fixtures.
 
 Constitutional Compliance:
-- Uses jeeves_protocols for all core types
-- Does NOT import from coreengine or jeeves_avionics directly
+- Uses protocols for all core types
+- Does NOT import from coreengine or avionics directly
 - App layer tests are self-contained with own fixtures
 - Constitution R7: register_capability() called at test setup
 """
@@ -24,7 +24,7 @@ project_root = app_root.parent
 sys.path.insert(0, str(project_root))
 
 # Add jeeves-core submodule to Python path for core packages
-# (jeeves_protocols, jeeves_avionics, jeeves_mission_system, etc.)
+# (protocols, avionics, mission_system, etc.)
 jeeves_core_path = project_root / "jeeves-core"
 if jeeves_core_path.exists() and str(jeeves_core_path) not in sys.path:
     sys.path.insert(0, str(jeeves_core_path))
@@ -61,7 +61,7 @@ def setup_capability_registration():
         # Clean up for test isolation
         reset_capability_resource_registry()
     except ImportError:
-        # jeeves_protocols not available (submodule not initialized)
+        # protocols not available (submodule not initialized)
         yield
 
 
@@ -85,7 +85,7 @@ def setup_language_config():
         config = get_language_config()
         registry.register(ConfigKeys.LANGUAGE_CONFIG, config)
     except ImportError:
-        # jeeves_mission_system not available
+        # mission_system not available
         pass
     yield
 

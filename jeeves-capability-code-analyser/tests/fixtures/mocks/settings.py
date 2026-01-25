@@ -3,7 +3,7 @@
 Constitutional Reference:
     - Agent-specific LLM settings are now in capability registry
     - Settings only contains generic infrastructure config
-    - See: jeeves_avionics/capability_registry.py
+    - See: avionics/capability_registry.py
 """
 
 from typing import Optional

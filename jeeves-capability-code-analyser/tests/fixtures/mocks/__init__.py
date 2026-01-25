@@ -4,8 +4,8 @@ These mocks allow app layer tests to run in isolation without
 requiring real LLM providers, databases, or external services.
 
 Constitutional Compliance:
-- Mocks implement protocols defined in jeeves_mission_system.contracts
-- No direct imports from jeeves_core_engine or jeeves_avionics
+- Mocks implement protocols defined in mission_system.contracts
+- No direct imports from jeeves_core_engine or avionics
 """
 
 from .llm import MockLLMProvider
