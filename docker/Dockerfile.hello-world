@@ -41,8 +41,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY jeeves-core/ /app/jeeves-core/
 COPY airframe/ /app/airframe/
 
-# Copy capability code
-COPY jeeves-capability-code-analyser/ /app/jeeves-capability-code-analyser/
+# Copy capability code (rename to use underscores for Python imports)
+COPY jeeves-capability-code-analyser/ /app/jeeves_capability_code_analyser/
 
 # Copy Chainlit application
 COPY chainlit_app.py /app/
