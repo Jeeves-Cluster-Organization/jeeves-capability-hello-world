@@ -12,9 +12,9 @@ import chainlit as cl
 import structlog
 from typing import Dict, Any, List
 
-from jeeves_capability_code_analyser.orchestration import ChatbotService, ChatbotResult
-from jeeves_capability_code_analyser.pipeline_config import GENERAL_CHATBOT_PIPELINE
-from jeeves_capability_code_analyser.tools import register_hello_world_tools
+from jeeves_capability_hello_world.orchestration import ChatbotService, ChatbotResult
+from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
+from jeeves_capability_hello_world.tools import register_hello_world_tools
 
 # Setup logging
 logger = structlog.get_logger()
@@ -35,7 +35,7 @@ def _get_or_create_service() -> ChatbotService:
         from avionics.tools.executor import ToolExecutor
 
         # Register hello-world tools
-        from jeeves_capability_code_analyser.tools.hello_world_tools import HELLO_WORLD_TOOLS
+        from jeeves_capability_hello_world.tools.hello_world_tools import HELLO_WORLD_TOOLS
 
         # Create simple tool registry for hello-world
         class SimpleToolRegistry:

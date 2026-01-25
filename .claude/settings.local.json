@@ -44,7 +44,10 @@
       "Bash(pytest:*)",
       "Read(//e/Cluster/jeeves-capability-code-analysis/**)",
       "Bash(tree:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(chmod:*)",
+      "Bash(docker run:*)",
+      "Bash(docker images:*)"
     ]
   }
 }

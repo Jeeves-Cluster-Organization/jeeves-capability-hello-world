@@ -16,8 +16,8 @@ Key components:
 - orchestration/: Service wrapper for running the pipeline
 
 Usage:
-    from jeeves_capability_code_analyser.pipeline_config import GENERAL_CHATBOT_PIPELINE
-    from jeeves_capability_code_analyser.tools import register_hello_world_tools
+    from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
+    from jeeves_capability_hello_world.tools import register_hello_world_tools
 
     # Create and run the chatbot
     # See chainlit_app.py for full example
