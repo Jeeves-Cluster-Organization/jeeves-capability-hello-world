@@ -47,11 +47,8 @@ COPY jeeves-capability-code-analyser/ /app/jeeves-capability-code-analyser/
 # Copy Chainlit application
 COPY chainlit_app.py /app/
 
-# Copy Chainlit configuration (if exists)
-COPY .chainlit/ /app/.chainlit/ 2>/dev/null || true
-
-# Create data directory
-RUN mkdir -p /app/data
+# Create data and config directories
+RUN mkdir -p /app/data /app/.chainlit
 
 # Set Python path to include jeeves-core and airframe
 ENV PYTHONPATH=/app:/app/jeeves-core:/app/airframe:$PYTHONPATH
