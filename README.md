@@ -1,134 +1,132 @@
-# Jeeves Code Analysis Capability
+# Jeeves Hello World - General Chatbot Capability
 
-**A 7-agent pipeline for read-only code analysis with citation-backed responses**
+**A 3-agent template demonstrating multi-agent orchestration patterns**
 
 ## Overview
 
-This repository contains `jeeves-capability-code-analyser`, a domain capability that implements a 7-agent pipeline for analyzing codebases. It is designed to be used with the Jeeves core infrastructure (via git submodule).
+This is `jeeves-capability-hello-world`, a simplified general-purpose chatbot capability that demonstrates the core multi-agent orchestration pattern using jeeves-core and airframe infrastructure.
+
+**This is NOT code-search specific** - it's a universal chatbot template (like ChatGPT lite) that anyone can customize for their domain.
 
 **Key Features:**
-- 7-agent pipeline (Perception, Intent, Planner, Traverser, Synthesizer, Critic, Integration)
-- Citation-backed responses with `[file:line]` references
-- Read-only code analysis tools (no write operations)
-- Configuration-driven agent architecture (no concrete agent classes)
+- 3-agent pipeline (Understand → Think → Respond)
+- Real LLM inference (llama.cpp local or API providers)
+- General-purpose capabilities (conversation + web search)
+- Minimal, reusable template for building custom multi-agent capabilities
+- Single-machine deployment (Docker Compose, no K8s complexity)
+- Chainlit chat interface
+
+**Status:** 🚧 Foundation complete, integration in progress
+
+**For the advanced version**, see the `main` branch: 7-agent code analysis capability with 30+ tools.
 
 ## Architecture
 
-### Pipeline Flow
+### 3-Agent Pipeline: Universal Chatbot Pattern
 
 ```
-User Query
-    |
-PERCEPTION    -> Normalize query, load session context
-    |
-INTENT        -> Classify: trace_flow / find_definition / explain / search
-    |
-PLANNER       -> Plan traversal steps, respect context bounds
-    | (loop until Critic approves)
-TRAVERSER     -> Execute read-only code operations
-    |
-SYNTHESIZER   -> Build structured understanding from results
-    |
-CRITIC        -> Validate answer against actual code (anti-hallucination)
-    | (if APPROVED)
-INTEGRATION   -> Build response with [file:line] citations
-    |
-Response with citations
+User Message (via Chainlit)
+    ↓
+UNDERSTAND (LLM)      ← Real LLM inference
+  ├─ Analyzes user intent
+  ├─ Determines if web search needed
+  ├─ Extracts key entities/questions
+  └─ Plans approach
+    ↓
+THINK (Tools)
+  ├─ Executes web search (if needed)
+  ├─ OR pure reasoning (if no tools needed)
+  └─ Gathers information
+    ↓
+RESPOND (LLM)         ← Real LLM inference
+  ├─ Synthesizes information
+  ├─ Crafts helpful response
+  └─ Includes citations (if web search used)
+    ↓
+Response to user (Chainlit)
 ```
+
+### Agent Responsibilities
+
+**1. Understand** (LLM Agent)
+- **Has LLM**: ✅ YES (uses real model)
+- **Role**: Analyze user message and plan approach
+- **Output**: `{intent, needs_search, search_query, reasoning}`
+- **Examples**:
+  - "What's the weather?" → `needs_search: true, search_query: "current weather"`
+  - "Tell me a joke" → `needs_search: false`
+
+**2. Think** (Tool Agent)
+- **Has LLM**: ❌ NO (pure tool execution)
+- **Role**: Execute tools OR pass through
+- **Output**: `{information, sources[], has_data}`
+- **Examples**:
+  - Search query → Execute web_search → `{information: "...", sources: [...]}`
+  - No search → `{information: null, sources: []}`
+
+**3. Respond** (LLM Agent)
+- **Has LLM**: ✅ YES (uses real model)
+- **Role**: Synthesize information and craft response
+- **Output**: `{response, citations[], confidence}`
+- **Examples**:
+  - With search: "Based on recent news [source], the weather is..."
+  - Pure chat: "Here's a joke: Why did the chicken..."
 
 ### Project Structure
 
 ```
 jeeves-capability-code-analysis/
-|
-+-- jeeves-capability-code-analyser/    # Main capability package
-|   +-- __init__.py                     # Package init (register_capability)
-|   +-- registration.py                 # Capability resource registration
-|   +-- pipeline_config.py              # 7-agent pipeline configuration
-|   +-- server.py                       # gRPC capability server
-|   +-- CONSTITUTION.md                 # Capability layer constitution
-|   |
-|   +-- agents/                         # Agent helpers
-|   |   +-- context_builder.py          # Context building for agents
-|   |   +-- summarizer.py               # Tool result summarization
-|   |   +-- prompt_mapping.py           # Prompt mapping utilities
-|   |   +-- protocols.py                # Agent protocols/interfaces
-|   |
-|   +-- tools/                          # Code analysis tools
-|   |   +-- __init__.py                 # Tool initialization
-|   |   +-- registration.py             # Tool registration system
-|   |   +-- unified_analyzer.py         # Primary analyzer tool
-|   |   +-- code_parser.py              # Code parsing utilities
-|   |   +-- file_navigator.py           # File system navigation
-|   |   +-- module_mapper.py            # Module dependency mapping
-|   |   +-- flow_tracer.py              # Control flow tracing
-|   |   +-- symbol_explorer.py          # Symbol resolution
-|   |   +-- git_historian.py            # Git history analysis
-|   |   +-- safe_locator.py             # Safe file locator
-|   |   +-- base/                       # Base tool implementations
-|   |       +-- code_tools.py           # Core code analysis
-|   |       +-- git_tools.py            # Git operations
-|   |       +-- index_tools.py          # Symbol indexing
-|   |       +-- resilient_ops.py        # Retry logic
-|   |       +-- semantic_tools.py       # Semantic search
-|   |       +-- session_tools.py        # Session management
-|   |       +-- citation_validator.py   # Citation validation
-|   |       +-- path_helpers.py         # Path utilities
-|   |
-|   +-- config/                         # Domain configuration
-|   |   +-- language_config.py          # Language-specific settings
-|   |   +-- tool_profiles.py            # Tool profile definitions
-|   |   +-- tool_access.py              # Tool access control
-|   |   +-- deployment.py               # Agent list (CODE_ANALYSIS_AGENTS)
-|   |   +-- identity.py                 # Product identity
-|   |   +-- context_bounds.py           # Context bounds configuration
-|   |
-|   +-- orchestration/                  # LangGraph workflow
-|   |   +-- service.py                  # CodeAnalysisService
-|   |   +-- servicer.py                 # gRPC servicer
-|   |   +-- wiring.py                   # Dependency wiring
-|   |   +-- types.py                    # Type definitions
-|   |
-|   +-- contracts/                      # Data contracts
-|   |   +-- schemas.py                  # Data schemas
-|   |   +-- validation.py               # Input validation
-|   |   +-- registry.py                 # Contract registry
-|   |
-|   +-- models/                         # Domain models
-|   |   +-- traversal_state.py          # Traversal state tracking
-|   |   +-- types.py                    # Type definitions
-|   |
-|   +-- prompts/                        # LLM prompts
-|   |   +-- code_analysis.py            # Code analysis prompts
-|   |
-|   +-- console/                        # Console layer (UI abstraction)
-|   |   +-- handler.py                  # CommBus handler for service
-|   |   +-- messages.py                 # CommBus message types
-|   |   +-- adapters/                   # UI-specific adapters
-|   |
-|   +-- tests/                          # Unit tests
-|       +-- unit/                       # Unit tests
-|       +-- fixtures/                   # Test fixtures and mocks
-|
-+-- tests/                              # Integration/deployment tests
-|   +-- integration/                    # Service integration tests
-|   +-- deployment/                     # Docker infrastructure tests
-|   +-- ui_ux/                          # API endpoint tests
-|
-+-- chainlit_app.py                     # Chainlit entry point
-+-- .chainlit/                          # Chainlit configuration
-|   +-- config.toml                     # Chainlit settings
-|
-+-- docs/                               # Documentation
-+-- docker/                             # Docker configuration
-+-- k8s/                                # Kubernetes deployment manifests
-|   +-- base/                           # Single-node deployment
-|   +-- overlays/distributed/           # Multi-node deployment
-+-- requirements/                       # Python dependencies
-+-- scripts/                            # Utility scripts
-+-- airframe/                           # LLM adapter infrastructure (git submodule)
-+-- jeeves-core/                        # Core infrastructure (git submodule)
+├── jeeves-capability-code-analyser/    # Main capability package
+│   ├── __init__.py                     # Package metadata (hello-world)
+│   ├── pipeline_config.py              # 3-agent pipeline configuration
+│   │
+│   ├── prompts/                        # LLM prompts
+│   │   ├── __init__.py
+│   │   └── chatbot/                    # General chatbot prompts
+│   │       ├── __init__.py
+│   │       ├── understand.py           # Understand agent prompt
+│   │       └── respond.py              # Respond agent prompt
+│   │
+│   ├── tools/                          # General-purpose tools
+│   │   ├── __init__.py
+│   │   └── hello_world_tools.py        # 3 minimal tools
+│   │
+│   └── orchestration/                  # Service wrapper
+│       ├── __init__.py
+│       └── service.py                  # ChatbotService (to be adapted)
+│
+├── airframe/                           # LLM adapter infrastructure (git submodule)
+├── jeeves-core/                        # Core infrastructure (git submodule)
+│
+├── chainlit_app.py                     # Chainlit chat UI (to be created)
+├── docker/                             # Docker deployment (to be created)
+│   ├── Dockerfile
+│   └── docker-compose.yml
+└── README.md                           # This file
 ```
+
+**What's Included:**
+- ✅ 3-agent pipeline configuration with real LLM support
+- ✅ Prompts for Understand and Respond agents
+- ✅ 3 minimal general-purpose tools (web_search, get_time, list_tools)
+- 🚧 Chainlit entry point (pending)
+- 🚧 ChatbotService wrapper (pending adaptation)
+- 🚧 Docker deployment configuration (pending)
+
+### Comparison: Hello World vs Code Analysis
+
+| Aspect | Hello World (This Branch) | Code Analysis (main Branch) |
+|--------|---------------------------|------------------------------|
+| **Domain** | General purpose (chat, Q&A, web search) | Code understanding |
+| **Agents** | 3 (Understand → Think → Respond) | 7 (Perception → Intent → Planner → Traverser → Synthesizer → Critic → Integration) |
+| **LLM Calls** | 2 (Understand + Respond) | 5 (Intent + Planner + Synthesizer + Critic + Integration) |
+| **Tools** | 3 (web_search, get_time, list_tools) | 30+ (search_code, read_code, git tools, semantic search, etc.) |
+| **Iterations** | Max 2 | Max 5 |
+| **Deployment** | Docker Compose (3 services) | K8s (distributed) |
+| **LLM Backend** | llama.cpp (local, 3B model) | llama.cpp (larger model) or API |
+| **Response Time** | ~3-8 sec | ~10-30 sec |
+| **Use Case** | Learning, general chatbot template | Production code analysis |
+| **Complexity** | Beginner-friendly | Advanced patterns |
 
 ## Dependencies
 
@@ -158,14 +156,16 @@ git submodule update --init --recursive
 
 - Python 3.11+
 - Docker and Docker Compose (for full deployment)
-- PostgreSQL 15+ (included in Docker setup)
+- PostgreSQL 15+ (for conversation history - included in Docker setup)
+- Optional: Web search API key (Google Custom Search, Serper, or use DuckDuckGo)
 
 ### Development Setup
 
 ```bash
-# 1. Clone and initialize submodule
+# 1. Clone and initialize submodules
 git clone <repository-url>
 cd jeeves-capability-code-analysis
+git checkout jeeves-capability-hello-world
 git submodule update --init --recursive
 
 # 2. Create virtual environment
@@ -173,136 +173,226 @@ python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements/all.txt
 
-# 3. Run tests
-pytest jeeves-capability-code-analyser/tests -v
+# 3. (Optional) Set up web search API
+# Option A: Google Custom Search
+export GOOGLE_API_KEY=your_key_here
+export GOOGLE_CX=your_cx_here
 
-# 4. Install Chainlit dependencies
-pip install -r requirements/chainlit.txt
+# Option B: Serper API
+export SERPER_API_KEY=your_key_here
+
+# Option C: Use DuckDuckGo (no API key needed)
+# Just use the default implementation
 ```
 
-### Running the Chat UI
+### Current Status
 
-```bash
-# Start Chainlit (requires services running)
-chainlit run chainlit_app.py
+**✅ Completed:**
+- 3-agent pipeline configuration
+- LLM prompts for Understand and Respond agents
+- Minimal tool implementations
 
-# Opens at http://localhost:8000
-# Use /status command for system status
+**🚧 Pending:**
+- Chainlit entry point (`chainlit_app.py`)
+- ChatbotService adaptation
+- Docker deployment configuration
+- End-to-end testing
+
+### Next Steps for Completion
+
+To complete the hello-world chatbot:
+
+1. **Create Chainlit entry point** - Chat UI integration
+2. **Adapt ChatbotService** - Simple service wrapper in `orchestration/service.py`
+3. **Create Docker setup** - 3-service deployment (postgres, llama-server, chatbot)
+4. **Test end-to-end** - Full conversation flow
+
+See the implementation plan at [`C:\Users\shaik\.claude\plans\zesty-mapping-panda.md`](C:\Users\shaik\.claude\plans\zesty-mapping-panda.md) for detailed next steps.
+
+## Available Tools
+
+The hello-world capability includes 3 minimal general-purpose tools:
+
+| Tool | Description | Async |
+|------|-------------|-------|
+| `web_search` | Search the web for current information | ✅ Yes |
+| `get_time` | Get current date and time (UTC) | ❌ No |
+| `list_tools` | List all available tools (introspection) | ❌ No |
+
+### Tool Details
+
+**`web_search(query: str, max_results: int = 5)`**
+- Purpose: Search the web for current information
+- Input: Search query string
+- Output: `{status, results[], sources[], query}`
+- Usage: When Understand agent determines `needs_search: true`
+- Note: Requires API key (Google Custom Search, Serper) or uses DuckDuckGo
+
+**`get_time()`**
+- Purpose: Get current date/time (demonstrates stateless tool pattern)
+- Input: None
+- Output: `{status, datetime, date, time, timezone}`
+- Usage: Simple example of deterministic tool
+
+**`list_tools()`**
+- Purpose: Tool introspection and discovery
+- Input: None
+- Output: `{status, tools[], count}`
+- Usage: Helps agents understand available capabilities
+
+## LLM Configuration
+
+The hello-world capability uses **real LLM inference** (not mocks):
+
+### Default: llama.cpp (Local, Free)
+
+```yaml
+# Recommended for hello-world
+LLM_PROVIDER: llamaserver
+LLAMASERVER_HOST: http://localhost:8080
+DEFAULT_MODEL: qwen2.5-3b-instruct-q4_k_m
 ```
 
-### Docker Deployment
+- Model: Qwen 2.5 3B Instruct (Q4 quantized)
+- Size: ~2GB
+- Speed: ~10-20 tokens/sec on GPU
+- Cost: Free (runs locally)
 
-```bash
-# Build and start all services
-docker compose -f docker/docker-compose.yml up -d
+### Alternative: OpenAI
 
-# Check health
-curl http://localhost:8001/health
+```yaml
+LLM_PROVIDER: openai
+OPENAI_API_KEY: your_key_here
 ```
 
-## Testing
+### Alternative: Anthropic Claude
 
-### Run Unit Tests
-
-```bash
-# All capability tests
-pytest jeeves-capability-code-analyser/tests -v
-
-# Specific test file
-pytest jeeves-capability-code-analyser/tests/unit/tools/test_code_tools.py -v
-
-# With markers
-pytest jeeves-capability-code-analyser/tests -v -m unit
-```
-
-### Test Markers
-
-- `unit` - Unit tests with mocked dependencies
-- `integration` - Integration tests with real services
-- `slow` - Slow-running tests
-
-## Exposed Tools
-
-The capability exposes these tools to agents:
-
-| Tool | Description |
-|------|-------------|
-| `search_code` | Primary tool - searches for code, never assumes paths exist |
-| `read_code` | Direct file reading with retry logic |
-| `find_related` | Semantic search for related files |
-| `git_status` | Current repository state |
-| `list_tools` | Tool discovery |
-
-Internal tools (used by `search_code`):
-- `locate` - Symbol location via index/grep/semantic
-- `explore_symbol_usage` - Symbol usage analysis
-- `map_module` - Module dependency mapping
-- `trace_entry_point` - Control flow tracing
-- `explain_code_history` - Git history explanation
-
-## Core Principles
-
-**P1: Accuracy First** - Never hallucinate code. Every claim requires `[file:line]` citation.
-
-**P2: Code Context Priority** - Understand fully before claiming.
-
-**P3: Bounded Efficiency** - Be efficient within limits.
-
-**Hierarchy:** P1 > P2 > P3 (when principles conflict)
-
-## Configuration
-
-### Context Bounds
-
-Limits for analyzing large repositories:
-
-```python
-max_tree_depth: 10           # Prevent runaway exploration
-max_file_slice_tokens: 4000  # Context window management
-max_grep_results: 50         # Limit search volume
-max_files_per_query: 10      # Bound per-query scope
-max_total_code_tokens: 25000 # Total budget per query
+```yaml
+LLM_PROVIDER: anthropic
+ANTHROPIC_API_KEY: your_key_here
 ```
 
 ### Environment Variables
 
-Key configuration (see `.env` for full list):
+Key configuration for hello-world deployment:
 
 ```bash
+# Pipeline mode
+PIPELINE_MODE=general_chatbot
+
 # LLM Configuration
 LLM_PROVIDER=llamaserver
 LLAMASERVER_HOST=http://localhost:8080
 DEFAULT_MODEL=qwen2.5-3b-instruct-q4_k_m
 
-# Database
+# Database (conversation history)
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-POSTGRES_DATABASE=assistant
+POSTGRES_DATABASE=chatbot
+POSTGRES_USER=user
+POSTGRES_PASSWORD=dev_password
 
-# Services
-API_PORT=8000
-ORCHESTRATOR_PORT=50051
+# Web Search API (choose one)
+GOOGLE_API_KEY=your_key_here        # Option A: Google Custom Search
+GOOGLE_CX=your_cx_here
+# OR
+SERPER_API_KEY=your_key_here        # Option B: Serper API
+
+# Chainlit UI
+CHAINLIT_PORT=8000
+
+# Logging
+LOG_LEVEL=INFO
 ```
 
-## Capability Registration
+## Customization for Your Domain
 
-At application startup, register the capability:
+This hello-world chatbot is a **universal template** that can be customized for any domain:
 
+### Step 1: Define Your Tools
+Replace the 3 general tools with domain-specific tools in `tools/hello_world_tools.py`:
 ```python
-from jeeves_capability_code_analyser import register_capability
+# Example: Customer support domain
+async def search_knowledge_base(query: str) -> Dict[str, Any]:
+    """Search internal knowledge base for customer support."""
+    # Your implementation here
+    pass
 
-# Call before infrastructure initialization
-register_capability()
+async def get_customer_info(customer_id: str) -> Dict[str, Any]:
+    """Retrieve customer information."""
+    # Your implementation here
+    pass
 ```
 
-This registers:
-- Database schemas
-- Gateway mode configuration
-- Service configuration for Control Tower
-- Orchestrator factory
-- Tools initializer
-- Agent definitions
-- Prompts and contracts
+### Step 2: Update Prompts
+Modify `prompts/chatbot/understand.py` and `respond.py` to match your domain:
+```python
+def chatbot_understand() -> str:
+    return """You are a customer support assistant analyzing user requests.
+
+## Your Capabilities
+- Search knowledge base for solutions
+- Access customer account information
+- Create support tickets
+...
+```
+
+### Step 3: Adjust Agent Configuration
+Update `pipeline_config.py` if needed (usually no changes required):
+- Same 3-agent pattern works for most domains
+- Adjust `max_tokens`, `temperature` for your use case
+
+That's it! The 3-agent pattern (Understand → Think → Respond) works for:
+- **Customer support bots** - Help desk automation
+- **Research assistants** - Literature search and summarization
+- **E-commerce assistants** - Product recommendations
+- **HR bots** - Employee onboarding
+- **Legal assistants** - Document analysis
+- **Any domain** that needs understanding → action → response
+
+## Learning Path: From Hello World to Advanced
+
+This hello-world branch is the **first step** in understanding multi-agent orchestration:
+
+1. **Start here** (jeeves-capability-hello-world): 3 agents, general chatbot, ~2000 lines of code
+2. **Then explore** (main branch): 7 agents, code analysis, ~15000+ lines of code
+
+### What You'll Learn
+
+**In Hello World (this branch):**
+- Basic 3-agent pipeline pattern
+- LLM integration with jeeves-core
+- Tool execution without LLM in middle agent
+- Configuration-driven agent architecture
+- Simple hook functions (pre_process, post_process)
+
+**In Code Analysis (main branch):**
+- Advanced 7-agent pipeline with critic loop
+- Complex tool orchestration (30+ tools)
+- Bounded context management
+- Citation validation and anti-hallucination
+- Production-grade error handling
+- Kubernetes deployment
+
+### Switching to Advanced Version
+
+```bash
+# View current branch
+git branch
+
+# Switch to main (code analysis)
+git checkout main
+
+# Compare the two
+git diff jeeves-capability-hello-world main
+```
+
+## Contributing
+
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request with clear description
 
 ## License
 
