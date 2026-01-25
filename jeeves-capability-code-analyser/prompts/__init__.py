@@ -1,26 +1,19 @@
 """
-Code Analysis Prompts.
+Chatbot Prompts for Hello World capability.
 
-This module contains prompt templates for the code analysis capability.
-Prompts are registered with the mission_system PromptRegistry at startup.
+This module contains prompt templates for the 3-agent chatbot:
+- chatbot.understand: Understand agent (intent classification + search decision)
+- chatbot.respond: Respond agent (response crafting with citations)
 
-Note: Perception and Executor agents have has_llm=False, so no prompts are needed for them.
+Note: Think agent has has_llm=False (pure tool execution), so no prompt needed.
 """
 
-from .code_analysis import (
-    code_analysis_intent,
-    code_analysis_planner,
-    code_analysis_synthesizer,
-    code_analysis_critic,
-    code_analysis_integration,
-    register_code_analysis_prompts,
+from .chatbot import (
+    chatbot_understand,
+    chatbot_respond,
 )
 
 __all__ = [
-    "code_analysis_intent",
-    "code_analysis_planner",
-    "code_analysis_synthesizer",
-    "code_analysis_critic",
-    "code_analysis_integration",
-    "register_code_analysis_prompts",
+    "chatbot_understand",
+    "chatbot_respond",
 ]

@@ -1,29 +1,17 @@
 """
-Code Analysis Orchestration Package.
+Hello World Chatbot Orchestration.
 
-Centralized Architecture (v4.0):
-- CodeAnalysisService wraps Runtime + CODE_ANALYSIS_PIPELINE
-- CodeAnalysisResult is the output container
-- Factory functions in wiring.py for proper dependency injection
+Simple service wrapper for running the 3-agent chatbot pipeline.
 
-See docs/JEEVES_CORE_RUNTIME_CONTRACT.md for the authoritative contract.
+For hello-world, we keep the orchestration minimal. The service.py file
+can be adapted or replaced with a simpler version for the chatbot.
 
-Exports:
-- CodeAnalysisService: Main service for code analysis queries
-- CodeAnalysisResult: Result container
-- create_code_analysis_service: Factory function for service creation
+Note: The service.py file here is from code-analysis and may need adaptation
+for the general chatbot use case. See the plan for creating a simple
+ChatbotService.
 """
 
-from orchestration.service import CodeAnalysisService
-from orchestration.types import CodeAnalysisResult
-from orchestration.wiring import (
-    create_code_analysis_service,
-    create_code_analysis_service_from_components,
-)
+# Service will be created/adapted later
+# For now, this module is a placeholder
 
-__all__ = [
-    "CodeAnalysisService",
-    "CodeAnalysisResult",
-    "create_code_analysis_service",
-    "create_code_analysis_service_from_components",
-]
+__all__ = []
