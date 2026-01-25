@@ -30,10 +30,10 @@ $projectRoot = Split-Path -Parent $scriptDir
 Write-Host "[1/4] Creating Docker volume for LLM models..."
 $volumeExists = docker volume inspect llama-models 2>$null
 if ($volumeExists) {
-    Write-Host "  ✓ Volume 'llama-models' already exists" -ForegroundColor Green
+    Write-Host "  [OK] Volume 'llama-models' already exists" -ForegroundColor Green
 } else {
     docker volume create llama-models | Out-Null
-    Write-Host "  ✓ Created volume 'llama-models'" -ForegroundColor Green
+    Write-Host "  [OK] Created volume 'llama-models'" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -46,17 +46,12 @@ Write-Host ""
 $modelExists = docker run --rm -v llama-models:/models alpine sh -c "[ -f /models/qwen2.5-3b-instruct-q4_k_m.gguf ] && echo 'yes' || echo 'no'"
 
 if ($modelExists -match "yes") {
-    Write-Host "  ✓ Model already downloaded" -ForegroundColor Green
+    Write-Host "  [OK] Model already downloaded" -ForegroundColor Green
 } else {
-    # Download model
-    docker run --rm -v llama-models:/models alpine sh -c @"
-        apk add --no-cache wget && \
-        cd /models && \
-        wget -O qwen2.5-3b-instruct-q4_k_m.gguf \
-          https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf && \
-        echo 'Model downloaded successfully'
-"@
-    Write-Host "  ✓ Model downloaded to volume" -ForegroundColor Green
+    # Download model using sh command (single line for PowerShell compatibility)
+    $downloadCmd = "apk add --no-cache wget && cd /models && wget -O qwen2.5-3b-instruct-q4_k_m.gguf https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf && echo 'Model downloaded successfully'"
+    docker run --rm -v llama-models:/models alpine sh -c $downloadCmd
+    Write-Host "  [OK] Model downloaded to volume" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -66,7 +61,7 @@ Set-Location $projectRoot
 
 $envPath = Join-Path $projectRoot ".env"
 if (Test-Path $envPath) {
-    Write-Host "  ✓ .env file already exists" -ForegroundColor Green
+    Write-Host "  [OK] .env file already exists" -ForegroundColor Green
 } else {
     $envContent = @"
 # Jeeves Hello World - Environment Configuration
@@ -104,8 +99,8 @@ POSTGRES_PASSWORD=dev_password
 CHAINLIT_PORT=8000
 "@
     Set-Content -Path $envPath -Value $envContent
-    Write-Host "  ✓ Created .env file with default configuration" -ForegroundColor Green
-    Write-Host "  → Edit .env to configure web search API keys (optional)" -ForegroundColor Yellow
+    Write-Host "  [OK] Created .env file with default configuration" -ForegroundColor Green
+    Write-Host "  --> Edit .env to configure web search API keys (optional)" -ForegroundColor Yellow
 }
 Write-Host ""
 
@@ -114,14 +109,14 @@ if ($Build) {
     Write-Host "[4/4] Building Docker images..."
     Set-Location $projectRoot
     docker compose -f docker/docker-compose.hello-world.yml build
-    Write-Host "  ✓ Docker images built" -ForegroundColor Green
+    Write-Host "  [OK] Docker images built" -ForegroundColor Green
 } else {
     Write-Host "[4/4] Skipping Docker build (use -Build to build images)"
 }
 Write-Host ""
 
 Write-Host "=============================================="
-Write-Host "✅ Setup Complete!" -ForegroundColor Green
+Write-Host "[SUCCESS] Setup Complete!" -ForegroundColor Green
 Write-Host "=============================================="
 Write-Host ""
 Write-Host "Next steps:"
