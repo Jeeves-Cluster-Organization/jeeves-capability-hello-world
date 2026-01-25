@@ -22,7 +22,7 @@
 
 ### pgvector_repository.py (9% → ~85%, 28 tests)
 
-**Test File:** `jeeves_memory_module/tests/unit/repositories/test_pgvector_repository.py`
+**Test File:** `memory_module/tests/unit/repositories/test_pgvector_repository.py`
 
 **Test Categories:**
 
@@ -141,7 +141,7 @@ pytest test_pgvector_repository.py -v --no-cov -p no:hypothesispytest
 
 ```bash
 # Individual test run (without problematic coverage tool)
-pytest jeeves_memory_module/tests/unit/repositories/test_pgvector_repository.py -v --no-cov -p no:hypothesispytest
+pytest memory_module/tests/unit/repositories/test_pgvector_repository.py -v --no-cov -p no:hypothesispytest
 
 # Result: ✅ 28 passed, 1 warning in 0.59s
 
@@ -212,7 +212,7 @@ pytest jeeves_memory_module/tests/unit/repositories/test_pgvector_repository.py 
 ## Files Created
 
 ### Phase 3
-1. `jeeves-core/jeeves_memory_module/tests/unit/repositories/test_pgvector_repository.py`
+1. `jeeves-core/memory_module/tests/unit/repositories/test_pgvector_repository.py`
    - 28 comprehensive tests
    - ~85% estimated coverage
    - All vector operations, search, upsert, delete, get, stats, index, batch
@@ -351,13 +351,13 @@ The coverage tool issue is a known Python 3.13 ecosystem problem, not a code qua
 ```bash
 # Verify Phase 3 tests pass
 cd jeeves-core
-pytest jeeves_memory_module/tests/unit/repositories/test_pgvector_repository.py -v --no-cov -p no:hypothesispytest
+pytest memory_module/tests/unit/repositories/test_pgvector_repository.py -v --no-cov -p no:hypothesispytest
 
 # Expected: 28 passed, 1 warning in ~0.6s
 
 # Verify all phases combined
-pytest jeeves_mission_system/tests/unit/orchestrator/ \
-       jeeves_memory_module/tests/unit/repositories/test_pgvector_repository.py \
+pytest mission_system/tests/unit/orchestrator/ \
+       memory_module/tests/unit/repositories/test_pgvector_repository.py \
        -v --no-cov -p no:hypothesispytest
 
 # Expected: 70 passed (42 + 28)

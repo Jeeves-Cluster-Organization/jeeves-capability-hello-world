@@ -18,8 +18,8 @@
 **Combined Results:**
 - **42 tests total** - All passing
 - **Test files created:**
-  - `jeeves_mission_system/tests/unit/orchestrator/test_flow_service.py`
-  - `jeeves_mission_system/tests/unit/orchestrator/test_governance_service.py`
+  - `mission_system/tests/unit/orchestrator/test_flow_service.py`
+  - `mission_system/tests/unit/orchestrator/test_governance_service.py`
 
 ---
 
@@ -150,15 +150,15 @@
 
 ```bash
 # Individual test runs
-pytest jeeves_mission_system/tests/unit/orchestrator/test_flow_service.py -v --cov
+pytest mission_system/tests/unit/orchestrator/test_flow_service.py -v --cov
 # Result: 21 passed, 79% coverage
 
-pytest jeeves_mission_system/tests/unit/orchestrator/test_governance_service.py -v --cov
+pytest mission_system/tests/unit/orchestrator/test_governance_service.py -v --cov
 # Result: 21 passed, 85% coverage
 
 # Combined run
-pytest jeeves_mission_system/tests/unit/orchestrator/test_flow_service.py \
-       jeeves_mission_system/tests/unit/orchestrator/test_governance_service.py -v --cov
+pytest mission_system/tests/unit/orchestrator/test_flow_service.py \
+       mission_system/tests/unit/orchestrator/test_governance_service.py -v --cov
 # Result: 42 passed, all tests passing
 ```
 
@@ -237,12 +237,12 @@ If pgvector_repository requires too much embedding service mocking complexity:
 
 ## Files Created
 
-1. `jeeves-core/jeeves_mission_system/tests/unit/orchestrator/test_flow_service.py`
+1. `jeeves-core/mission_system/tests/unit/orchestrator/test_flow_service.py`
    - 21 comprehensive tests
    - 79% coverage
    - All StartFlow, GetSession, ListSessions, CreateSession, DeleteSession, GetSessionMessages methods
 
-2. `jeeves-core/jeeves_mission_system/tests/unit/orchestrator/test_governance_service.py`
+2. `jeeves-core/mission_system/tests/unit/orchestrator/test_governance_service.py`
    - 21 comprehensive tests
    - 85% coverage
    - Health summary, tool health, agents, memory layers testing

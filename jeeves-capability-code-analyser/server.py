@@ -53,7 +53,7 @@ from typing import Optional
 import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 import structlog
 get_logger = structlog.get_logger
 
@@ -85,8 +85,8 @@ class CodeAnalysisServer:
         self._logger.info("code_analysis_capability_startup", port=self.port)
 
         # Import from mission system framework (capability → mission system)
-        from jeeves_mission_system.api import create_mission_runtime
-        from jeeves_mission_system.adapters import get_settings, create_database_client
+        from mission_system.api import create_mission_runtime
+        from mission_system.adapters import get_settings, create_database_client
 
         # Import capability's own components
         from tools import initialize_all_tools
@@ -108,7 +108,7 @@ class CodeAnalysisServer:
             raise RuntimeError(f"Database schema not initialized: {e}")
 
         # Initialize L2 EventEmitter for domain events (via adapters)
-        from jeeves_mission_system.adapters import (
+        from mission_system.adapters import (
             create_event_emitter,
             create_graph_repository,
             create_code_indexer,
@@ -253,8 +253,8 @@ class CodeAnalysisServer:
             )
             raise RuntimeError("gRPC stubs not generated")
 
-        from jeeves_mission_system.orchestrator.flow_service import JeevesFlowServicer
-        from jeeves_mission_system.orchestrator.governance_service import GovernanceServicer
+        from mission_system.orchestrator.flow_service import JeevesFlowServicer
+        from mission_system.orchestrator.governance_service import GovernanceServicer
         from orchestration.servicer import CodeAnalysisServicer
 
         # Create code analysis servicer (capability-specific adapter)

@@ -13,9 +13,9 @@ Per Amendment XVII (Composite Tool Contracts), this tool:
 import re
 from typing import Any, Dict, List, Optional
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 from .catalog import ToolId, tool_catalog
-from jeeves_protocols import RiskLevel
+from protocols import RiskLevel
 # Domain-specific bounds from capability config (per Constitution R6)
 from jeeves_capability_code_analyser.config import CodeAnalysisBounds
 

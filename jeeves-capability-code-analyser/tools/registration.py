@@ -12,7 +12,7 @@ This module replaces tools/base/registry.py (now deleted).
 from typing import Any, Callable, Dict, List, Optional
 
 from typing import Optional
-from jeeves_protocols import RiskLevel, ToolCategory, LoggerProtocol
+from protocols import RiskLevel, ToolCategory, LoggerProtocol
 
 # Import from capability's own catalog (not from core)
 from .catalog import tool_catalog, ToolId

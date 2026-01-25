@@ -11,14 +11,14 @@ Constitutional Compliance:
 - Avionics R4: Swappable Implementations - uses CapabilityToolCatalog from protocols
 - Capability Constitution R7: Capability owns its resources
 
-This replaces imports from jeeves_avionics.tools.catalog which was a layer violation.
+This replaces imports from avionics.tools.catalog which was a layer violation.
 """
 
 from enum import Enum
 from typing import FrozenSet, Optional
 
-from jeeves_protocols import RiskLevel, ToolCategory
-from jeeves_protocols.capability import CapabilityToolCatalog
+from protocols import RiskLevel, ToolCategory
+from protocols.capability import CapabilityToolCatalog
 
 
 class ToolId(str, Enum):

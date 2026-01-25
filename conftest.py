@@ -142,14 +142,14 @@ import pytest
 # Ensure httpx compat patch is applied before any TestClient usage.
 # This is optional - only needed for mission_system tests
 try:
-    from jeeves_mission_system.common import httpx_compat  # noqa: F401
+    from mission_system.common import httpx_compat  # noqa: F401
 except ImportError:
     # httpx not installed - skip for lightweight testing
     pass
 
 try:
     # Constitutional compliance: Use adapters instead of direct avionics imports
-    from jeeves_mission_system.adapters import get_settings
+    from mission_system.adapters import get_settings
     test_settings = get_settings()
     # Tests expect confirmation prompts to be opt-in per scenario.
     test_settings.enable_confirmations = False
@@ -162,7 +162,7 @@ def _disable_confirmations_session_override():
     """Ensure confirmations stay disabled unless a test explicitly enables them."""
     try:
         # Constitutional compliance: Use adapters instead of direct avionics imports
-        from jeeves_mission_system.adapters import get_settings
+        from mission_system.adapters import get_settings
         test_settings = get_settings()
         original = test_settings.enable_confirmations
         test_settings.enable_confirmations = False
@@ -229,6 +229,6 @@ def mock_logger():
 
 try:
     # uuid_str is a utility function from shared utilities
-    from jeeves_shared.uuid_utils import uuid_str  # noqa: F401
+    from shared.uuid_utils import uuid_str  # noqa: F401
 except ImportError:
     uuid_str = None  # type: ignore

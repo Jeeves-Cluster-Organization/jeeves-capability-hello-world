@@ -47,7 +47,7 @@ def setup_capability_registration():
     - Agent definitions
     """
     try:
-        from jeeves_protocols import reset_capability_resource_registry
+        from protocols import reset_capability_resource_registry
 
         # Start with clean registry
         reset_capability_resource_registry()
@@ -78,7 +78,7 @@ def setup_language_config():
     to be registered at bootstrap.
     """
     try:
-        from jeeves_mission_system.contracts import get_config_registry, ConfigKeys
+        from mission_system.contracts import get_config_registry, ConfigKeys
         from jeeves_capability_code_analyser.config import get_language_config
 
         registry = get_config_registry()

@@ -24,7 +24,7 @@ Each agent receives:
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 # Constitutional imports - RiskLevel from protocols, others from mission_system contracts
-from jeeves_protocols import RiskLevel
+from protocols import RiskLevel
 from tools.catalog import tool_catalog
 # Domain-specific bounds from capability config (per Constitution R6)
 from jeeves_capability_code_analyser.config import CodeAnalysisBounds, get_code_analysis_bounds

@@ -12,8 +12,8 @@ Architecture: File Navigator -> Code Parser -> Semantic Search (L5 Graph)
 
 from typing import Optional, List, Dict, Any
 
-from jeeves_protocols import LoggerProtocol, ToolCategory, PersistenceProtocol
-from jeeves_mission_system.contracts_core import ContextBounds
+from protocols import LoggerProtocol, ToolCategory, PersistenceProtocol
+from mission_system.contracts_core import ContextBounds
 
 # Import from capability's own catalog
 from tools.catalog import tool_catalog, ToolId, EXPOSED_TOOL_IDS

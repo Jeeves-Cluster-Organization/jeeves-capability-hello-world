@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 import structlog
 get_logger = structlog.get_logger
 from tools.registry import RiskLevel, tool_registry
@@ -30,7 +30,7 @@ from tools.base.path_helpers import (
     repo_path_error_response,
 )
 # Constitutional imports - from mission_system contracts layer
-from jeeves_mission_system.contracts import ContextBounds
+from mission_system.contracts import ContextBounds
 
 
 # Regex patterns for different languages

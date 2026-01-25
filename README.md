@@ -140,11 +140,11 @@ This capability depends on two git submodules:
 - Stream-first inference contract
 
 **`jeeves-core`** - Core infrastructure:
-- `jeeves_protocols` - Protocol definitions and type bridge
-- `jeeves_mission_system` - Orchestration primitives and contracts
-- `jeeves_avionics` - Infrastructure adapters (LLM, database, gateway)
-- `jeeves_control_tower` - Kernel layer (lifecycle, resources)
-- `jeeves_shared` - Shared utilities (logging, serialization)
+- `protocols` - Protocol definitions and type bridge
+- `mission_system` - Orchestration primitives and contracts
+- `avionics` - Infrastructure adapters (LLM, database, gateway)
+- `control_tower` - Kernel layer (lifecycle, resources)
+- `shared` - Shared utilities (logging, serialization)
 
 ### Initializing the Submodule
 

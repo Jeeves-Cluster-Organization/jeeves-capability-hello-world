@@ -10,7 +10,7 @@ This module exports tool functions that are registered by tools/registration.py.
 
 from typing import Any, Dict, Optional
 
-from jeeves_protocols import PersistenceProtocol
+from protocols import PersistenceProtocol
 import structlog
 def get_logger(name=None):
     return structlog.get_logger(name) if name else structlog.get_logger()

@@ -11,7 +11,7 @@ No Chainlit internals are accessed or modified.
 from typing import Dict
 import chainlit as cl
 
-from jeeves_control_tower.ipc import get_commbus
+from control_tower.ipc import get_commbus
 from console.messages import ProcessQuery, SubmitClarification, GetSystemStatus, ConsoleEvent
 
 

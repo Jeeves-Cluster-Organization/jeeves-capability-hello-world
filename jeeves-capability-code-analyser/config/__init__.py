@@ -41,8 +41,8 @@ from jeeves_capability_code_analyser.config.tool_access import (
     get_agents_for_tool,
     get_tools_by_category,
 )
-# Re-export ToolAccess from jeeves_protocols for convenience
-from jeeves_protocols import ToolAccess
+# Re-export ToolAccess from protocols for convenience
+from protocols import ToolAccess
 
 from jeeves_capability_code_analyser.config.deployment import (
     CODE_ANALYSIS_AGENTS,

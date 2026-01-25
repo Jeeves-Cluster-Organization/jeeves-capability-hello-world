@@ -19,9 +19,9 @@ Constitutional Pattern:
 import re
 from typing import Any, Dict, Optional
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 from .catalog import ToolId, tool_catalog
-from jeeves_protocols import RiskLevel, ToolCategory
+from protocols import RiskLevel, ToolCategory
 
 
 async def locate(

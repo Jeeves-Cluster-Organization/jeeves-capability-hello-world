@@ -165,7 +165,7 @@ Added:
    - **Documented in:** README.md, COMMBUS_IMPLEMENTATION_RESULTS.md, COVERAGE_ANALYSIS_COMPLETE.md
 
 2. **Middleware Removal**
-   - **TelemetryMiddleware:** Removed from Go → Python (jeeves_avionics/observability/metrics.py)
+   - **TelemetryMiddleware:** Removed from Go → Python (avionics/observability/metrics.py)
    - **RetryMiddleware:** Removed from Go → Python (LLM provider level)
    - **Reason:** Path A architectural decision (Go = core, Python = app)
    - **Documented in:** COMMBUS_IMPLEMENTATION_RESULTS.md, COVERAGE_ANALYSIS_COMPLETE.md

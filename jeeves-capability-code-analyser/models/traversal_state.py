@@ -1,7 +1,7 @@
 """TraversalState for code analysis - extends WorkingMemory.
 
 This is the code-analysis specific state model that extends the generic
-WorkingMemory from jeeves_protocols with code-specific fields.
+WorkingMemory from protocols with code-specific fields.
 
 Part of the code_analysis vertical - NOT part of core.
 
@@ -14,8 +14,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 
-# Constitutional imports - from jeeves_protocols (canonical location)
-from jeeves_protocols import WorkingMemory, Finding
+# Constitutional imports - from protocols (canonical location)
+from protocols import WorkingMemory, Finding
 
 
 @dataclass
@@ -84,7 +84,7 @@ class TraversalState:
 
     Updated for jeeves-core v4.0:
     - Uses composition with WorkingMemory instead of inheritance
-    - WorkingMemory is now a dataclass from jeeves_protocols
+    - WorkingMemory is now a dataclass from protocols
     """
 
     # Core identity
@@ -128,7 +128,7 @@ class TraversalState:
 
         # Initialize composed WorkingMemory
         if self._working_memory is None:
-            from jeeves_protocols import create_working_memory
+            from protocols import create_working_memory
             self._working_memory = create_working_memory(
                 session_id=self.session_id,
                 user_id=self.user_id,
@@ -136,7 +136,7 @@ class TraversalState:
 
         # Set timestamps if not provided
         if self.created_at is None:
-            from jeeves_protocols import utc_now
+            from protocols import utc_now
             self.created_at = utc_now()
         if self.updated_at is None:
             self.updated_at = self.created_at
@@ -303,7 +303,7 @@ class TraversalState:
         self._working_memory.findings = []
 
         # Update timestamp
-        from jeeves_protocols import utc_now
+        from protocols import utc_now
         self.updated_at = utc_now()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -346,10 +346,10 @@ class TraversalState:
         created_at = data.get("created_at")
         updated_at = data.get("updated_at")
         if isinstance(created_at, str):
-            from jeeves_protocols import parse_datetime
+            from protocols import parse_datetime
             created_at = parse_datetime(created_at)
         if isinstance(updated_at, str):
-            from jeeves_protocols import parse_datetime
+            from protocols import parse_datetime
             updated_at = parse_datetime(updated_at)
 
         return cls(

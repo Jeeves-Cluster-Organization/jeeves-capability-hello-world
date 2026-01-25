@@ -313,8 +313,8 @@ Option 3: Use dependency injection
   - Instead of importing concrete implementations, accept protocols
 
 Example fix for ControlTower importing from Avionics:
-  BEFORE: from jeeves_avionics.database import PostgresClient
-  AFTER:  from jeeves_protocols import DatabaseClientProtocol
+  BEFORE: from avionics.database import PostgresClient
+  AFTER:  from protocols import DatabaseClientProtocol
           # Inject concrete client at runtime
 """)
 

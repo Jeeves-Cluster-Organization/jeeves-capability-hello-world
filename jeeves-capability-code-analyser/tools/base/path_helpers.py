@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Optional, Set, Tuple
 
 from jeeves_capability_code_analyser.config import LanguageConfig
-from jeeves_mission_system.contracts import get_config_registry, ConfigKeys
+from mission_system.contracts import get_config_registry, ConfigKeys
 import structlog
 get_logger = structlog.get_logger
 

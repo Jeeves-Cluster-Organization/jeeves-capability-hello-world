@@ -24,7 +24,7 @@ from agents.prompt_mapping import (
     get_code_analysis_agents,
     PROMPT_STATS,
 )
-from jeeves_mission_system.prompts.core.registry import PromptRegistry
+from mission_system.prompts.core.registry import PromptRegistry
 
 # Ensure code analysis prompts are registered before tests run
 from prompts.code_analysis import register_code_analysis_prompts

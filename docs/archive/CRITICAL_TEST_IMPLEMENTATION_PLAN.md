@@ -21,7 +21,7 @@
 ## 1. flow_service.py - gRPC Flow Servicer (0% → 75%)
 
 ### Module Overview
-- **Path:** `jeeves_mission_system/orchestrator/flow_service.py`
+- **Path:** `mission_system/orchestrator/flow_service.py`
 - **Lines:** 369
 - **Class:** `FlowServicer` (gRPC servicer)
 - **Purpose:** Capability invocation via gRPC, session management
@@ -161,7 +161,7 @@ def flow_servicer(mock_db, mock_servicer):
 ## 2. governance_service.py - Health & Governance (0% → 75%)
 
 ### Module Overview
-- **Path:** `jeeves_mission_system/orchestrator/governance_service.py`
+- **Path:** `mission_system/orchestrator/governance_service.py`
 - **Lines:** 292
 - **Class:** `HealthServicer` (gRPC servicer)
 - **Purpose:** System health monitoring, agent status, memory layer introspection
@@ -269,7 +269,7 @@ async def test_check_layer_status_inactive(servicer, mock_db):
 ## 3. pgvector_repository.py - Vector Search (9% → 70%)
 
 ### Module Overview
-- **Path:** `jeeves_memory_module/repositories/pgvector_repository.py`
+- **Path:** `memory_module/repositories/pgvector_repository.py`
 - **Lines:** 530
 - **Class:** `PgVectorRepository`
 - **Purpose:** Semantic search via pgvector, embedding storage
@@ -388,7 +388,7 @@ async def test_validate_collection_invalid(repo):
 ## 4. sql_adapter.py - SQL Data Layer (13% → 75%)
 
 ### Module Overview
-- **Path:** `jeeves_memory_module/adapters/sql_adapter.py`
+- **Path:** `memory_module/adapters/sql_adapter.py`
 - **Lines:** 378
 - **Class:** `SQLAdapter`
 - **Purpose:** CRUD operations for facts and messages
@@ -501,7 +501,7 @@ async def test_delete_invalid_type(adapter, mock_db):
 ## 5. embedding_service.py - AI Embeddings (13% → 70%)
 
 ### Module Overview
-- **Path:** `jeeves_memory_module/services/embedding_service.py`
+- **Path:** `memory_module/services/embedding_service.py`
 - **Lines:** 284
 - **Class:** `EmbeddingService`
 - **Purpose:** Text embedding generation with caching
@@ -597,7 +597,7 @@ def test_cache_key_generation(service):
 ## 6. rate_limiter.py - Rate Limiting (18% → 75%)
 
 ### Module Overview
-- **Path:** `jeeves_control_tower/resources/rate_limiter.py`
+- **Path:** `control_tower/resources/rate_limiter.py`
 - **Lines:** 424
 - **Classes:** `SlidingWindow`, `RateLimiter`
 - **Purpose:** Sliding window rate limiting

@@ -74,13 +74,13 @@ This constitution defines the contract between capabilities and the platform lay
 ```python
 # ✅ Capability CAN import from:
 from airframe import AirframeClient, EndpointSpec, InferenceRequest
-from jeeves_mission_system.api import create_mission_runtime
-from jeeves_mission_system.adapters import get_settings, create_database_client
-from jeeves_mission_system.contracts import PersistenceProtocol
-from jeeves_mission_system.contracts_core import ContextBounds
+from mission_system.api import create_mission_runtime
+from mission_system.adapters import get_settings, create_database_client
+from mission_system.contracts import PersistenceProtocol
+from mission_system.contracts_core import ContextBounds
 
 # ❌ Capability MUST NOT import from:
-# - jeeves_avionics (go through mission_system.adapters)
+# - avionics (go through mission_system.adapters)
 # - jeeves_core (go through mission_system.contracts)
 
 # ❌ Capability MUST NOT be imported by:

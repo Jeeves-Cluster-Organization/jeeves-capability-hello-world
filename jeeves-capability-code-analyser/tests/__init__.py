@@ -6,7 +6,7 @@ This test suite is organized by layer:
 - tests/fixtures/ - Shared test fixtures
 
 Constitutional compliance:
-- All tests import from jeeves_mission_system.contracts (not jeeves_core_engine)
+- All tests import from mission_system.contracts (not jeeves_core_engine)
 - Tests use mission_system.adapters for infrastructure access
 - No tests bypass layer boundaries
 """

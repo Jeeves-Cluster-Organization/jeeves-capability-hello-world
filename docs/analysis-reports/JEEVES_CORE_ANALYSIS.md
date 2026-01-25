@@ -40,24 +40,24 @@ Jeeves-core implements a **hybrid Go/Python architecture** with Go handling pipe
 │   - jeeves-capability-code-analyser                         │
 │   - Domain-specific agents, tools, configs                  │
 ├─────────────────────────────────────────────────────────────┤
-│ L4: jeeves_mission_system (Python)                          │
+│ L4: mission_system (Python)                          │
 │   - Orchestration framework, HTTP/gRPC API                  │
 │   - Capability registration, adapters                       │
 ├─────────────────────────────────────────────────────────────┤
-│ L3: jeeves_avionics (Python)                                │
+│ L3: avionics (Python)                                │
 │   - Infrastructure (LLM providers, DB, Gateway)             │
 │   - Tool execution, settings, observability                 │
 │   - Retry logic, metrics collection                         │
 ├─────────────────────────────────────────────────────────────┤
-│ L2: jeeves_memory_module (Python)                           │
+│ L2: memory_module (Python)                           │
 │   - Event sourcing, semantic memory, session state          │
 │   - Entity graphs, tool metrics                             │
 ├─────────────────────────────────────────────────────────────┤
-│ L1: jeeves_control_tower (Python)                           │
+│ L1: control_tower (Python)                           │
 │   - OS-like kernel (process lifecycle, resources)           │
 │   - Rate limiting, IPC coordination                         │
 ├─────────────────────────────────────────────────────────────┤
-│ L0: jeeves_protocols (Python) + commbus (Go)                │
+│ L0: protocols (Python) + commbus (Go)                │
 │   - Protocol definitions (Python)                           │
 │   - Canonical message types (Go)                            │
 │   - Zero-dependency contracts                               │
@@ -104,7 +104,7 @@ type RetryMiddleware struct { ... }      // REMOVED
 - CircuitBreakerMiddleware  // Failure protection
 
 // Python owns:
-- Metrics/observability (jeeves_avionics/observability/metrics.py)
+- Metrics/observability (avionics/observability/metrics.py)
 - LLM retry logic (handled at provider level)
 - Tool resilience (wrapped in tool executor)
 ```
@@ -382,7 +382,7 @@ func (e *GenericEnvelope) ResolveInterrupt(response *InterruptResponse)
 
 ## Python Integration Layer
 
-### Protocol Bridge (`jeeves_protocols/`)
+### Protocol Bridge (`protocols/`)
 
 **Purpose:** Define Python-side contracts that match Go behavior
 
@@ -396,10 +396,10 @@ func (e *GenericEnvelope) ResolveInterrupt(response *InterruptResponse)
 **Design Pattern:**
 ```python
 # Python defines protocols
-from jeeves_protocols import GenericEnvelope, AgentConfig, PipelineConfig
+from protocols import GenericEnvelope, AgentConfig, PipelineConfig
 
 # Go implements the runtime
-from jeeves_protocols.grpc_client import GrpcGoClient
+from protocols.grpc_client import GrpcGoClient
 
 with GrpcGoClient() as client:
     # Python sends config to Go
@@ -410,7 +410,7 @@ with GrpcGoClient() as client:
         handle_event(event)
 ```
 
-### Avionics Layer (`jeeves_avionics/`)
+### Avionics Layer (`avionics/`)
 
 **Purpose:** Infrastructure adapters and observability
 
@@ -934,7 +934,7 @@ bus.AddMiddleware(cb)
 **Wiring:**
 ```python
 # Python side
-from jeeves_protocols.grpc_client import GrpcGoClient
+from protocols.grpc_client import GrpcGoClient
 
 with GrpcGoClient() as client:
     client.connect()  # Establishes gRPC connection
@@ -1008,7 +1008,7 @@ type PersistenceAdapter interface {
 }
 ```
 
-**Location:** Likely in Python (`jeeves_avionics/checkpoint/`)
+**Location:** Likely in Python (`avionics/checkpoint/`)
 
 **Recommendation:** Verify Python implementations exist and are tested
 
@@ -1022,7 +1022,7 @@ type PromptRegistry interface {
 }
 ```
 
-**Location:** Likely in `jeeves_mission_system/prompts/`
+**Location:** Likely in `mission_system/prompts/`
 
 **Recommendation:** Verify integration works end-to-end
 

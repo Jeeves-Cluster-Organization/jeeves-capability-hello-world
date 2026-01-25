@@ -80,11 +80,11 @@ AgentConfig(
 
 ### R3: Import from Protocols
 
-Always import agent types from `jeeves_protocols`:
+Always import agent types from `protocols`:
 
 ```python
 # Correct
-from jeeves_protocols import (
+from protocols import (
     AgentConfig,
     PipelineConfig,
     GenericEnvelope,
@@ -148,16 +148,16 @@ register_capability()
 
 ### What This Capability Imports
 
-1. **From jeeves_protocols** (required)
+1. **From protocols** (required)
    - `AgentConfig`, `PipelineConfig`, `GenericEnvelope`
    - `CapabilityResourceRegistry`, `CapabilityModeConfig`
    - Protocol definitions
 
-2. **From jeeves_mission_system** (required)
+2. **From mission_system** (required)
    - `contracts` - Tool catalog, logging, persistence
    - `adapters` - Logger, database
 
-3. **From jeeves_avionics** (for infrastructure)
+3. **From avionics** (for infrastructure)
    - `wiring.py` - ToolExecutor
    - `settings.py` - Configuration
 

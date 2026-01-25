@@ -20,9 +20,9 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 from tools.catalog import ToolId, tool_catalog
-from jeeves_protocols import RiskLevel, ToolCategory
+from protocols import RiskLevel, ToolCategory
 from tools.base.path_helpers import get_repo_path, resolve_path
 
 

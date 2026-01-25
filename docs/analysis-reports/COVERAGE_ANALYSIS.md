@@ -11,13 +11,13 @@
 - **Status**: ✅ 100% coverage via 25 unit tests
 - **Protocol Updated**: CheckpointRecord now matches evolved implementation
 - **Tests Added**: Full coverage of save, load, list, delete, fork methods
-- **Test File**: `jeeves_avionics/tests/unit/checkpoint/test_postgres_adapter.py`
+- **Test File**: `avionics/tests/unit/checkpoint/test_postgres_adapter.py`
 
 ### 2. DistributedBusProtocol & redis_bus.py (446 lines)
 - **Status**: ✅ 100% coverage via 24 unit tests
 - **Protocol Updated**: DistributedTask and QueueStats now match implementation
 - **Tests Added**: Full coverage of enqueue, dequeue, complete, fail, worker lifecycle, stats
-- **Test File**: `jeeves_avionics/tests/unit/distributed/test_redis_bus.py`
+- **Test File**: `avionics/tests/unit/distributed/test_redis_bus.py`
 
 ---
 
@@ -39,8 +39,8 @@
 ## 📊 PostgreSQL Client (12% coverage, 358 lines)
 
 ### Current Test Status
-- **Location**: `jeeves_avionics/database/postgres_client.py`
-- **Existing Tests**: `jeeves_avionics/tests/unit/database/test_database.py`
+- **Location**: `avionics/database/postgres_client.py`
+- **Existing Tests**: `avionics/tests/unit/database/test_database.py`
 - **Test Type**: **Integration tests** (require Docker containers)
 - **Tests Passing**: 1/6 (5 skipped - require testcontainers)
 - **Coverage**: 12% (44/358 lines tested)
@@ -111,7 +111,7 @@
 ## 📊 Gateway SSE (21% coverage, 68 lines)
 
 ### Current Test Status
-- **Location**: `jeeves_avionics/gateway/sse.py`
+- **Location**: `avionics/gateway/sse.py`
 - **Existing Tests**: None found
 - **Coverage**: 21% (14/68 lines tested)
 
@@ -146,7 +146,7 @@ class SSEStream:
 ## 📊 LLM Providers (20-38% coverage)
 
 ### Current Test Status
-- **Location**: `jeeves_avionics/llm/providers/`
+- **Location**: `avionics/llm/providers/`
 - **Existing Tests**:
   - `test_provider_errors.py` (MockProvider only)
   - `test_llm_providers.py` (needs inspection)
@@ -182,7 +182,7 @@ class SSEStream:
 ## 📊 Gateway Chat Router (28% coverage, 253 lines)
 
 ### Current Test Status
-- **Location**: `jeeves_avionics/gateway/routers/chat.py`
+- **Location**: `avionics/gateway/routers/chat.py`
 - **Coverage**: 28% (71/253 tested)
 
 ### Analysis
@@ -227,7 +227,7 @@ This is primarily **integration-level code**:
 
 | Component | Current | After P1 | After P2 | Target |
 |-----------|---------|----------|----------|--------|
-| jeeves_avionics | 50% | ~65% | ~78% | 80% |
+| avionics | 50% | ~65% | ~78% | 80% |
 | jeeves_airframe | 50% | 50% | 50% | 80% |
 
 **Note**: jeeves_airframe needs separate analysis.
@@ -288,7 +288,7 @@ This is primarily **integration-level code**:
 
 ## 📈 ESTIMATED EFFORT TO 80%
 
-**Remaining Work (jeeves_avionics only):**
+**Remaining Work (avionics only):**
 
 | Task | Tests | Hours | Coverage Gain |
 |------|-------|-------|---------------|

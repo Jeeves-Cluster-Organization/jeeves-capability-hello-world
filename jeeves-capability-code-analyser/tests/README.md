@@ -14,7 +14,7 @@ Code analyser tests validate the 7-agent code analysis implementation. Tests use
 
 Per App Layer Constitution:
 
-- **MUST** import from `jeeves_mission_system.contracts` (not core_engine or avionics directly)
+- **MUST** import from `mission_system.contracts` (not core_engine or avionics directly)
 - **MUST** use dependency injection (not service locator pattern)
 - **MUST** create own test fixtures (not import from mission_system tests)
 
@@ -100,7 +100,7 @@ pytest jeeves-capability-code-analyser/tests/unit/agents/test_planner.py -v
 
 **Example**:
 ```python
-from jeeves_mission_system.contracts import EnvelopeStage
+from mission_system.contracts import EnvelopeStage
 
 def test_agent(envelope_with_intent):
     """Test agent with pre-populated envelope."""
@@ -237,7 +237,7 @@ No heavy markers needed - all tests use mocks!
 
 ```python
 # ✅ GOOD: Import from contracts
-from jeeves_mission_system.contracts import (
+from mission_system.contracts import (
     CoreEnvelope,
     EnvelopeStage,
     create_envelope,
@@ -248,7 +248,7 @@ from jeeves_mission_system.contracts import (
 from jeeves_core_engine.agents.envelope import CoreEnvelope  # ❌ Violation
 
 # ❌ BAD: Import from avionics directly
-from jeeves_avionics.llm import LLMClient  # ❌ Violation
+from avionics.llm import LLMClient  # ❌ Violation
 ```
 
 ### 2. Dependency Injection (Not Service Locator)
@@ -283,7 +283,7 @@ class PlannerAgent:
 from tests.fixtures.envelope import envelope_factory
 
 # ❌ BAD: Import from mission_system tests
-from jeeves_mission_system.tests.fixtures.agents import envelope_factory  # ❌ Violation
+from mission_system.tests.fixtures.agents import envelope_factory  # ❌ Violation
 ```
 
 ---
@@ -308,7 +308,7 @@ pytest jeeves-capability-code-analyser/tests/unit/agents/test_planner.py::test_b
 """Unit tests for [Agent]Agent."""
 
 import pytest
-from jeeves_mission_system.contracts import Status, EnvelopeStage
+from mission_system.contracts import Status, EnvelopeStage
 
 
 class TestAgent:
@@ -335,7 +335,7 @@ class TestAgent:
 """Unit tests for [tool] tool."""
 
 import pytest
-from jeeves_mission_system.contracts import RiskLevel
+from mission_system.contracts import RiskLevel
 
 
 class TestTool:
@@ -369,7 +369,7 @@ class TestTool:
 from jeeves_core_engine.agents.envelope import CoreEnvelope
 
 # ✅ After
-from jeeves_mission_system.contracts import CoreEnvelope
+from mission_system.contracts import CoreEnvelope
 ```
 
 ### Issue 2: ModuleNotFoundError for tools
@@ -422,9 +422,9 @@ jobs:
 
 ## Related Documentation
 
-- **Mission System Contracts**: [../../jeeves_mission_system/contracts.py](../../jeeves_mission_system/contracts.py)
-- **Mission System Tests**: [../../jeeves_mission_system/tests/README.md](../../jeeves_mission_system/tests/README.md)
-- **Protocols Tests**: [../../jeeves_protocols/tests/](../../jeeves_protocols/tests/)
+- **Mission System Contracts**: [../../mission_system/contracts.py](../../mission_system/contracts.py)
+- **Mission System Tests**: [../../mission_system/tests/README.md](../../mission_system/tests/README.md)
+- **Protocols Tests**: [../../protocols/tests/](../../protocols/tests/)
 
 ---
 

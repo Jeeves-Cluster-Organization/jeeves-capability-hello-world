@@ -4,7 +4,7 @@ Models for Code Analysis capability.
 Exports:
 - TraversalState: Working memory for code traversal
 - Type definitions: Enums for type-safe pipeline
-- OperationStatus: Re-exported from jeeves_protocols for tool results
+- OperationStatus: Re-exported from protocols for tool results
 """
 
 from models.traversal_state import (
@@ -20,8 +20,8 @@ from models.types import (
     Operation,
 )
 
-# Re-export OperationStatus from jeeves_protocols for tool status codes
-from jeeves_protocols import OperationStatus
+# Re-export OperationStatus from protocols for tool status codes
+from protocols import OperationStatus
 
 __all__ = [
     # State

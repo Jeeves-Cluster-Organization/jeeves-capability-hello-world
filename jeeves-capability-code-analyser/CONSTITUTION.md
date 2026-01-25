@@ -13,7 +13,7 @@ This constitution defines the rules for **jeeves-capability-code-analyser**—th
 - Agents defined via `AgentConfig` in `pipeline_config.py`
 - Pipeline defined via `PipelineConfig`
 - No concrete agent classes - capability provides hooks only
-- `UnifiedRuntime` executes the pipeline (from `jeeves_protocols.agents`)
+- `UnifiedRuntime` executes the pipeline (from `protocols.agents`)
 - Capability OWNS all domain-specific configuration (language config, tool access matrix, deployment profiles, product identity)
 - Mission system provides only generic mechanisms
 
@@ -27,10 +27,10 @@ This constitution defines the rules for **jeeves-capability-code-analyser**—th
 - **Orchestration** (`orchestration/`) — LangGraph nodes and flow service
 
 **Capability dependencies:**
-- Depends on `jeeves_protocols` for agent types (AgentConfig, PipelineConfig, GenericEnvelope)
-- Depends on `jeeves_mission_system.contracts_core` for protocols (ToolExecutorProtocol, LoggerProtocol)
+- Depends on `protocols` for agent types (AgentConfig, PipelineConfig, GenericEnvelope)
+- Depends on `mission_system.contracts_core` for protocols (ToolExecutorProtocol, LoggerProtocol)
 - Receives infrastructure via **dependency injection** (ToolExecutor injected at bootstrap, not imported)
-- MUST NOT import directly from `jeeves_avionics` (layer violation)
+- MUST NOT import directly from `avionics` (layer violation)
 - MUST NOT import directly from `coreengine/` (Go package)
 
 ---
@@ -41,9 +41,9 @@ This constitution defines the rules for **jeeves-capability-code-analyser**—th
 
 **What this layer imports:**
 
-1. **From jeeves_protocols** (REQUIRED)
+1. **From protocols** (REQUIRED)
    ```python
-   from jeeves_protocols import (
+   from protocols import (
        # Agent types (from config.py and agents.py)
        AgentConfig,
        PipelineConfig,
@@ -71,15 +71,15 @@ This constitution defines the rules for **jeeves-capability-code-analyser**—th
    )
    ```
 
-2. **From jeeves_mission_system** (for infrastructure access)
+2. **From mission_system** (for infrastructure access)
    ```python
-   from jeeves_mission_system.contracts_core import (
+   from mission_system.contracts_core import (
        ToolExecutorProtocol,
        LoggerProtocol,
        PersistenceProtocol,
        ContextBounds,
    )
-   from jeeves_mission_system.adapters import (
+   from mission_system.adapters import (
        get_logger,
        get_settings,
        get_feature_flags,
@@ -88,7 +88,7 @@ This constitution defines the rules for **jeeves-capability-code-analyser**—th
 
    **NOTE:** Concrete implementations (ToolExecutor, LLM providers, database clients)
    are injected via dependency injection at bootstrap time. The capability layer
-   NEVER imports these directly from jeeves_avionics.
+   NEVER imports these directly from avionics.
 
 3. **External libraries**
    - Pydantic (for models)
@@ -101,13 +101,13 @@ from coreengine.agents import Agent
 from coreengine.envelope import CoreEnvelope
 
 # ❌ NEVER DO THIS - Layer violation (L5 → L2)
-from jeeves_avionics.wiring import ToolExecutor
-from jeeves_avionics.settings import get_settings
-from jeeves_avionics.database.factory import create_database_client
-from jeeves_avionics.tools.catalog import ToolId  # Use capability's own ToolId
+from avionics.wiring import ToolExecutor
+from avionics.settings import get_settings
+from avionics.database.factory import create_database_client
+from avionics.tools.catalog import ToolId  # Use capability's own ToolId
 
 # ✅ CORRECT - Import protocols from L0 or L4
-from jeeves_protocols import (
+from protocols import (
     AgentConfig,
     PipelineConfig,
     GenericEnvelope,
@@ -116,7 +116,7 @@ from jeeves_protocols import (
 )
 
 # ✅ CORRECT - Import from mission_system adapters
-from jeeves_mission_system.adapters import get_logger, get_settings
+from mission_system.adapters import get_logger, get_settings
 
 # ✅ CORRECT - Import from capability's own modules
 from tools.catalog import ToolId  # Capability-owned ToolId
@@ -309,11 +309,11 @@ Agents defined via `AgentConfig`, not class inheritance.
 
 ## Operational Rules
 
-### R1: Import from jeeves_protocols
+### R1: Import from protocols
 
 **Always:**
 ```python
-from jeeves_protocols import (
+from protocols import (
     AgentConfig,
     PipelineConfig,
     GenericEnvelope,
@@ -390,7 +390,7 @@ from jeeves_capability_code_analyser.config import (
 from pipeline_config import get_pipeline_for_mode, PIPELINE_MODES
 
 # ❌ INCORRECT - Import from mission_system (removed)
-from jeeves_mission_system.config.language_config import LanguageId  # Deleted
+from mission_system.config.language_config import LanguageId  # Deleted
 ```
 
 **Deployment configuration extracted to k8s/ manifests:**
@@ -434,8 +434,8 @@ class CodeAnalysisService:
 **Bootstrap (composition root) creates and injects:**
 
 ```python
-# bootstrap.py (in jeeves_mission_system) - COMPOSITION ROOT
-from jeeves_avionics.wiring import ToolExecutor  # Only bootstrap imports avionics
+# bootstrap.py (in mission_system) - COMPOSITION ROOT
+from avionics.wiring import ToolExecutor  # Only bootstrap imports avionics
 
 tool_executor = ToolExecutor(registry=tool_registry, logger=logger)
 service = CodeAnalysisService(
@@ -456,7 +456,7 @@ service = CodeAnalysisService(
 
 ```python
 # registration.py
-from jeeves_protocols import get_capability_resource_registry, CapabilityModeConfig
+from protocols import get_capability_resource_registry, CapabilityModeConfig
 
 def register_capability() -> None:
     """Register code_analysis capability resources with infrastructure.
@@ -500,7 +500,7 @@ register_capability()  # MUST be called before infrastructure init
 - Bypass mission_system.contracts
 - Hallucinate code without tool execution
 - Import domain config from mission_system (LanguageConfig, NodeProfiles, etc. are in capability)
-- Import directly from `jeeves_avionics` (use adapters or receive via DI)
+- Import directly from `avionics` (use adapters or receive via DI)
 - Import `ToolId` from avionics catalog (use capability's own `tools/catalog.py`)
 
 ---

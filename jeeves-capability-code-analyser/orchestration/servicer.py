@@ -18,10 +18,10 @@ about code_analysis capability specifics.
 import json
 from typing import Any, AsyncIterator, Optional
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 import structlog
 get_logger = structlog.get_logger
-from jeeves_mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
+from mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
 from orchestration.types import CodeAnalysisResult
 
 # Import proto module for gRPC message conversion

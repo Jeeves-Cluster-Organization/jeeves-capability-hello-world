@@ -7,8 +7,8 @@ and publishes ConsoleEvents for each pipeline step.
 from typing import Any, Dict
 import structlog
 
-from jeeves_control_tower.ipc import get_commbus
-from jeeves_mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
+from control_tower.ipc import get_commbus
+from mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
 
 from console.messages import (
     ProcessQuery,
@@ -166,7 +166,7 @@ def create_handler(service=None):
     """
     if service is None:
         from orchestration.wiring import create_code_analysis_service_from_components
-        from jeeves_mission_system.adapters import create_tool_executor, create_llm_provider_factory
+        from mission_system.adapters import create_tool_executor, create_llm_provider_factory
         import os
 
         # Optional airframe path for Chainlit/CommBus runs

@@ -114,7 +114,7 @@ Capabilities provide domain-specific logic; core provides the runtime.
 
 ┌─────────────────────────────────────────────────────────────┐
 
-│  jeeves_mission_system (L2 - Application Layer)             │
+│  mission_system (L2 - Application Layer)             │
 
 │  - Orchestration framework                                  │
 
@@ -132,7 +132,7 @@ Capabilities provide domain-specific logic; core provides the runtime.
 
 ┌─────────────────────────────────────────────────────────────┐
 
-│  jeeves_avionics (L1 - Infrastructure Layer)                │
+│  avionics (L1 - Infrastructure Layer)                │
 
 │  - LLM providers and factory                                │
 
@@ -150,7 +150,7 @@ Capabilities provide domain-specific logic; core provides the runtime.
 
 ┌─────────────────────────────────────────────────────────────┐
 
-│  jeeves_control_tower (L1 - Kernel Layer)                   │
+│  control_tower (L1 - Kernel Layer)                   │
 
 │  - Request lifecycle management                             │
 
@@ -168,7 +168,7 @@ Capabilities provide domain-specific logic; core provides the runtime.
 
 ┌─────────────────────────────────────────────────────────────┐
 
-│  jeeves_protocols, jeeves_shared (L0 - Foundation)          │
+│  protocols, shared (L0 - Foundation)          │
 
 │  - Protocol definitions                                     │
 
@@ -196,9 +196,9 @@ Capabilities provide domain-specific logic; core provides the runtime.
 
 ```python
 
-# From jeeves_protocols (L0) - Protocol definitions and types
+# From protocols (L0) - Protocol definitions and types
 
-from jeeves_protocols import (
+from protocols import (
 
     # Enums
 
@@ -258,9 +258,9 @@ from jeeves_protocols import (
 
 
 
-# From jeeves_shared (L0) - Shared utilities
+# From shared (L0) - Shared utilities
 
-from jeeves_shared import (
+from shared import (
 
     uuid_str, uuid_read, get_component_logger,
 
@@ -270,9 +270,9 @@ from jeeves_shared import (
 
 
 
-# From jeeves_mission_system (L2) - Framework APIs
+# From mission_system (L2) - Framework APIs
 
-from jeeves_mission_system.contracts import (
+from mission_system.contracts import (
 
     LoggerProtocol, ContextBounds, WorkingMemory,
 
@@ -284,7 +284,7 @@ from jeeves_mission_system.contracts import (
 
 
 
-from jeeves_mission_system.adapters import (
+from mission_system.adapters import (
 
     get_logger, get_settings, get_feature_flags,
 
@@ -296,7 +296,7 @@ from jeeves_mission_system.adapters import (
 
 
 
-from jeeves_mission_system.config import (
+from mission_system.config import (
 
     AgentProfile, LLMProfile, ThresholdProfile,
 
@@ -306,9 +306,9 @@ from jeeves_mission_system.config import (
 
 
 
-# From jeeves_avionics (L1) - Infrastructure (prefer adapters)
+# From avionics (L1) - Infrastructure (prefer adapters)
 
-from jeeves_avionics.capability_registry import (
+from avionics.capability_registry import (
 
     CapabilityLLMConfigRegistry, get_capability_registry,
 
@@ -316,7 +316,7 @@ from jeeves_avionics.capability_registry import (
 
 
 
-from jeeves_avionics.logging import (
+from avionics.logging import (
 
     create_logger, create_capability_logger,
 
@@ -340,7 +340,7 @@ from jeeves_avionics.logging import (
 
 # NEVER import core internals that aren't exported
 
-# from jeeves_mission_system.internal import ...  # FORBIDDEN
+# from mission_system.internal import ...  # FORBIDDEN
 
 ```
 
@@ -506,7 +506,7 @@ Capabilities MUST implement a registration function:
 
 # my_capability/wiring.py
 
-from jeeves_protocols import (
+from protocols import (
 
     get_capability_resource_registry,
 
@@ -516,7 +516,7 @@ from jeeves_protocols import (
 
 )
 
-from jeeves_avionics.capability_registry import get_capability_registry
+from avionics.capability_registry import get_capability_registry
 
 
 
@@ -594,7 +594,7 @@ async def bootstrap():
 
     # 2. Then import and use runtime services
 
-    from jeeves_mission_system.adapters import get_logger
+    from mission_system.adapters import get_logger
 
     logger = get_logger()
 
@@ -622,9 +622,9 @@ async def bootstrap():
 
 ```python
 
-from jeeves_mission_system.contracts import tool_catalog
+from mission_system.contracts import tool_catalog
 
-from jeeves_protocols import ToolCategory, RiskLevel
+from protocols import ToolCategory, RiskLevel
 
 
 
@@ -722,7 +722,7 @@ class StandardToolResult:
 
 ```python
 
-from jeeves_protocols import AgentConfig, RoutingRule, ToolAccess
+from protocols import AgentConfig, RoutingRule, ToolAccess
 
 
 
@@ -768,7 +768,7 @@ agent_config = AgentConfig(
 
 ```python
 
-from jeeves_protocols import UnifiedAgent, GenericEnvelope
+from protocols import UnifiedAgent, GenericEnvelope
 
 
 
@@ -856,7 +856,7 @@ class MyAgent(UnifiedAgent):
 
 ```python
 
-from jeeves_protocols import WorkingMemory, Finding, FocusType
+from protocols import WorkingMemory, Finding, FocusType
 
 
 
@@ -916,7 +916,7 @@ merged = merge_working_memory(memory1, memory2)
 
 ```python
 
-from jeeves_mission_system.orchestrator.agent_events import (
+from mission_system.orchestrator.agent_events import (
 
     AgentEventType, AgentEvent,
 
@@ -952,7 +952,7 @@ AgentEventType.CLARIFICATION_REQUESTED
 
 ```python
 
-from jeeves_mission_system.orchestrator.event_context import AgentEventContext
+from mission_system.orchestrator.event_context import AgentEventContext
 
 
 
@@ -996,7 +996,7 @@ async def my_agent_logic(event_context: AgentEventContext):
 
 ```python
 
-from jeeves_protocols import ContextBounds
+from protocols import ContextBounds
 
 
 
@@ -1026,7 +1026,7 @@ bounds = ContextBounds(
 
 ```python
 
-from jeeves_mission_system.config import (
+from mission_system.config import (
 
     AgentProfile, LLMProfile, ThresholdProfile,
 
@@ -1068,7 +1068,7 @@ profile = AgentProfile(
 
 ```python
 
-from jeeves_mission_system.config import (
+from mission_system.config import (
 
     get_config_registry, ConfigKeys,
 
@@ -1144,7 +1144,7 @@ my_capability/
 
 ```python
 
-from jeeves_protocols import (
+from protocols import (
 
     get_capability_resource_registry,
 
@@ -1152,7 +1152,7 @@ from jeeves_protocols import (
 
 )
 
-from jeeves_avionics.capability_registry import get_capability_registry
+from avionics.capability_registry import get_capability_registry
 
 from my_capability.config.agents import AGENT_LLM_CONFIGS
 
@@ -1234,7 +1234,7 @@ async def main():
 
     # 2. Import runtime after registration
 
-    from jeeves_mission_system.adapters import get_logger
+    from mission_system.adapters import get_logger
 
     logger = get_logger()
 
@@ -1292,11 +1292,11 @@ jeeves-core/
 
 │   └── tools/
 
-├── jeeves_protocols/          # Python: L0 Foundation - Type contracts
+├── protocols/          # Python: L0 Foundation - Type contracts
 
-├── jeeves_shared/             # Python: L0 Foundation - Shared utilities
+├── shared/             # Python: L0 Foundation - Shared utilities
 
-├── jeeves_avionics/           # Python: L1 Infrastructure
+├── avionics/           # Python: L1 Infrastructure
 
 │   ├── gateway/               # HTTP gateway (FastAPI)
 
@@ -1306,11 +1306,11 @@ jeeves-core/
 
 │   └── logging/               # Logging module
 
-├── jeeves_control_tower/      # Python: L1 Kernel - Request lifecycle
+├── control_tower/      # Python: L1 Kernel - Request lifecycle
 
-├── jeeves_memory_module/      # Python: Memory services
+├── memory_module/      # Python: Memory services
 
-├── jeeves_mission_system/     # Python: L2 Application
+├── mission_system/     # Python: L2 Application
 
 │   ├── api/                   # REST API (server.py)
 
@@ -1352,9 +1352,9 @@ The Dockerfile provides three targets:
 
 |--------|-------|-------------|---------|
 
-| `gateway` | `assistant-gateway:latest` | `jeeves_avionics.gateway.main:app` | HTTP gateway |
+| `gateway` | `assistant-gateway:latest` | `avionics.gateway.main:app` | HTTP gateway |
 
-| `orchestrator` | `assistant-7agent:latest` | `jeeves_mission_system.api.server:app` | Full runtime |
+| `orchestrator` | `assistant-7agent:latest` | `mission_system.api.server:app` | Full runtime |
 
 | `test` | `assistant-7agent:test` | `pytest` | Test runner |
 
@@ -1502,13 +1502,13 @@ Capability Dockerfile paths should reference the submodule:
 
 # Copy from submodule
 
-COPY jeeves-core/jeeves_protocols/ ./jeeves_protocols/
+COPY jeeves-core/protocols/ ./protocols/
 
-COPY jeeves-core/jeeves_shared/ ./jeeves_shared/
+COPY jeeves-core/shared/ ./shared/
 
-COPY jeeves-core/jeeves_avionics/ ./jeeves_avionics/
+COPY jeeves-core/avionics/ ./avionics/
 
-COPY jeeves-core/jeeves_mission_system/ ./jeeves_mission_system/
+COPY jeeves-core/mission_system/ ./mission_system/
 
 ```
 

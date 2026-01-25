@@ -25,9 +25,9 @@ from typing import Any, Dict, List, Optional
 import structlog
 get_logger = structlog.get_logger
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 from .catalog import ToolId, tool_catalog
-from jeeves_protocols import RiskLevel, OperationStatus, ToolCategory
+from protocols import RiskLevel, OperationStatus, ToolCategory
 # Domain-specific bounds from capability config (per Constitution R6)
 from jeeves_capability_code_analyser.config import CodeAnalysisBounds, get_code_analysis_bounds
 

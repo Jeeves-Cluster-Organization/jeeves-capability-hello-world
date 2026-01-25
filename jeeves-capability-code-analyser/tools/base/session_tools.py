@@ -13,10 +13,10 @@ Tools:
 import json
 from typing import Any, Dict, Optional
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 import structlog
 get_logger = structlog.get_logger
-from jeeves_protocols import RiskLevel
+from protocols import RiskLevel
 
 
 # In-memory session store (replaced by database in production)

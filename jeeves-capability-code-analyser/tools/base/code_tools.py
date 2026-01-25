@@ -20,7 +20,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 import structlog
 get_logger = structlog.get_logger
 from .path_helpers import (

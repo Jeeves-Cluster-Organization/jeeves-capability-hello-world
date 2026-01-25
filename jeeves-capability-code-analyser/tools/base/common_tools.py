@@ -13,11 +13,11 @@ Tool Result Contract (jeeves-core v1.2+):
 
 from typing import Dict, Any, Optional
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 import structlog
 get_logger = structlog.get_logger
 # Constitutional imports - from mission_system contracts layer
-from jeeves_mission_system.contracts import PersistenceProtocol
+from mission_system.contracts import PersistenceProtocol
 from tools.registry import tool_registry, RiskLevel
 
 

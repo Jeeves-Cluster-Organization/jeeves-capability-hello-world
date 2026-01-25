@@ -16,7 +16,7 @@ import time
 from typing import Any, AsyncIterator, Callable, Dict, Optional, TYPE_CHECKING
 from uuid import uuid4
 
-from jeeves_mission_system.contracts_core import (
+from mission_system.contracts_core import (
     Runtime,
     create_runtime_from_config,
     create_generic_envelope,
@@ -27,14 +27,14 @@ from jeeves_mission_system.contracts_core import (
     ToolExecutorProtocol,
     LLMProviderProtocol,
 )
-from jeeves_protocols import RequestContext
-from jeeves_mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
+from protocols import RequestContext
+from mission_system.orchestrator.agent_events import AgentEvent, AgentEventType
 from pipeline_config import CODE_ANALYSIS_PIPELINE, get_pipeline_for_mode, PipelineConfig
 from orchestration.types import CodeAnalysisResult
 from registration import CAPABILITY_ID
 
 if TYPE_CHECKING:
-    from jeeves_control_tower.protocols import ControlTowerProtocol
+    from control_tower.protocols import ControlTowerProtocol
 
 # Type alias for Control Tower dispatch handler
 DispatchHandler = Callable[[GenericEnvelope], "asyncio.Future[GenericEnvelope]"]
@@ -77,7 +77,7 @@ class CodeAnalysisService:
             pipeline_config: Pipeline configuration (defaults to CODE_ANALYSIS_PIPELINE)
         """
         # Get the global prompt registry
-        from jeeves_mission_system.prompts.core.registry import PromptRegistry
+        from mission_system.prompts.core.registry import PromptRegistry
         prompt_registry = PromptRegistry.get_instance()
 
         # Use provided pipeline config or default to full pipeline
@@ -184,7 +184,7 @@ class CodeAnalysisService:
         # Events flow: Orchestrator → gRPC → Gateway → WebSocket
         # NO cross-process gateway injection (orchestrator and gateway are separate processes)
         import asyncio
-        from jeeves_mission_system.orchestrator.events import create_event_orchestrator
+        from mission_system.orchestrator.events import create_event_orchestrator
 
         # Create event orchestrator for streaming (no gateway injection needed)
         orchestrator = create_event_orchestrator(

@@ -63,8 +63,8 @@ WORKDIR /build
 # Install grpcio-tools for proto compilation
 RUN pip install --no-cache-dir grpcio-tools>=1.60.0
 
-# Compile proto files (located in jeeves-core/jeeves_mission_system/proto/)
-COPY jeeves-core/jeeves_mission_system/proto/ ./proto/
+# Compile proto files (located in jeeves-core/mission_system/proto/)
+COPY jeeves-core/mission_system/proto/ ./proto/
 RUN python -m grpc_tools.protoc \
     -I. \
     --python_out=. \
@@ -162,12 +162,12 @@ RUN echo "Code version: ${CODE_VERSION}" > /app/.code_version
 
 # Copy application code from jeeves-core submodule
 # Constitutional dependency hierarchy: protocols/shared → control_tower → avionics → mission_system → capability
-COPY --chown=1000:1000 jeeves-core/jeeves_protocols/ ./jeeves_protocols/
-COPY --chown=1000:1000 jeeves-core/jeeves_shared/ ./jeeves_shared/
-COPY --chown=1000:1000 jeeves-core/jeeves_control_tower/ ./jeeves_control_tower/
-COPY --chown=1000:1000 jeeves-core/jeeves_memory_module/ ./jeeves_memory_module/
-COPY --chown=1000:1000 jeeves-core/jeeves_avionics/ ./jeeves_avionics/
-COPY --chown=1000:1000 jeeves-core/jeeves_mission_system/ ./jeeves_mission_system/
+COPY --chown=1000:1000 jeeves-core/protocols/ ./protocols/
+COPY --chown=1000:1000 jeeves-core/shared/ ./shared/
+COPY --chown=1000:1000 jeeves-core/control_tower/ ./control_tower/
+COPY --chown=1000:1000 jeeves-core/memory_module/ ./memory_module/
+COPY --chown=1000:1000 jeeves-core/avionics/ ./avionics/
+COPY --chown=1000:1000 jeeves-core/mission_system/ ./mission_system/
 
 # Copy code analysis capability as Python package (with underscores for import)
 # This enables: from jeeves_capability_code_analyser import register_capability
@@ -188,7 +188,7 @@ COPY --chown=1000:1000 tests/ ./tests/
 COPY --chown=1000:1000 app_bootstrap.py ./
 
 # Install local packages in editable mode (required for imports)
-RUN pip install --no-cache-dir -e ./jeeves_protocols -e ./jeeves_shared
+RUN pip install --no-cache-dir -e ./protocols -e ./shared
 
 # Create cache directories for transformers/huggingface models
 RUN mkdir -p /app/data /app/data/.cache/huggingface /app/data/.cache/torch
@@ -233,16 +233,16 @@ RUN echo "Code version: ${CODE_VERSION}" > /app/.code_version
 # Copy only gateway-related code (minimal footprint) from jeeves-core submodule
 # ADR-001: Gateway requires logging module and core protocols for DI pattern
 # Create minimal package structure (don't copy full __init__.py which has many dependencies)
-RUN mkdir -p jeeves_avionics jeeves_protocols jeeves_shared && \
-    echo '"""Minimal jeeves_avionics for gateway."""' > jeeves_avionics/__init__.py && \
-    echo '"""Minimal jeeves_protocols for gateway."""' > jeeves_protocols/__init__.py && \
-    echo '"""Minimal jeeves_shared for gateway."""' > jeeves_shared/__init__.py && \
-    chown -R jeeves:jeeves jeeves_avionics jeeves_protocols jeeves_shared
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_avionics/gateway/ ./jeeves_avionics/gateway/
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_avionics/logging/ ./jeeves_avionics/logging/
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_protocols/ ./jeeves_protocols/
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_shared/ ./jeeves_shared/
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_mission_system/config/ ./jeeves_mission_system/config/
+RUN mkdir -p avionics protocols shared && \
+    echo '"""Minimal avionics for gateway."""' > avionics/__init__.py && \
+    echo '"""Minimal protocols for gateway."""' > protocols/__init__.py && \
+    echo '"""Minimal shared for gateway."""' > shared/__init__.py && \
+    chown -R jeeves:jeeves avionics protocols shared
+COPY --chown=jeeves:jeeves jeeves-core/avionics/gateway/ ./avionics/gateway/
+COPY --chown=jeeves:jeeves jeeves-core/avionics/logging/ ./avionics/logging/
+COPY --chown=jeeves:jeeves jeeves-core/protocols/ ./protocols/
+COPY --chown=jeeves:jeeves jeeves-core/shared/ ./shared/
+COPY --chown=jeeves:jeeves jeeves-core/mission_system/config/ ./mission_system/config/
 # Copy static files to ./static/ (gateway looks for "static" relative to /app)
 # Frontend assets are now capability-owned (migrated from jeeves-core)
 COPY --chown=jeeves:jeeves frontend/static/ ./static/
@@ -267,7 +267,7 @@ ENV ORCHESTRATOR_PORT=50051
 ENV LOG_FORMAT=json
 ENV LOG_LEVEL=INFO
 
-CMD ["python", "-m", "uvicorn", "jeeves_avionics.gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "avionics.gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # =============================================================================
 # Orchestrator Stage - gRPC service (agents, tools, database)
@@ -301,12 +301,12 @@ RUN echo "Code version: ${CODE_VERSION}" > /app/.code_version
 
 # Copy all orchestration code from jeeves-core submodule
 # Constitutional dependency hierarchy: protocols/shared → control_tower → avionics → mission_system → capability
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_protocols/ ./jeeves_protocols/
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_shared/ ./jeeves_shared/
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_control_tower/ ./jeeves_control_tower/
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_memory_module/ ./jeeves_memory_module/
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_avionics/ ./jeeves_avionics/
-COPY --chown=jeeves:jeeves jeeves-core/jeeves_mission_system/ ./jeeves_mission_system/
+COPY --chown=jeeves:jeeves jeeves-core/protocols/ ./protocols/
+COPY --chown=jeeves:jeeves jeeves-core/shared/ ./shared/
+COPY --chown=jeeves:jeeves jeeves-core/control_tower/ ./control_tower/
+COPY --chown=jeeves:jeeves jeeves-core/memory_module/ ./memory_module/
+COPY --chown=jeeves:jeeves jeeves-core/avionics/ ./avionics/
+COPY --chown=jeeves:jeeves jeeves-core/mission_system/ ./mission_system/
 
 # Copy code analysis capability as Python package (with underscores for import)
 # This enables: from jeeves_capability_code_analyser import register_capability
@@ -325,8 +325,8 @@ COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/server.py ./
 COPY --chown=jeeves:jeeves app_bootstrap.py ./
 
 # Install local packages in editable mode
-# This makes jeeves_protocols and jeeves_shared importable
-RUN pip install --no-cache-dir -e ./jeeves_protocols -e ./jeeves_shared
+# This makes protocols and shared importable
+RUN pip install --no-cache-dir -e ./protocols -e ./shared
 
 # Create directories for cache/data
 RUN mkdir -p /app/data /app/data/.cache/huggingface /app/data/.cache/torch && \
@@ -364,5 +364,5 @@ ENV XDG_CACHE_HOME=/app/data/.cache
 # Default: start code analysis capability server
 # The capability imports FROM mission system framework (constitutional)
 # Alternative: run indexing only with:
-#   docker run ... python jeeves_mission_system/scripts/database/index_codebase.py --repo-path /repo
+#   docker run ... python mission_system/scripts/database/index_codebase.py --repo-path /repo
 CMD ["python", "server.py"]

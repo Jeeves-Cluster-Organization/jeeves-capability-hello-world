@@ -22,10 +22,10 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from jeeves_protocols import LoggerProtocol
+from protocols import LoggerProtocol
 import structlog
 get_logger = structlog.get_logger
-from jeeves_protocols import RiskLevel
+from protocols import RiskLevel
 from tools.base.path_helpers import (
     get_repo_path,
     resolve_path,

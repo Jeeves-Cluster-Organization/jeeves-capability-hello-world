@@ -11,19 +11,19 @@ Capability layers follow this import boundary pattern:
 ```
 capability → mission_system → avionics → protocols
                                 ↓
-                            jeeves_shared (L0)
+                            shared (L0)
 ```
 
 **Important:** Capabilities MUST NOT import directly from `coreengine/` (Go package).
 
 ---
 
-## 1. jeeves_protocols Exports
+## 1. protocols Exports
 
-The `jeeves_protocols` package provides all core type contracts. Import directly:
+The `protocols` package provides all core type contracts. Import directly:
 
 ```python
-from jeeves_protocols import (
+from protocols import (
     # Core Enums
     RiskLevel, ToolAccess, ToolCategory, OperationStatus, HealthStatus,
     TerminalReason, CriticVerdict, RiskApproval, OperationResult,
@@ -75,13 +75,13 @@ from jeeves_protocols import (
 
 ---
 
-## 2. jeeves_mission_system Exports
+## 2. mission_system Exports
 
 ### contracts Module
 
 ```python
-from jeeves_mission_system.contracts import (
-    # Re-exported from jeeves_protocols
+from mission_system.contracts import (
+    # Re-exported from protocols
     LoggerProtocol, ContextBounds, WorkingMemory, RiskLevel,
     PersistenceProtocol, ToolCategory,
 
@@ -99,8 +99,8 @@ from jeeves_mission_system.contracts import (
 ### contracts_core Module
 
 ```python
-from jeeves_mission_system.contracts_core import (
-    # Re-exported from jeeves_protocols
+from mission_system.contracts_core import (
+    # Re-exported from protocols
     AgentConfig, PipelineConfig, GenericEnvelope, UnifiedRuntime,
     ContextBounds, WorkingMemory, RiskLevel, ToolCategory,
     OperationStatus, ToolAccess, ToolId,
@@ -110,7 +110,7 @@ from jeeves_mission_system.contracts_core import (
 ### adapters Module
 
 ```python
-from jeeves_mission_system.adapters import (
+from mission_system.adapters import (
     # Logging facade
     get_logger,
 
@@ -135,11 +135,11 @@ from jeeves_mission_system.adapters import (
 ### orchestrator Module
 
 ```python
-from jeeves_mission_system.orchestrator.state import (
+from mission_system.orchestrator.state import (
     JeevesState, create_initial_state,
 )
 
-from jeeves_mission_system.orchestrator.agent_events import (
+from mission_system.orchestrator.agent_events import (
     AgentEvent, AgentEventType, AgentEventEmitter,
 )
 ```
@@ -147,7 +147,7 @@ from jeeves_mission_system.orchestrator.agent_events import (
 ### prompts Module
 
 ```python
-from jeeves_mission_system.prompts.core.registry import (
+from mission_system.prompts.core.registry import (
     register_prompt, PromptRegistry,
 )
 ```
@@ -155,12 +155,12 @@ from jeeves_mission_system.prompts.core.registry import (
 ### config Module
 
 ```python
-from jeeves_mission_system.config.agent_profiles import (
+from mission_system.config.agent_profiles import (
     LLMProfile, ThresholdProfile, AgentProfile,
     get_agent_profile, get_llm_profile, get_thresholds, get_latency_budget,
 )
 
-from jeeves_mission_system.config.registry import (
+from mission_system.config.registry import (
     ConfigRegistry, ConfigKeys,
     get_config_registry, set_config_registry, reset_config_registry,
 )
@@ -168,12 +168,12 @@ from jeeves_mission_system.config.registry import (
 
 ---
 
-## 3. jeeves_avionics Exports
+## 3. avionics Exports
 
 ### logging Module
 
 ```python
-from jeeves_avionics.logging import (
+from avionics.logging import (
     # Configuration
     configure_logging, configure_from_flags,
 
@@ -199,7 +199,7 @@ from jeeves_avionics.logging import (
 ### settings Module
 
 ```python
-from jeeves_avionics.settings import (
+from avionics.settings import (
     Settings, get_settings,
 )
 ```
@@ -207,7 +207,7 @@ from jeeves_avionics.settings import (
 ### capability_registry Module
 
 ```python
-from jeeves_avionics.capability_registry import (
+from avionics.capability_registry import (
     CapabilityLLMConfigRegistry,
     get_capability_registry, set_capability_registry, reset_capability_registry,
 )
@@ -216,12 +216,12 @@ from jeeves_avionics.capability_registry import (
 ### llm Module
 
 ```python
-from jeeves_avionics.llm.factory import (
+from avionics.llm.factory import (
     create_llm_provider, create_agent_provider,
     create_agent_provider_with_node_awareness, LLMFactory,
 )
 
-from jeeves_avionics.llm.providers import (
+from avionics.llm.providers import (
     LLMProvider, MockProvider, LlamaServerProvider,
     OpenAIProvider, AnthropicProvider, AzureAIFoundryProvider,
 )
@@ -230,7 +230,7 @@ from jeeves_avionics.llm.providers import (
 ### database Module
 
 ```python
-from jeeves_avionics.database.client import (
+from avionics.database.client import (
     DatabaseClientProtocol, create_database_client,
 )
 ```
@@ -238,7 +238,7 @@ from jeeves_avionics.database.client import (
 ### wiring Module
 
 ```python
-from jeeves_avionics.wiring import (
+from avionics.wiring import (
     ToolExecutor, AgentContext,
     create_tool_executor, create_llm_provider_factory,
     get_database_client,
@@ -247,10 +247,10 @@ from jeeves_avionics.wiring import (
 
 ---
 
-## 4. jeeves_shared Exports
+## 4. shared Exports
 
 ```python
-from jeeves_shared import (
+from shared import (
     # UUID utilities
     uuid_str, uuid_read, convert_uuids_to_strings, UUIDStr,
 
@@ -261,11 +261,11 @@ from jeeves_shared import (
     to_json, from_json, utc_now,
 )
 
-from jeeves_shared.uuid_utils import (
+from shared.uuid_utils import (
     uuid_str, uuid_read, convert_uuids_to_strings, UUIDStr, OptionalUUIDStr,
 )
 
-from jeeves_shared.logging import (
+from shared.logging import (
     configure_logging, create_logger, create_agent_logger,
     JeevesLogger, get_current_logger, request_scope,
 )
@@ -281,12 +281,12 @@ Capabilities MUST implement a registration function that registers their resourc
 
 ```python
 # In capability's wiring.py or __init__.py
-from jeeves_protocols import (
+from protocols import (
     get_capability_resource_registry,
     CapabilityModeConfig,
     AgentLLMConfig,
 )
-from jeeves_avionics.capability_registry import get_capability_registry
+from avionics.capability_registry import get_capability_registry
 
 def register_capability():
     """Register code-analysis capability resources."""
@@ -326,8 +326,8 @@ def register_capability():
     )
 
     # 3. Register tools (via tool catalog)
-    from jeeves_mission_system.contracts import tool_catalog, ToolId
-    from jeeves_protocols import ToolCategory, RiskLevel
+    from mission_system.contracts import tool_catalog, ToolId
+    from protocols import ToolCategory, RiskLevel
 
     @tool_catalog.register(
         tool_id=ToolId.ANALYZE,
@@ -349,17 +349,17 @@ Per the capability layer CONSTITUTION:
 
 | Requirement | Status | Notes |
 |-------------|--------|-------|
-| Capability can import from `jeeves_protocols` | ✅ | All types available |
-| Capability can import from `jeeves_mission_system` | ✅ | All adapters available |
-| Capability can import from `jeeves_avionics` | ⚠️ | Should prefer adapters |
+| Capability can import from `protocols` | ✅ | All types available |
+| Capability can import from `mission_system` | ✅ | All adapters available |
+| Capability can import from `avionics` | ⚠️ | Should prefer adapters |
 | Capability MUST NOT import from `coreengine/` | ✅ | Go package isolation |
 | Import boundary: capability → mission_system → avionics | ✅ | Enforced via adapters |
 
 ### Layer Rules
 
-1. **L0 (jeeves_shared, jeeves_protocols)**: No dependencies on other Jeeves packages
-2. **L1 (jeeves_avionics)**: Can import from L0
-3. **L2 (jeeves_mission_system)**: Can import from L0 and L1
+1. **L0 (shared, protocols)**: No dependencies on other Jeeves packages
+2. **L1 (avionics)**: Can import from L0
+3. **L2 (mission_system)**: Can import from L0 and L1
 4. **L3 (capability layers)**: Can import from L0, L1, L2
 
 ---
@@ -374,7 +374,7 @@ import pytest
 
 def test_protocols_importable():
     """Verify all required protocols are importable."""
-    from jeeves_protocols import (
+    from protocols import (
         AgentConfig, PipelineConfig, GenericEnvelope,
         RiskLevel, ToolAccess, OperationStatus,
         CapabilityResourceRegistry, get_capability_resource_registry,
@@ -385,22 +385,22 @@ def test_protocols_importable():
 
 def test_mission_system_importable():
     """Verify mission system contracts are importable."""
-    from jeeves_mission_system.contracts import (
+    from mission_system.contracts import (
         LoggerProtocol, ContextBounds, tool_catalog
     )
-    from jeeves_mission_system.adapters import get_logger
+    from mission_system.adapters import get_logger
     assert tool_catalog is not None
 
 def test_avionics_importable():
     """Verify avionics services are importable."""
-    from jeeves_avionics.logging import create_logger
-    from jeeves_avionics.capability_registry import get_capability_registry
+    from avionics.logging import create_logger
+    from avionics.capability_registry import get_capability_registry
     assert create_logger is not None
     assert get_capability_registry() is not None
 
 def test_shared_importable():
     """Verify shared utilities are importable."""
-    from jeeves_shared.uuid_utils import uuid_str
+    from shared.uuid_utils import uuid_str
     assert uuid_str("test") is not None
 ```
 
@@ -422,4 +422,4 @@ structlog = ">=24.0"
 ## Revision History
 
 - **2025-12-13**: Initial documentation created
-- **2025-12-13**: Fixed `jeeves_protocols/__init__.py` exports
+- **2025-12-13**: Fixed `protocols/__init__.py` exports

@@ -13,7 +13,7 @@ See docs/JEEVES_CORE_RUNTIME_CONTRACT.md for the authoritative contract.
 
 from typing import Any, Optional
 
-from jeeves_mission_system.contracts_core import (
+from mission_system.contracts_core import (
     LoggerProtocol,
     PersistenceProtocol,
     ToolExecutorProtocol,
@@ -51,7 +51,7 @@ def create_code_analysis_service(
     Example:
         ```python
         from orchestration.wiring import create_code_analysis_service
-        from jeeves_mission_system.api import create_mission_runtime
+        from mission_system.api import create_mission_runtime
 
         runtime = create_mission_runtime(
             tool_registry=tool_registry,

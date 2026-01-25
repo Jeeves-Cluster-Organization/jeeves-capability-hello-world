@@ -3,14 +3,14 @@
 Centralized Architecture (v4.0):
 - Uses GenericEnvelope with dynamic outputs dict
 - Pre-populated states for each pipeline stage
-- Imports from jeeves_protocols
+- Imports from protocols
 """
 
 import pytest
 from typing import Optional, Dict, Any
 from uuid import uuid4
 
-from jeeves_protocols import (
+from protocols import (
     GenericEnvelope,
     create_generic_envelope,
     RequestContext,

@@ -67,13 +67,13 @@ async def run_worker(
         max_concurrent_tasks: Max tasks to process concurrently
         heartbeat_interval: Seconds between heartbeats
     """
-    from jeeves_mission_system.bootstrap import create_app_context
-    from jeeves_avionics.distributed import RedisDistributedBus
-    from jeeves_mission_system.services.worker_coordinator import (
+    from mission_system.bootstrap import create_app_context
+    from avionics.distributed import RedisDistributedBus
+    from mission_system.services.worker_coordinator import (
         WorkerCoordinator,
         WorkerConfig,
     )
-    from jeeves_avionics.logging import create_logger
+    from avionics.logging import create_logger
 
     logger = create_logger("worker")
 

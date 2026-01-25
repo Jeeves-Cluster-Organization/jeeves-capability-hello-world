@@ -20,7 +20,7 @@ IMPORTANT: Prompts use {placeholder} syntax for context injection.
 Context builder functions provide the values via str.format().
 """
 
-from jeeves_mission_system.prompts.core.registry import register_prompt
+from mission_system.prompts.core.registry import register_prompt
 
 
 # --- INTENT PROMPTS (Agent 2) - Query Classification ---

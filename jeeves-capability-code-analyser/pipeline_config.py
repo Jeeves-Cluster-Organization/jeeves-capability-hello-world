@@ -21,7 +21,7 @@ Context Injection Architecture:
 """
 
 from typing import Any, Dict, List, Optional
-from jeeves_mission_system.contracts_core import (
+from mission_system.contracts_core import (
     AgentConfig,
     PipelineConfig,
     RoutingRule,
@@ -969,7 +969,7 @@ def integration_post_process(envelope: Any, output: Dict[str, Any], agent: Any =
 
     REINTENT LIMIT: Enforces MAX_REINTENT_CYCLES to prevent infinite loops.
     """
-    from jeeves_mission_system.contracts_core import TerminalReason
+    from mission_system.contracts_core import TerminalReason
     import structlog
             logger = structlog.get_logger()
 

@@ -25,7 +25,7 @@ Usage:
 from pathlib import Path
 from typing import Any, Dict
 
-from jeeves_protocols import (
+from protocols import (
     CapabilityServiceConfig,
     CapabilityModeConfig,
     CapabilityOrchestratorConfig,
@@ -153,7 +153,7 @@ def register_capability() -> None:
         CodeAnalysisBounds,
         set_code_analysis_bounds,
     )
-    from jeeves_mission_system.contracts import get_config_registry, ConfigKeys
+    from mission_system.contracts import get_config_registry, ConfigKeys
     config_registry = get_config_registry()
     config_registry.register(ConfigKeys.LANGUAGE_CONFIG, get_language_config())
 

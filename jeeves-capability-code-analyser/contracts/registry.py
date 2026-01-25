@@ -6,7 +6,7 @@ to their result TypedDicts. Later, this can be promoted to a global
 schema registry with minimal refactoring.
 
 Usage:
-    from jeeves_mission_system.contracts.code_analysis.registry import (
+    from mission_system.contracts.code_analysis.registry import (
         TOOL_RESULT_SCHEMAS,
         get_schema_for_tool,
         is_composite_tool,

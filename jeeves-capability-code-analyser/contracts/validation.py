@@ -5,7 +5,7 @@ Light validation hooks that check tool results against contracts.
 Designed to be cheap, non-blocking, and informative rather than strict.
 
 Usage:
-    from jeeves_mission_system.contracts.code_analysis import validate_tool_result
+    from mission_system.contracts.code_analysis import validate_tool_result
 
     result = await some_tool(...)
     issues = validate_tool_result("some_tool", result)
