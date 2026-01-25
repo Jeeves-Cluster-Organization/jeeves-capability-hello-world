@@ -35,7 +35,15 @@
       "Bash(git fetch:*)",
       "Bash(git push:*)",
       "Bash(git submodule:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(conda run -n llm-py311 pytest:*)",
+      "Bash(where conda:*)",
+      "Bash(git grep:*)",
+      "Bash(pytest:*)",
+      "Read(//e/Cluster/jeeves-capability-code-analysis/**)",
+      "Bash(tree:*)"
     ]
   }
 }
