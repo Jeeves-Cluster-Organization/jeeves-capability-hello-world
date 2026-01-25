@@ -16,7 +16,7 @@ This is `jeeves-capability-hello-world`, a simplified general-purpose chatbot ca
 - Single-machine deployment (Docker Compose, no K8s complexity)
 - Chainlit chat interface
 
-**Status:** 🚧 Foundation complete, integration in progress
+**Status:** ✅ Complete and ready for deployment
 
 **For the advanced version**, see the `main` branch: 7-agent code analysis capability with 30+ tools.
 
@@ -93,15 +93,18 @@ jeeves-capability-code-analysis/
 │   │
 │   └── orchestration/                  # Service wrapper
 │       ├── __init__.py
-│       └── service.py                  # ChatbotService (to be adapted)
+│       ├── chatbot_service.py          # ChatbotService wrapper
+│       └── service.py                  # (CodeAnalysisService - from main branch)
 │
 ├── airframe/                           # LLM adapter infrastructure (git submodule)
 ├── jeeves-core/                        # Core infrastructure (git submodule)
 │
-├── chainlit_app.py                     # Chainlit chat UI (to be created)
-├── docker/                             # Docker deployment (to be created)
-│   ├── Dockerfile
-│   └── docker-compose.yml
+├── chainlit_app.py                     # Chainlit chat UI
+├── docker/                             # Docker deployment
+│   ├── Dockerfile.hello-world          # Chatbot app container
+│   ├── docker-compose.hello-world.yml  # 3-service deployment
+│   ├── setup_hello_world.sh            # Setup script (Linux/macOS)
+│   └── setup_hello_world.ps1           # Setup script (Windows)
 └── README.md                           # This file
 ```
 
@@ -109,9 +112,10 @@ jeeves-capability-code-analysis/
 - ✅ 3-agent pipeline configuration with real LLM support
 - ✅ Prompts for Understand and Respond agents
 - ✅ 3 minimal general-purpose tools (web_search, get_time, list_tools)
-- 🚧 Chainlit entry point (pending)
-- 🚧 ChatbotService wrapper (pending adaptation)
-- 🚧 Docker deployment configuration (pending)
+- ✅ Chainlit entry point with conversation history
+- ✅ ChatbotService wrapper for 3-agent pipeline
+- ✅ Docker deployment (3 services: postgres, llama-server, chatbot)
+- ✅ Setup scripts for Linux/macOS and Windows
 
 ### Comparison: Hello World vs Code Analysis
 
@@ -187,27 +191,53 @@ export SERPER_API_KEY=your_key_here
 
 ### Current Status
 
-**✅ Completed:**
-- 3-agent pipeline configuration
-- LLM prompts for Understand and Respond agents
-- Minimal tool implementations
+**✅ Fully Implemented:**
+- ✅ 3-agent pipeline configuration (Understand → Think → Respond)
+- ✅ LLM prompts for Understand and Respond agents
+- ✅ 3 general-purpose tools (web_search, get_time, list_tools)
+- ✅ ChatbotService wrapper for pipeline execution
+- ✅ Chainlit UI with conversation history
+- ✅ Docker Compose deployment (3 services)
+- ✅ Setup scripts (Linux/macOS/Windows)
+- ✅ Complete documentation
 
-**🚧 Pending:**
-- Chainlit entry point (`chainlit_app.py`)
-- ChatbotService adaptation
-- Docker deployment configuration
+**Ready for:**
+- Local development with any LLM provider (llama.cpp, OpenAI, Anthropic)
+- Docker deployment with real LLM inference
+- Customization for any domain (see Customization section)
 - End-to-end testing
 
-### Next Steps for Completion
+### Quick Deploy
 
-To complete the hello-world chatbot:
+**Option 1: Docker Deployment (Recommended)**
 
-1. **Create Chainlit entry point** - Chat UI integration
-2. **Adapt ChatbotService** - Simple service wrapper in `orchestration/service.py`
-3. **Create Docker setup** - 3-service deployment (postgres, llama-server, chatbot)
-4. **Test end-to-end** - Full conversation flow
+```bash
+# 1. Run setup script (downloads 2GB LLM model)
+bash docker/setup_hello_world.sh --build
 
-See the implementation plan at [`C:\Users\shaik\.claude\plans\zesty-mapping-panda.md`](C:\Users\shaik\.claude\plans\zesty-mapping-panda.md) for detailed next steps.
+# 2. Start all services
+docker compose -f docker/docker-compose.hello-world.yml up -d
+
+# 3. Wait for services to be healthy (~60 seconds)
+docker compose -f docker/docker-compose.hello-world.yml ps
+
+# 4. Open browser to http://localhost:8000
+```
+
+**Option 2: Local Development**
+
+```bash
+# 1. Install dependencies
+pip install -r requirements/all.txt
+pip install chainlit structlog
+
+# 2. Set up LLM provider
+export LLM_PROVIDER=openai
+export OPENAI_API_KEY=your_key
+
+# 3. Start Chainlit
+chainlit run chainlit_app.py
+```
 
 ## Available Tools
 
@@ -239,6 +269,95 @@ The hello-world capability includes 3 minimal general-purpose tools:
 - Input: None
 - Output: `{status, tools[], count}`
 - Usage: Helps agents understand available capabilities
+
+## Docker Deployment
+
+The hello-world chatbot includes a complete Docker Compose setup with 3 services:
+
+### Services
+
+1. **PostgreSQL** - Conversation history and state storage
+   - Image: `pgvector/pgvector:pg16`
+   - Port: 5432
+   - Volume: `postgres-data` (persistent)
+
+2. **llama.cpp Server** - Real LLM inference
+   - Image: `ghcr.io/ggerganov/llama.cpp:server-cuda`
+   - Model: Qwen 2.5 3B Instruct (Q4 quantized, ~2GB)
+   - Port: 8080
+   - GPU: NVIDIA GPU support (falls back to CPU if unavailable)
+   - Volume: `llama-models` (persistent, populated by setup script)
+
+3. **Chatbot Application** - 3-agent pipeline + Chainlit UI
+   - Built from: `docker/Dockerfile.hello-world`
+   - Port: 8000 (Chainlit web interface)
+   - Depends on: postgres, llama-server
+
+### Setup and Deployment
+
+**Linux/macOS:**
+```bash
+# 1. Run setup (downloads model, creates .env)
+bash docker/setup_hello_world.sh --build
+
+# 2. Start services
+docker compose -f docker/docker-compose.hello-world.yml up -d
+
+# 3. Check status
+docker compose -f docker/docker-compose.hello-world.yml ps
+
+# 4. View logs
+docker compose -f docker/docker-compose.hello-world.yml logs -f chatbot
+
+# 5. Stop services
+docker compose -f docker/docker-compose.hello-world.yml down
+```
+
+**Windows (PowerShell):**
+```powershell
+# 1. Run setup
+.\docker\setup_hello_world.ps1 -Build
+
+# 2. Start services
+docker compose -f docker/docker-compose.hello-world.yml up -d
+
+# 3. Check status
+docker compose -f docker/docker-compose.hello-world.yml ps
+```
+
+### Accessing the Application
+
+Once all services are healthy (check with `docker compose ps`):
+
+- **Chainlit UI**: http://localhost:8000
+- **LLM API**: http://localhost:8080 (internal)
+- **PostgreSQL**: localhost:5432 (internal)
+
+### Troubleshooting
+
+**Services not starting:**
+```bash
+# Check logs for specific service
+docker compose -f docker/docker-compose.hello-world.yml logs llama-server
+docker compose -f docker/docker-compose.hello-world.yml logs chatbot
+
+# Rebuild images
+docker compose -f docker/docker-compose.hello-world.yml build --no-cache
+```
+
+**Model not found:**
+```bash
+# Re-run setup to download model
+bash docker/setup_hello_world.sh
+
+# Verify model in volume
+docker run --rm -v llama-models:/models alpine ls -lh /models/
+```
+
+**Out of memory:**
+- Reduce llama-server memory limit in `docker-compose.hello-world.yml`
+- Use CPU-only mode (remove GPU configuration)
+- Reduce `--n-gpu-layers` to offload less to GPU
 
 ## LLM Configuration
 

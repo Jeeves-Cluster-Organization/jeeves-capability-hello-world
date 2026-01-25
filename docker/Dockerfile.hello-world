@@ -1,0 +1,72 @@
+# Dockerfile for Jeeves Hello World - General Chatbot
+#
+# Simple single-stage build for the 3-agent chatbot with Chainlit UI.
+#
+# Build:
+#   docker build -f docker/Dockerfile.hello-world -t jeeves-hello-world:latest .
+#
+# Run (standalone):
+#   docker run -p 8000:8000 \
+#     -e LLM_PROVIDER=openai \
+#     -e OPENAI_API_KEY=your_key \
+#     jeeves-hello-world:latest
+#
+# For full deployment, use docker-compose.hello-world.yml
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements files
+COPY requirements/base.txt requirements/
+COPY requirements/all.txt requirements/
+
+# Install Python dependencies
+# Note: For hello-world, we need chainlit, structlog, and jeeves-core dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements/all.txt && \
+    pip install --no-cache-dir chainlit==1.0.0 structlog
+
+# Copy jeeves-core and airframe submodules (infrastructure)
+COPY jeeves-core/ /app/jeeves-core/
+COPY airframe/ /app/airframe/
+
+# Copy capability code
+COPY jeeves-capability-code-analyser/ /app/jeeves-capability-code-analyser/
+
+# Copy Chainlit application
+COPY chainlit_app.py /app/
+
+# Copy Chainlit configuration (if exists)
+COPY .chainlit/ /app/.chainlit/ 2>/dev/null || true
+
+# Create data directory
+RUN mkdir -p /app/data
+
+# Set Python path to include jeeves-core and airframe
+ENV PYTHONPATH=/app:/app/jeeves-core:/app/airframe:$PYTHONPATH
+
+# Expose Chainlit port
+EXPOSE 8000
+
+# Health check endpoint (Chainlit provides /health by default)
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 --start-period=30s \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Default environment variables (can be overridden)
+ENV CHAINLIT_HOST=0.0.0.0
+ENV CHAINLIT_PORT=8000
+ENV LOG_LEVEL=INFO
+
+# Run Chainlit application
+CMD ["chainlit", "run", "chainlit_app.py", "--host", "0.0.0.0", "--port", "8000"]
