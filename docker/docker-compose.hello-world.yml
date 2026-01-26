@@ -3,13 +3,13 @@
 # 3-service deployment for hello-world chatbot:
 #   postgres:      Database for conversation history & state
 #   llama-server:  REAL LLM inference (llama.cpp with Qwen 2.5 3B)
-#   chatbot:       3-agent pipeline (Understand → Think → Respond) + Chainlit UI
+#   chatbot:       3-agent pipeline (Understand → Think → Respond) + Gradio UI
 #
 # Usage (from project root):
 #   Start all services:     docker compose -f docker/docker-compose.hello-world.yml up -d
 #   View logs:              docker compose -f docker/docker-compose.hello-world.yml logs -f chatbot
 #   Stop services:          docker compose -f docker/docker-compose.hello-world.yml down
-#   Open browser:           http://localhost:8000 (Chainlit UI)
+#   Open browser:           http://localhost:8000 (Gradio UI)
 #
 # Setup (first time):
 #   1. Run setup script:    bash docker/setup_hello_world.sh
@@ -62,11 +62,11 @@ services:
       - --port
       - "8080"
       - --model
-      - /models/qwen2.5-3b-instruct-q4_k_m.gguf
+      - /models/Qwen2.5-7B-Instruct-Q4_K_M.gguf
       - --ctx-size
       - "8192"
       - --n-gpu-layers
-      - "35"
+      - "33"
       - --parallel
       - "1"
       - --threads
@@ -91,7 +91,7 @@ services:
       - chatbot-network
 
   # ==========================================================================
-  # Chatbot Application - 3-agent pipeline with Chainlit UI
+  # Chatbot Application - 3-agent pipeline with Gradio UI
   # ==========================================================================
   chatbot:
     container_name: chatbot-app
@@ -102,7 +102,7 @@ services:
         CODE_VERSION: ${CODE_VERSION:-hello-world}
     image: jeeves-hello-world:latest
     ports:
-      - "8000:8000"   # Chainlit UI
+      - "8000:8000"   # Gradio UI
     environment:
       # Pipeline mode
       - PIPELINE_MODE=general_chatbot
@@ -124,10 +124,6 @@ services:
       - GOOGLE_CX=${GOOGLE_CX:-}
       - SERPER_API_KEY=${SERPER_API_KEY:-}
 
-      # Chainlit Configuration
-      - CHAINLIT_HOST=0.0.0.0
-      - CHAINLIT_PORT=8000
-
       # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=json
@@ -139,7 +135,7 @@ services:
         condition: service_healthy
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 15s
       timeout: 5s
       retries: 3

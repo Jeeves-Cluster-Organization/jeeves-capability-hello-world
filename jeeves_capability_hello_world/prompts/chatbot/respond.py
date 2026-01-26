@@ -8,7 +8,15 @@ This prompt helps the LLM craft helpful, accurate responses by:
 4. Including citations when appropriate
 """
 
+from mission_system.prompts.core.registry import register_prompt
 
+
+@register_prompt(
+    name="chatbot.respond",
+    version="1.0",
+    description="Respond agent prompt for crafting helpful responses with citations",
+    constitutional_compliance="P1 (NLP-First)"
+)
 def chatbot_respond() -> str:
     return """You are a helpful AI assistant crafting a response to the user.
 

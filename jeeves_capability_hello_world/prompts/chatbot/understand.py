@@ -7,7 +7,15 @@ This prompt helps the LLM analyze user messages and determine:
 3. Search query if needed
 """
 
+from mission_system.prompts.core.registry import register_prompt
 
+
+@register_prompt(
+    name="chatbot.understand",
+    version="1.0",
+    description="Understand agent prompt for intent classification and search decision",
+    constitutional_compliance="P1 (NLP-First)"
+)
 def chatbot_understand() -> str:
     return """You are a helpful AI assistant that understands what users want.
 

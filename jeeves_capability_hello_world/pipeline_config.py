@@ -18,6 +18,7 @@ from mission_system.contracts_core import (
     ToolAccess,
     TerminalReason,
 )
+from protocols.config import AgentOutputMode, TokenStreamMode, GenerationParams
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -144,12 +145,32 @@ def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
     intent = understand_output.get("intent", "chat")
     information = think_output.get("information", {})
 
+    # Format search results and sources properly for LLM consumption
+    has_search_results = information.get("has_data", False)
+    results = information.get("results", [])
+    sources_list = information.get("sources", [])
+
+    # Format search results as readable text (not Python list repr)
+    if results:
+        search_results_text = "\n".join(
+            f"- {result.get('title', 'N/A')}: {result.get('snippet', 'N/A')}"
+            for result in results[:5]
+        )
+    else:
+        search_results_text = "None"
+
+    # Format sources as readable text (not Python list repr)
+    if sources_list:
+        sources_text = "\n".join(f"- {source}" for source in sources_list[:5])
+    else:
+        sources_text = "None"
+
     context = {
         "user_message": user_message,
         "intent": intent,
-        "has_search_results": information.get("has_data", False),
-        "search_results": str(information.get("results", []))[:5000],  # Cap to prevent prompt explosion
-        "sources": information.get("sources", []),
+        "has_search_results": has_search_results,
+        "search_results": search_results_text,
+        "sources": sources_text,
         "task": "Craft a helpful, accurate response"
     }
 
@@ -184,7 +205,6 @@ GENERAL_CHATBOT_PIPELINE = PipelineConfig(
     max_iterations=2,           # Simple queries don't need many iterations
     max_llm_calls=4,            # 2 LLM agents × 2 potential calls each
     max_agent_hops=10,
-    enable_arbiter=False,       # No arbiter needed for simple flow
     clarification_resume_stage="understand",
     confirmation_resume_stage="think",
     agents=[
@@ -230,12 +250,23 @@ GENERAL_CHATBOT_PIPELINE = PipelineConfig(
             prompt_key="chatbot.respond",
             output_key="final_response",
             required_output_fields=["response"],
-            max_tokens=3000,
-            temperature=0.7,                 # Higher temp for natural responses
+            max_tokens=150,                  # Reduced for concise responses
+            temperature=0.3,                 # Lower temp to reduce repetition
+
+            # K8s-style generation spec
+            generation=GenerationParams(
+                stop=["\n\n\n", "User:", "Question:"],  # Stop at clear boundaries
+                repeat_penalty=1.15,  # Penalize repetition moderately
+            ),
+
             pre_process=respond_pre_process,
             post_process=respond_post_process,
             mock_handler=None,               # Mock only for tests
             default_next="end",
+            # ✅ STREAMING CONFIGURATION (Phase 1: Default Hybrid)
+            output_mode=AgentOutputMode.TEXT,              # Plain text output (not JSON)
+            token_stream=TokenStreamMode.AUTHORITATIVE,    # Tokens ARE authoritative output
+            streaming_prompt_key="chatbot.respond_streaming",  # Use streaming prompt
         ),
     ],
 )
