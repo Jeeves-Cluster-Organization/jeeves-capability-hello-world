@@ -25,6 +25,20 @@ from protocols.config import AgentOutputMode, TokenStreamMode, GenerationParams
 # AGENT HOOK FUNCTIONS
 # ═══════════════════════════════════════════════════════════════
 
+def _format_conversation_history(history: list) -> str:
+    """Format conversation history as readable text for prompts."""
+    if not history:
+        return "No previous conversation."
+
+    lines = []
+    for msg in history[-5:]:  # Last 5 messages
+        role = msg.get("role", "user").capitalize()
+        content = msg.get("content", "")
+        lines.append(f"{role}: {content}")
+
+    return "\n".join(lines)
+
+
 def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
     """
     Build context for Understand agent.
@@ -34,13 +48,14 @@ def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
     # Normalize input
     user_message = envelope.raw_input.strip()
 
-    # Get conversation history (if available)
+    # Get conversation history (if available) and format as text
     conversation_history = envelope.metadata.get("conversation_history", [])
+    formatted_history = _format_conversation_history(conversation_history)
 
     # Build context for prompt template
     context = {
         "user_message": user_message,
-        "conversation_history": conversation_history[-5:],  # Last 5 messages
+        "conversation_history": formatted_history,
         "system_identity": "Helpful AI Assistant",
         "capabilities": "conversation, web search, general knowledge",
     }
@@ -136,7 +151,7 @@ def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
     """
     Build context for Respond agent.
 
-    Combines original message, intent, and search results for final response.
+    Combines original message, intent, conversation history, and search results.
     """
     understand_output = envelope.outputs.get("understanding", {})
     think_output = envelope.outputs.get("think_results", {})
@@ -144,6 +159,14 @@ def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
     user_message = envelope.raw_input
     intent = understand_output.get("intent", "chat")
     information = think_output.get("information", {})
+
+    # Get and format conversation history for context
+    conversation_history = envelope.metadata.get("conversation_history", [])
+    if isinstance(conversation_history, str):
+        # Already formatted from understand_pre_process
+        formatted_history = conversation_history
+    else:
+        formatted_history = _format_conversation_history(conversation_history)
 
     # Format search results and sources properly for LLM consumption
     has_search_results = information.get("has_data", False)
@@ -168,6 +191,7 @@ def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
     context = {
         "user_message": user_message,
         "intent": intent,
+        "conversation_history": formatted_history,
         "has_search_results": has_search_results,
         "search_results": search_results_text,
         "sources": sources_text,

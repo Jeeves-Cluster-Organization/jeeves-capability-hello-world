@@ -9,10 +9,13 @@ Architecture:
     This centralizes wiring logic and makes dependencies explicit.
 """
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TYPE_CHECKING
 import structlog
 
 from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
+
+if TYPE_CHECKING:
+    from control_tower.protocols import ControlTowerProtocol
 from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
 from jeeves_capability_hello_world.tools import initialize_all_tools, tool_catalog
 
@@ -26,9 +29,8 @@ def create_hello_world_service(
     *,
     llm_provider_factory: Callable,
     tool_executor: Any,
+    control_tower: "ControlTowerProtocol",
     logger: Optional[Any] = None,
-    persistence: Optional[Any] = None,
-    control_tower: Optional[Any] = None,
     use_mock: bool = False,
 ) -> ChatbotService:
     """
@@ -40,9 +42,8 @@ def create_hello_world_service(
     Args:
         llm_provider_factory: Factory function to create LLM providers
         tool_executor: Tool executor instance
+        control_tower: Control Tower for resource tracking and quota enforcement
         logger: Optional logger (creates one if None)
-        persistence: Optional persistence adapter (not used by hello-world)
-        control_tower: Optional Control Tower for event tracking
         use_mock: Whether to use mock LLM (for testing)
 
     Returns:
@@ -54,6 +55,7 @@ def create_hello_world_service(
             create_tool_executor,
             get_settings,
         )
+        from control_tower import ControlTower
         from jeeves_capability_hello_world.orchestration.wiring import (
             create_hello_world_service,
         )
@@ -61,10 +63,12 @@ def create_hello_world_service(
         settings = get_settings()
         llm_factory = create_llm_provider_factory(settings)
         tool_executor = create_tool_executor(tool_registry)
+        control_tower = ControlTower(logger=logger)
 
         service = create_hello_world_service(
             llm_provider_factory=llm_factory,
             tool_executor=tool_executor,
+            control_tower=control_tower,
         )
     """
     if logger is None:
@@ -73,7 +77,6 @@ def create_hello_world_service(
     logger.info(
         "creating_hello_world_service",
         use_mock=use_mock,
-        has_control_tower=control_tower is not None,
     )
 
     service = ChatbotService(
@@ -81,6 +84,7 @@ def create_hello_world_service(
         tool_executor=tool_executor,
         logger=logger,
         pipeline_config=GENERAL_CHATBOT_PIPELINE,
+        control_tower=control_tower,
         use_mock=use_mock,
     )
 
@@ -142,7 +146,7 @@ def create_wiring(
         Dict with wiring components:
         - llm_provider_factory: LLM factory function
         - tool_executor: Tool executor instance
-        - tool_registry: Tool registry adapter
+        - control_tower: Control Tower instance
         - logger: Logger instance
 
     Example:
@@ -164,6 +168,8 @@ def create_wiring(
         create_llm_provider_factory,
         create_tool_executor,
     )
+    from control_tower import ControlTower
+    from control_tower.types import ResourceQuota
 
     logger.info("creating_hello_world_wiring")
 
@@ -179,11 +185,25 @@ def create_wiring(
     # Create tool executor
     tool_executor = create_tool_executor(tool_registry)
 
-    logger.info("hello_world_wiring_created")
+    # Create Control Tower with default quota
+    ct_logger = structlog.get_logger("control_tower")
+    control_tower = ControlTower(
+        logger=ct_logger,
+        default_quota=ResourceQuota(
+            max_llm_calls=10,
+            max_tool_calls=50,
+            max_agent_hops=21,
+            max_iterations=3,
+        ),
+        default_service="hello_world",
+    )
+
+    logger.info("hello_world_wiring_created", has_control_tower=True)
 
     return {
         "llm_provider_factory": llm_provider_factory,
         "tool_executor": tool_executor,
+        "control_tower": control_tower,
         "logger": logger,
     }
 

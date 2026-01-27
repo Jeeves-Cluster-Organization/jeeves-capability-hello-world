@@ -40,7 +40,7 @@ _service: ChatbotService = None
 
 
 def get_or_create_service() -> ChatbotService:
-    """Get or create the chatbot service (with REAL LLM)."""
+    """Get or create the chatbot service (with REAL LLM and Control Tower)."""
     global _service
 
     if _service is None:
@@ -52,6 +52,8 @@ def get_or_create_service() -> ChatbotService:
             create_tool_executor,
             get_settings,
         )
+        from control_tower import ControlTower
+        from control_tower.types import ResourceQuota
 
         # Initialize tools with the catalog
         initialize_all_tools(logger=logger)
@@ -66,10 +68,25 @@ def get_or_create_service() -> ChatbotService:
         # Create tool executor via adapter
         tool_executor = create_tool_executor(tool_registry)
 
+        # Create Control Tower for resource tracking
+        ct_logger = structlog.get_logger("control_tower")
+        control_tower = ControlTower(
+            logger=ct_logger,
+            default_quota=ResourceQuota(
+                max_llm_calls=10,
+                max_tool_calls=50,
+                max_agent_hops=21,
+                max_iterations=3,
+            ),
+            default_service="hello_world",
+        )
+        logger.info("control_tower_initialized")
+
         # Create service using factory function
         _service = create_hello_world_service(
             llm_provider_factory=llm_provider_factory,
             tool_executor=tool_executor,
+            control_tower=control_tower,
             logger=logger,
             use_mock=False,
         )
@@ -77,7 +94,8 @@ def get_or_create_service() -> ChatbotService:
         logger.info("chatbot_service_ready",
                     pipeline="general_chatbot",
                     agents=3,
-                    use_real_llm=True)
+                    use_real_llm=True,
+                    has_control_tower=True)
 
     return _service
 

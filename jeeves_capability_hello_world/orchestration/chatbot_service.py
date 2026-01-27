@@ -1,14 +1,13 @@
 """
-ChatbotService - Simple wrapper for PipelineRunner with general chatbot pipeline.
+ChatbotService - Wrapper for PipelineRunner with general chatbot pipeline.
 
 Provides a clean interface for running the 3-agent chatbot pipeline
 (Understand → Think → Respond) using the centralized architecture.
 
-This is a simplified version for hello-world demonstration - no streaming,
-no Control Tower integration, no clarification handling.
+Includes Control Tower integration for resource tracking and quota enforcement.
 """
 
-from typing import Any, Dict, List, Optional, AsyncIterator
+from typing import Any, Dict, List, Optional, AsyncIterator, TYPE_CHECKING
 from uuid import uuid4
 from dataclasses import dataclass
 import asyncio
@@ -24,6 +23,9 @@ from mission_system.contracts_core import (
     PipelineConfig,
 )
 from protocols import RequestContext
+
+if TYPE_CHECKING:
+    from control_tower.protocols import ControlTowerProtocol
 
 
 @dataclass
@@ -41,11 +43,11 @@ class ChatbotService:
     """
     Service wrapper for PipelineRunner executing general chatbot pipeline.
 
-    This is a simplified service for the hello-world template:
+    Features:
     - 3-agent pipeline (Understand → Think → Respond)
     - Real LLM inference (no mocks by default)
-    - Simple request/response (no streaming)
-    - No Control Tower integration
+    - Streaming support (token-level)
+    - Control Tower integration for resource tracking and quota enforcement
     """
 
     def __init__(
@@ -55,6 +57,7 @@ class ChatbotService:
         tool_executor: ToolExecutorProtocol,
         logger: LoggerProtocol,
         pipeline_config: PipelineConfig,
+        control_tower: "ControlTowerProtocol",
         use_mock: bool = False,
     ):
         """
@@ -65,6 +68,7 @@ class ChatbotService:
             tool_executor: Tool executor for agent tool calls
             logger: Logger instance
             pipeline_config: Pipeline configuration (GENERAL_CHATBOT_PIPELINE)
+            control_tower: Control Tower for resource tracking and quota enforcement
             use_mock: Use mock handlers for testing (default: False - use real LLM)
         """
         # Get the global prompt registry
@@ -81,6 +85,74 @@ class ChatbotService:
             use_mock=use_mock,
         )
         self._logger = logger
+        self._control_tower = control_tower
+
+    async def _run_with_resource_tracking(
+        self,
+        envelope: Envelope,
+        thread_id: str,
+    ) -> Envelope:
+        """
+        Run pipeline with Control Tower resource tracking.
+
+        Args:
+            envelope: Request envelope
+            thread_id: Thread/session ID
+
+        Returns:
+            Result envelope (may be terminated if quota exceeded)
+        """
+        pid = envelope.envelope_id
+
+        # Track initial agent hop (entering pipeline)
+        self._control_tower.resources.record_usage(pid=pid, agent_hops=1)
+        if quota_exceeded := self._control_tower.resources.check_quota(pid):
+            self._logger.warning(
+                "quota_exceeded_before_run",
+                envelope_id=pid,
+                reason=quota_exceeded,
+            )
+            envelope.terminated = True
+            envelope.termination_reason = quota_exceeded
+            envelope.terminal_reason = TerminalReason.MAX_ITERATIONS_EXCEEDED
+            return envelope
+
+        # Run the pipeline
+        result_envelope = await self._runtime.run(envelope, thread_id=thread_id)
+
+        # Extract metrics from envelope metadata (set by runtime)
+        runtime_hops = result_envelope.metadata.get("agent_hops", 0)
+        runtime_llm_calls = result_envelope.metadata.get("llm_call_count", 0)
+        runtime_tool_calls = result_envelope.metadata.get("tool_call_count", 0)
+        tokens_in = result_envelope.metadata.get("total_tokens_in", 0)
+        tokens_out = result_envelope.metadata.get("total_tokens_out", 0)
+
+        # Record final resource usage
+        self._control_tower.resources.record_usage(
+            pid=pid,
+            agent_hops=max(0, runtime_hops - 1),  # Subtract initial hop
+            llm_calls=runtime_llm_calls,
+            tool_calls=runtime_tool_calls,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+        )
+
+        # Check quota after run
+        if quota_exceeded := self._control_tower.resources.check_quota(pid):
+            self._logger.warning(
+                "quota_exceeded_after_run",
+                envelope_id=pid,
+                reason=quota_exceeded,
+            )
+            if not result_envelope.terminated:
+                result_envelope.terminated = True
+                result_envelope.termination_reason = quota_exceeded
+                if "llm" in quota_exceeded.lower():
+                    result_envelope.terminal_reason = TerminalReason.MAX_LLM_CALLS_EXCEEDED
+                else:
+                    result_envelope.terminal_reason = TerminalReason.MAX_ITERATIONS_EXCEEDED
+
+        return result_envelope
 
     async def process_message(
         self,
@@ -125,8 +197,24 @@ class ChatbotService:
         )
 
         try:
-            # Run the 3-agent pipeline (Understand → Think → Respond)
-            result_envelope = await self._runtime.run(envelope, thread_id=session_id)
+            # Run the 3-agent pipeline with resource tracking
+            result_envelope = await self._run_with_resource_tracking(
+                envelope, thread_id=session_id
+            )
+
+            # Log resource usage
+            pid = envelope.envelope_id
+            usage = self._control_tower.resources.get_usage(pid)
+            if usage:
+                self._logger.info(
+                    "chatbot_resource_usage",
+                    request_id=request_id,
+                    llm_calls=usage.llm_calls,
+                    tool_calls=usage.tool_calls,
+                    agent_hops=usage.agent_hops,
+                    tokens_in=usage.tokens_in,
+                    tokens_out=usage.tokens_out,
+                )
 
             # Convert envelope to result
             result = self._envelope_to_result(result_envelope, request_id)
@@ -193,12 +281,29 @@ class ChatbotService:
             metadata=metadata or {},
         )
 
+        pid = envelope.envelope_id
+
         self._logger.info(
             "chatbot_streaming_started",
             request_id=request_id,
             user_id=user_id,
             session_id=session_id,
         )
+
+        # Track initial agent hop (entering pipeline)
+        self._control_tower.resources.record_usage(pid=pid, agent_hops=1)
+        if quota_exceeded := self._control_tower.resources.check_quota(pid):
+            self._logger.warning(
+                "quota_exceeded_before_stream",
+                envelope_id=pid,
+                reason=quota_exceeded,
+            )
+            yield PipelineEvent(
+                "error",
+                "__end__",
+                {"error": f"Quota exceeded: {quota_exceeded}", "request_id": request_id}
+            )
+            return
 
         try:
             # Stage 1: Understand (buffered - internal JSON needed)
@@ -241,6 +346,35 @@ class ChatbotService:
                         )
 
                 yield PipelineEvent("stage", "respond", {"status": "completed"})
+
+            # Record final resource usage
+            runtime_hops = envelope.metadata.get("agent_hops", 0)
+            runtime_llm_calls = envelope.metadata.get("llm_call_count", 0)
+            runtime_tool_calls = envelope.metadata.get("tool_call_count", 0)
+            tokens_in = envelope.metadata.get("total_tokens_in", 0)
+            tokens_out = envelope.metadata.get("total_tokens_out", 0)
+
+            self._control_tower.resources.record_usage(
+                pid=pid,
+                agent_hops=max(0, runtime_hops - 1),  # Subtract initial hop
+                llm_calls=runtime_llm_calls,
+                tool_calls=runtime_tool_calls,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+            )
+
+            # Log resource usage
+            usage = self._control_tower.resources.get_usage(pid)
+            if usage:
+                self._logger.info(
+                    "chatbot_streaming_resource_usage",
+                    request_id=request_id,
+                    llm_calls=usage.llm_calls,
+                    tool_calls=usage.tool_calls,
+                    agent_hops=usage.agent_hops,
+                    tokens_in=usage.tokens_in,
+                    tokens_out=usage.tokens_out,
+                )
 
             # Terminal event: done
             yield PipelineEvent(
@@ -337,6 +471,56 @@ class ChatbotService:
             error=envelope.termination_reason or "Pipeline failed",
             request_id=request_id,
         )
+
+    async def handle_dispatch(self, envelope: Envelope) -> Envelope:
+        """
+        Control Tower dispatch handler.
+
+        Called by Control Tower's CommBusCoordinator when routing
+        requests to the hello_world service.
+
+        Args:
+            envelope: Request envelope from Control Tower
+
+        Returns:
+            Result envelope with processing results
+        """
+        self._logger.info(
+            "dispatch_handler_invoked",
+            envelope_id=envelope.envelope_id,
+            request_id=envelope.request_id,
+            user_id=envelope.user_id,
+        )
+
+        result_envelope = await self._run_with_resource_tracking(
+            envelope,
+            thread_id=envelope.session_id,
+        )
+
+        # Log final resource usage
+        pid = envelope.envelope_id
+        usage = self._control_tower.resources.get_usage(pid)
+        if usage:
+            self._logger.info(
+                "dispatch_resource_usage",
+                envelope_id=pid,
+                llm_calls=usage.llm_calls,
+                tool_calls=usage.tool_calls,
+                agent_hops=usage.agent_hops,
+                tokens_in=usage.tokens_in,
+                tokens_out=usage.tokens_out,
+            )
+
+        return result_envelope
+
+    def get_dispatch_handler(self):
+        """
+        Get dispatch handler for Control Tower registration.
+
+        Returns:
+            Async callable suitable for CommBusCoordinator.register_handler()
+        """
+        return self.handle_dispatch
 
 
 __all__ = ["ChatbotService", "ChatbotResult"]

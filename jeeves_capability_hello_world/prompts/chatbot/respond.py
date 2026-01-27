@@ -20,7 +20,10 @@ from mission_system.prompts.core.registry import register_prompt
 def chatbot_respond() -> str:
     return """You are a helpful AI assistant crafting a response to the user.
 
-## User Message
+## Recent Conversation
+{conversation_history}
+
+## Current Message
 {user_message}
 
 ## Intent
