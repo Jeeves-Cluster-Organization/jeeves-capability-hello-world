@@ -3,6 +3,9 @@ Jeeves Hello World - General Chatbot Gradio Application
 
 3-agent pipeline (Understand → Think → Respond) with REAL LLM via Gradio UI.
 
+Constitution R7 compliant: Uses mission_system.adapters instead of direct
+avionics imports.
+
 Usage:
     python gradio_app.py
 
@@ -12,8 +15,17 @@ import gradio as gr
 import structlog
 from typing import List
 
-from jeeves_capability_hello_world.orchestration import ChatbotService, ChatbotResult
-from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
+# Constitution R7: Register capability FIRST, before infrastructure imports
+from jeeves_capability_hello_world import register_capability
+register_capability()
+
+# Now safe to import infrastructure via adapters
+from jeeves_capability_hello_world.orchestration import (
+    ChatbotService,
+    create_hello_world_service,
+    create_tool_registry_adapter,
+)
+from jeeves_capability_hello_world.tools import initialize_all_tools
 
 # Import prompts to register them (the @register_prompt decorators run on import)
 import jeeves_capability_hello_world.prompts.chatbot.understand  # noqa
@@ -34,40 +46,32 @@ def get_or_create_service() -> ChatbotService:
     if _service is None:
         logger.info("initializing_chatbot_service", use_mock=False)
 
-        # Import infrastructure components
-        from avionics.llm.factory import LLMFactory
-        from avionics.wiring import ToolExecutor
-        from avionics.settings import Settings
-        from jeeves_capability_hello_world.tools.hello_world_tools import HELLO_WORLD_TOOLS
+        # Constitution R7: Use mission_system.adapters, not direct avionics
+        from mission_system.adapters import (
+            create_llm_provider_factory,
+            create_tool_executor,
+            get_settings,
+        )
 
-        # Create simple tool registry for hello-world
-        class SimpleToolRegistry:
-            def __init__(self, tools):
-                self._tools = tools
+        # Initialize tools with the catalog
+        initialize_all_tools(logger=logger)
 
-            def has_tool(self, name: str) -> bool:
-                return name in self._tools
+        # Create tool registry adapter from catalog
+        tool_registry = create_tool_registry_adapter()
 
-            def get_tool(self, name: str):
-                return self._tools.get(name)
+        # Get settings and create LLM provider factory
+        settings = get_settings()
+        llm_provider_factory = create_llm_provider_factory(settings)
 
-        tool_registry = SimpleToolRegistry(HELLO_WORLD_TOOLS)
+        # Create tool executor via adapter
+        tool_executor = create_tool_executor(tool_registry)
 
-        # Create REAL LLM provider factory (not mock)
-        settings = Settings()
-        llm_factory = LLMFactory(settings=settings, node_profiles=None)
-        llm_provider_factory = llm_factory.get_provider_for_agent
-
-        # Create tool executor
-        tool_executor = ToolExecutor(registry=tool_registry, logger=logger)
-
-        # Create service with REAL LLM (use_mock=False)
-        _service = ChatbotService(
+        # Create service using factory function
+        _service = create_hello_world_service(
             llm_provider_factory=llm_provider_factory,
             tool_executor=tool_executor,
             logger=logger,
-            pipeline_config=GENERAL_CHATBOT_PIPELINE,
-            use_mock=False,  # ✅ REAL LLM enabled
+            use_mock=False,
         )
 
         logger.info("chatbot_service_ready",

@@ -175,49 +175,18 @@ def list_tools() -> Dict[str, Any]:
 
 
 # ═══════════════════════════════════════════════════════════════
-# Tool Registry for Hello World
+# Exports
 # ═══════════════════════════════════════════════════════════════
 
-HELLO_WORLD_TOOLS = {
-    "web_search": {
-        "func": web_search,
-        "description": "Search the web for current information",
-        "is_async": True,
-    },
-    "get_time": {
-        "func": get_time,
-        "description": "Get current date and time",
-        "is_async": False,
-    },
-    "list_tools": {
-        "func": list_tools,
-        "description": "List all available tools",
-        "is_async": False,
-    }
-}
+# Tool functions are exported directly
+# Registration is handled by tools/registration.py following Constitution R7
 
-
-def register_hello_world_tools(tool_registry):
-    """
-    Register all hello-world tools with the provided tool registry.
-
-    Args:
-        tool_registry: Tool registry instance from jeeves-core
-
-    Example:
-        from tools.hello_world_tools import register_hello_world_tools
-        from jeeves_core.tools import ToolRegistry
-
-        registry = ToolRegistry()
-        register_hello_world_tools(registry)
-    """
-    for tool_id, tool_info in HELLO_WORLD_TOOLS.items():
-        tool_registry.register(
-            tool_id=tool_id,
-            func=tool_info["func"],
-            description=tool_info["description"],
-            is_async=tool_info["is_async"],
-        )
+__all__ = [
+    "web_search",
+    "get_time",
+    "list_tools",
+    "print_setup_instructions",
+]
 
 
 # ═══════════════════════════════════════════════════════════════

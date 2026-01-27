@@ -27,7 +27,7 @@
 # =============================================================================
 # Builder Go Stage - Compile Go binaries for hybrid execution
 # =============================================================================
-FROM docker.io/library/golang:1.21-alpine AS builder-go
+FROM docker.io/library/golang:1.24-alpine AS builder-go
 
 WORKDIR /build
 
@@ -169,23 +169,16 @@ COPY --chown=1000:1000 jeeves-core/memory_module/ ./memory_module/
 COPY --chown=1000:1000 jeeves-core/avionics/ ./avionics/
 COPY --chown=1000:1000 jeeves-core/mission_system/ ./mission_system/
 
-# Copy code analysis capability as Python package (with underscores for import)
-# This enables: from jeeves_capability_code_analyser import register_capability
-COPY --chown=1000:1000 jeeves-capability-code-analyser/ ./jeeves_capability_code_analyser/
+# Copy hello-world capability as Python package
+# This enables: from jeeves_capability_hello_world import register_capability
+COPY --chown=1000:1000 jeeves_capability_hello_world/ ./jeeves_capability_hello_world/
 
-# Copy code analysis capability to app root for imports
-# Simplified: Copy entire tools directory preserving structure
-COPY --chown=1000:1000 jeeves-capability-code-analyser/tools/ ./tools/
-# Copy other capability components
-COPY --chown=1000:1000 jeeves-capability-code-analyser/agents/ ./agents/
-COPY --chown=1000:1000 jeeves-capability-code-analyser/models/ ./models/
-COPY --chown=1000:1000 jeeves-capability-code-analyser/config/ ./config/
-COPY --chown=1000:1000 jeeves-capability-code-analyser/orchestration/ ./orchestration/
-COPY --chown=1000:1000 jeeves-capability-code-analyser/pipeline_config.py ./
-COPY --chown=1000:1000 jeeves-capability-code-analyser/server.py ./
-COPY --chown=1000:1000 jeeves-capability-code-analyser/tests/ ./code_analyser_tests/
+# Copy hello-world tests
+COPY --chown=1000:1000 jeeves_capability_hello_world/tests/ ./hello_world_tests/
 COPY --chown=1000:1000 tests/ ./tests/
-COPY --chown=1000:1000 app_bootstrap.py ./
+
+# Copy Gradio application
+COPY --chown=1000:1000 gradio_app.py ./
 
 # Install local packages in editable mode (required for imports)
 RUN pip install --no-cache-dir -e ./protocols -e ./shared
@@ -308,21 +301,12 @@ COPY --chown=jeeves:jeeves jeeves-core/memory_module/ ./memory_module/
 COPY --chown=jeeves:jeeves jeeves-core/avionics/ ./avionics/
 COPY --chown=jeeves:jeeves jeeves-core/mission_system/ ./mission_system/
 
-# Copy code analysis capability as Python package (with underscores for import)
-# This enables: from jeeves_capability_code_analyser import register_capability
-COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/ ./jeeves_capability_code_analyser/
+# Copy hello-world capability as Python package
+# This enables: from jeeves_capability_hello_world import register_capability
+COPY --chown=jeeves:jeeves jeeves_capability_hello_world/ ./jeeves_capability_hello_world/
 
-# Copy code analysis capability (tools, agents, models, etc.) to app root
-# Simplified: Copy entire tools directory preserving structure
-COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/tools/ ./tools/
-# Copy other capability components
-COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/agents/ ./agents/
-COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/models/ ./models/
-COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/config/ ./config/
-COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/orchestration/ ./orchestration/
-COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/pipeline_config.py ./
-COPY --chown=jeeves:jeeves jeeves-capability-code-analyser/server.py ./
-COPY --chown=jeeves:jeeves app_bootstrap.py ./
+# Copy Gradio application for hello-world chatbot
+COPY --chown=jeeves:jeeves gradio_app.py ./
 
 # Install local packages in editable mode
 # This makes protocols and shared importable
@@ -334,13 +318,13 @@ RUN mkdir -p /app/data /app/data/.cache/huggingface /app/data/.cache/torch && \
 
 USER jeeves
 
-# gRPC health check (using grpc_health_probe if available, else basic check)
-HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import grpc; ch=grpc.insecure_channel('localhost:50051'); grpc.channel_ready_future(ch).result(timeout=5)" || exit 1
+# Gradio health check for hello-world chatbot
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
 
-EXPOSE 50051
+EXPOSE 8000
 
-ENV GRPC_PORT=50051
+ENV GRADIO_PORT=8000
 ENV POSTGRES_HOST=postgres
 ENV POSTGRES_PORT=5432
 ENV POSTGRES_DATABASE=assistant
@@ -349,20 +333,11 @@ ENV LLAMASERVER_HOST=http://llama-server:8080
 ENV LOG_FORMAT=json
 ENV LOG_LEVEL=INFO
 
-# RAG indexing configuration
-# Set REPO_PATH to the repository to analyze (required for semantic search)
-# Auto-index runs on every startup but skips unchanged files (hash-based)
-ENV REPO_PATH=""
-ENV AUTO_INDEX_ON_STARTUP=true
-
 # Cache directories for ML models
 ENV TRANSFORMERS_CACHE=/app/data/.cache/huggingface
 ENV HF_HOME=/app/data/.cache/huggingface
 ENV TORCH_HOME=/app/data/.cache/torch
 ENV XDG_CACHE_HOME=/app/data/.cache
 
-# Default: start code analysis capability server
-# The capability imports FROM mission system framework (constitutional)
-# Alternative: run indexing only with:
-#   docker run ... python mission_system/scripts/database/index_codebase.py --repo-path /repo
-CMD ["python", "server.py"]
+# Default: start hello-world chatbot with Gradio UI
+CMD ["python", "gradio_app.py"]

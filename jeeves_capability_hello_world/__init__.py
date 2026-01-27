@@ -10,23 +10,37 @@ Architecture:
     Understand (LLM) → Think (Tools) → Respond (LLM)
 
 Key components:
+- registration.py: Capability registration (Constitution R7)
 - pipeline_config.py: 3-agent pipeline configuration
 - prompts/chatbot/: LLM prompts for Understand and Respond agents
 - tools/: Minimal general-purpose tools (web_search, get_time, list_tools)
-- orchestration/: Service wrapper for running the pipeline
+- orchestration/: Service wrapper and wiring for running the pipeline
 
 Usage:
-    from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
-    from jeeves_capability_hello_world.tools import register_hello_world_tools
+    from jeeves_capability_hello_world import register_capability, CAPABILITY_ID
 
-    # Create and run the chatbot
-    # See chainlit_app.py for full example
+    # Register capability at startup (Constitution R7)
+    register_capability()
+
+    # Then import infrastructure and create service
+    # See gradio_app.py for full example
 """
 
-__version__ = "0.1.0-hello-world"
-__capability__ = "general_chatbot"
+from jeeves_capability_hello_world.registration import (
+    register_capability,
+    CAPABILITY_ID,
+    CAPABILITY_VERSION,
+)
+
+__version__ = CAPABILITY_VERSION
+__capability__ = CAPABILITY_ID
 
 __all__ = [
+    # Capability registration (Constitution R7)
+    "register_capability",
+    "CAPABILITY_ID",
+    "CAPABILITY_VERSION",
+    # Metadata
     "__version__",
     "__capability__",
 ]

@@ -2,7 +2,3 @@
 	path = jeeves-core
 	url = https://github.com/Jeeves-Cluster-Organization/jeeves-core.git
 	branch = main
-[submodule "airframe"]
-	path = airframe
-	url = https://github.com/Jeeves-Cluster-Organization/jeeves-airframe.git
-	branch = main

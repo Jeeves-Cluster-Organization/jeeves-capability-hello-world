@@ -4,7 +4,7 @@
 
 ## Overview
 
-This is `jeeves-capability-hello-world`, a simplified general-purpose chatbot capability that demonstrates the core multi-agent orchestration pattern using jeeves-core and airframe infrastructure.
+This is `jeeves-capability-hello-world`, a simplified general-purpose chatbot capability that demonstrates the core multi-agent orchestration pattern using jeeves-core infrastructure.
 
 **This is NOT code-search specific** - it's a universal chatbot template (like ChatGPT lite) that anyone can customize for their domain.
 
@@ -14,7 +14,8 @@ This is `jeeves-capability-hello-world`, a simplified general-purpose chatbot ca
 - General-purpose capabilities (conversation + web search)
 - Minimal, reusable template for building custom multi-agent capabilities
 - Single-machine deployment (Docker Compose, no K8s complexity)
-- Chainlit chat interface
+- Gradio chat interface with streaming support
+- Constitution R7 compliant architecture
 
 **Status:** ✅ Complete and ready for deployment
 
@@ -25,7 +26,7 @@ This is `jeeves-capability-hello-world`, a simplified general-purpose chatbot ca
 ### 3-Agent Pipeline: Universal Chatbot Pattern
 
 ```
-User Message (via Chainlit)
+User Message (via Gradio)
     ↓
 UNDERSTAND (LLM)      ← Real LLM inference
   ├─ Analyzes user intent
@@ -43,7 +44,7 @@ RESPOND (LLM)         ← Real LLM inference
   ├─ Crafts helpful response
   └─ Includes citations (if web search used)
     ↓
-Response to user (Chainlit)
+Response to user (Gradio)
 ```
 
 ### Agent Responsibilities
@@ -76,30 +77,35 @@ Response to user (Chainlit)
 
 ```
 jeeves-capability-code-analysis/
-├── jeeves-capability-code-analyser/    # Main capability package
-│   ├── __init__.py                     # Package metadata (hello-world)
+├── jeeves_capability_hello_world/      # Main capability package
+│   ├── __init__.py                     # Package exports, register_capability
+│   ├── registration.py                 # Constitution R7 capability registration
 │   ├── pipeline_config.py              # 3-agent pipeline configuration
+│   ├── CONSTITUTION.md                 # Capability rules and boundaries
 │   │
 │   ├── prompts/                        # LLM prompts
 │   │   ├── __init__.py
 │   │   └── chatbot/                    # General chatbot prompts
 │   │       ├── __init__.py
 │   │       ├── understand.py           # Understand agent prompt
-│   │       └── respond.py              # Respond agent prompt
+│   │       ├── respond.py              # Respond agent prompt
+│   │       └── respond_streaming.py    # Streaming response prompt
 │   │
 │   ├── tools/                          # General-purpose tools
-│   │   ├── __init__.py
+│   │   ├── __init__.py                 # initialize_all_tools()
+│   │   ├── catalog.py                  # Tool catalog with metadata
+│   │   ├── registration.py             # Tool registration
 │   │   └── hello_world_tools.py        # 3 minimal tools
 │   │
-│   └── orchestration/                  # Service wrapper
+│   └── orchestration/                  # Service layer
 │       ├── __init__.py
 │       ├── chatbot_service.py          # ChatbotService wrapper
-│       └── service.py                  # (CodeAnalysisService - from main branch)
+│       ├── wiring.py                   # Dependency injection factory
+│       └── types.py                    # Domain type definitions
 │
-├── airframe/                           # LLM adapter infrastructure (git submodule)
 ├── jeeves-core/                        # Core infrastructure (git submodule)
 │
-├── chainlit_app.py                     # Chainlit chat UI
+├── gradio_app.py                       # Gradio chat UI with streaming
 ├── docker/                             # Docker deployment
 │   ├── Dockerfile.hello-world          # Chatbot app container
 │   ├── docker-compose.hello-world.yml  # 3-service deployment
@@ -110,10 +116,12 @@ jeeves-capability-code-analysis/
 
 **What's Included:**
 - ✅ 3-agent pipeline configuration with real LLM support
-- ✅ Prompts for Understand and Respond agents
+- ✅ Prompts for Understand and Respond agents (including streaming)
 - ✅ 3 minimal general-purpose tools (web_search, get_time, list_tools)
-- ✅ Chainlit entry point with conversation history
+- ✅ Gradio entry point with true token-level streaming
 - ✅ ChatbotService wrapper for 3-agent pipeline
+- ✅ Constitution R7 compliant registration and wiring
+- ✅ Tool catalog with metadata (categories, risk levels)
 - ✅ Docker deployment (3 services: postgres, llama-server, chatbot)
 - ✅ Setup scripts for Linux/macOS and Windows
 
@@ -134,12 +142,7 @@ jeeves-capability-code-analysis/
 
 ## Dependencies
 
-This capability depends on two git submodules:
-
-**`airframe`** - LLM adapter infrastructure:
-- Endpoint management and backend adapters
-- Health monitoring and observability hooks
-- Stream-first inference contract
+This capability depends on jeeves-core (git submodule) and LiteLLM (pip package).
 
 **`jeeves-core`** - Core infrastructure:
 - `protocols` - Protocol definitions and type bridge
@@ -193,12 +196,13 @@ export SERPER_API_KEY=your_key_here
 
 **✅ Fully Implemented:**
 - ✅ 3-agent pipeline configuration (Understand → Think → Respond)
-- ✅ LLM prompts for Understand and Respond agents
+- ✅ LLM prompts for Understand and Respond agents (with streaming)
 - ✅ 3 general-purpose tools (web_search, get_time, list_tools)
 - ✅ ChatbotService wrapper for pipeline execution
-- ✅ Chainlit UI with conversation history
+- ✅ Gradio UI with true token-level streaming
 - ✅ Docker Compose deployment (3 services)
 - ✅ Setup scripts (Linux/macOS/Windows)
+- ✅ Constitution R7 compliant architecture
 - ✅ Complete documentation
 
 **Ready for:**
@@ -229,14 +233,16 @@ docker compose -f docker/docker-compose.hello-world.yml ps
 ```bash
 # 1. Install dependencies
 pip install -r requirements/all.txt
-pip install chainlit structlog
+pip install gradio structlog
 
 # 2. Set up LLM provider
 export LLM_PROVIDER=openai
 export OPENAI_API_KEY=your_key
 
-# 3. Start Chainlit
-chainlit run chainlit_app.py
+# 3. Start Gradio app
+python gradio_app.py
+
+# Open browser: http://localhost:8000
 ```
 
 ## Available Tools
@@ -288,9 +294,9 @@ The hello-world chatbot includes a complete Docker Compose setup with 3 services
    - GPU: NVIDIA GPU support (falls back to CPU if unavailable)
    - Volume: `llama-models` (persistent, populated by setup script)
 
-3. **Chatbot Application** - 3-agent pipeline + Chainlit UI
+3. **Chatbot Application** - 3-agent pipeline + Gradio UI
    - Built from: `docker/Dockerfile.hello-world`
-   - Port: 8000 (Chainlit web interface)
+   - Port: 8000 (Gradio web interface with streaming)
    - Depends on: postgres, llama-server
 
 ### Setup and Deployment
@@ -329,7 +335,7 @@ docker compose -f docker/docker-compose.hello-world.yml ps
 
 Once all services are healthy (check with `docker compose ps`):
 
-- **Chainlit UI**: http://localhost:8000
+- **Gradio UI**: http://localhost:8000
 - **LLM API**: http://localhost:8080 (internal)
 - **PostgreSQL**: localhost:5432 (internal)
 
@@ -417,8 +423,8 @@ GOOGLE_CX=your_cx_here
 # OR
 SERPER_API_KEY=your_key_here        # Option B: Serper API
 
-# Chainlit UI
-CHAINLIT_PORT=8000
+# Gradio UI
+GRADIO_PORT=8000
 
 # Logging
 LOG_LEVEL=INFO
@@ -429,7 +435,8 @@ LOG_LEVEL=INFO
 This hello-world chatbot is a **universal template** that can be customized for any domain:
 
 ### Step 1: Define Your Tools
-Replace the 3 general tools with domain-specific tools in `tools/hello_world_tools.py`:
+
+Add domain-specific tools in `tools/hello_world_tools.py`:
 ```python
 # Example: Customer support domain
 async def search_knowledge_base(query: str) -> Dict[str, Any]:
@@ -443,7 +450,30 @@ async def get_customer_info(customer_id: str) -> Dict[str, Any]:
     pass
 ```
 
-### Step 2: Update Prompts
+### Step 2: Register Tools in Catalog
+
+Update `tools/catalog.py` to add your tool IDs and metadata:
+```python
+class ToolId(str, Enum):
+    WEB_SEARCH = "web_search"
+    SEARCH_KNOWLEDGE_BASE = "search_knowledge_base"  # Add new tool
+    GET_CUSTOMER_INFO = "get_customer_info"  # Add new tool
+```
+
+Update `tools/registration.py` to register your tools:
+```python
+tool_catalog.register(
+    tool_id=ToolId.SEARCH_KNOWLEDGE_BASE.value,
+    func=search_knowledge_base,
+    description="Search internal knowledge base",
+    category=ToolCategory.SEARCH.value,
+    risk_level=RiskLevel.READ_ONLY.value,
+    is_async=True,
+)
+```
+
+### Step 3: Update Prompts
+
 Modify `prompts/chatbot/understand.py` and `respond.py` to match your domain:
 ```python
 def chatbot_understand() -> str:
@@ -456,7 +486,8 @@ def chatbot_understand() -> str:
 ...
 ```
 
-### Step 3: Adjust Agent Configuration
+### Step 4: Adjust Agent Configuration (Optional)
+
 Update `pipeline_config.py` if needed (usually no changes required):
 - Same 3-agent pattern works for most domains
 - Adjust `max_tokens`, `temperature` for your use case
@@ -480,7 +511,10 @@ This hello-world branch is the **first step** in understanding multi-agent orche
 
 **In Hello World (this branch):**
 - Basic 3-agent pipeline pattern
-- LLM integration with jeeves-core
+- Constitution R7 compliant capability registration
+- Tool catalog with metadata (categories, risk levels)
+- Dependency injection via wiring.py
+- LLM integration via mission_system.adapters
 - Tool execution without LLM in middle agent
 - Configuration-driven agent architecture
 - Simple hook functions (pre_process, post_process)

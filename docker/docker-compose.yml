@@ -57,9 +57,9 @@ services:
         CODE_VERSION: ${CODE_VERSION:-dev}
     image: jeeves-code-analysis:latest
 
-    # Port mapping (host:container) - gRPC server listens on 50051 inside container
+    # Port mapping (host:container) - Gradio UI listens on 8000 inside container
     ports:
-      - "${API_PORT:-8000}:50051"
+      - "${API_PORT:-8000}:8000"
       - "${METRICS_PORT:-9090}:9090"
 
     # Environment variables (override with .env file)
@@ -122,13 +122,13 @@ services:
     # Restart policy
     restart: unless-stopped
 
-    # Health check - gRPC server on port 50051
+    # Health check - Gradio UI on port 8000
     healthcheck:
-      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50051)); s.close()"]
-      interval: 30s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/').read()"]
+      interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 30s
 
     # Dependencies
     depends_on:
@@ -144,69 +144,6 @@ services:
     # Labels
     labels:
       com.jeeves.service: "orchestrator"
-      com.jeeves.capability: "code-analysis"
-      com.jeeves.version: "1.0.0"
-
-
-  # ==========================================================================
-  # Jeeves Gateway (FastAPI - user-facing web UI)
-  # ==========================================================================
-  gateway:
-    container_name: jeeves-gateway
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: gateway
-      args:
-        CODE_VERSION: ${CODE_VERSION:-dev}
-    image: jeeves-gateway:latest
-
-    # Port mapping - HTTP gateway on port 8001
-    ports:
-      - "${GATEWAY_PORT:-8001}:8000"
-
-    # Environment variables
-    environment:
-      - ORCHESTRATOR_HOST=orchestrator
-      - ORCHESTRATOR_PORT=50051
-      - API_HOST=0.0.0.0
-      - API_PORT=8000
-      - LOG_FORMAT=json
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-
-    # Resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
-
-    # Restart policy
-    restart: unless-stopped
-
-    # Health check - HTTP endpoint
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-    # Dependencies - wait for orchestrator to be healthy
-    depends_on:
-      orchestrator:
-        condition: service_healthy
-
-    # Network
-    networks:
-      - jeeves-network
-
-    # Labels
-    labels:
-      com.jeeves.service: "gateway"
       com.jeeves.capability: "code-analysis"
       com.jeeves.version: "1.0.0"
 
@@ -233,7 +170,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ../jeeves-core/avionics/database/schemas:/docker-entrypoint-initdb.d/001:ro
-      - ../jeeves-capability-code-analyser/database/schemas:/docker-entrypoint-initdb.d/002:ro
+      - ../jeeves_capability_hello_world/database/schemas:/docker-entrypoint-initdb.d/002:ro
 
     # Resource limits
     deploy:

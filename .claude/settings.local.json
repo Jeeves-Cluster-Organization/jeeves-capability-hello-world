@@ -47,7 +47,15 @@
       "Bash(git merge:*)",
       "Bash(chmod:*)",
       "Bash(docker run:*)",
-      "Bash(docker images:*)"
+      "Bash(docker images:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(wc:*)",
+      "Bash(set \"PYTHONPATH=.;jeeves-core\")",
+      "Bash(cmd /c \"set PYTHONPATH=.;jeeves-core && python -c \"\"from jeeves_capability_hello_world import register_capability, CAPABILITY_ID; print\\(f''Capability ID: {CAPABILITY_ID}''\\); result = register_capability\\(\\); print\\(f''Registration result keys: {list\\(result.keys\\(\\)\\)}''\\)\"\"\")",
+      "WebFetch(domain:github.com)",
+      "Bash(PYTHONPATH=\".:jeeves-core\" python:*)",
+      "Bash(set \"PYTHONPATH=.;jeeves-core\")",
+      "Bash(docker inspect:*)"
     ]
   }
 }
