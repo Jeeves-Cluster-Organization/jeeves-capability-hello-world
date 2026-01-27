@@ -55,7 +55,8 @@
       "WebFetch(domain:github.com)",
       "Bash(PYTHONPATH=\".:jeeves-core\" python:*)",
       "Bash(set \"PYTHONPATH=.;jeeves-core\")",
-      "Bash(docker inspect:*)"
+      "Bash(docker inspect:*)",
+      "Bash(set \"MOCK_LLM_ENABLED=true\")"
     ]
   }
 }

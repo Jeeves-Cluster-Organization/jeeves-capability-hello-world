@@ -68,9 +68,10 @@ services:
     environment:
       - NODE_ID=${NODE_ID:-node-01}
       - NODE_NAME=${NODE_NAME:-assistant-primary}
-      # LLM Configuration (llama-server)
-      - LLAMASERVER_HOST=http://llama-server:8080
-      - LLM_PROVIDER=${LLM_PROVIDER:-llamaserver}
+      # LLM Configuration (new neutral vars)
+      - JEEVES_LLM_ADAPTER=${JEEVES_LLM_ADAPTER:-openai_http}
+      - JEEVES_LLM_BASE_URL=http://llama-server:8080/v1
+      - JEEVES_LLM_MODEL=${JEEVES_LLM_MODEL:-qwen2.5-7b-instruct}
       - LLM_TIMEOUT=${LLM_TIMEOUT:-300}
       # Database Configuration (PostgreSQL)
       - DATABASE_BACKEND=postgres
@@ -302,10 +303,10 @@ services:
       - POSTGRES_DATABASE=${POSTGRES_DATABASE:-assistant}
       - POSTGRES_USER=${POSTGRES_USER:-assistant}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password_change_in_production}
-      # LLM (llama-server)
-      - LLAMASERVER_HOST=http://llama-server:8080
-      - LLM_PROVIDER=llamaserver
-      - DEFAULT_MODEL=${DEFAULT_MODEL:-Llama-3.2-3B-Instruct}
+      # LLM (new neutral vars)
+      - JEEVES_LLM_ADAPTER=${JEEVES_LLM_ADAPTER:-openai_http}
+      - JEEVES_LLM_BASE_URL=http://llama-server:8080/v1
+      - JEEVES_LLM_MODEL=${JEEVES_LLM_MODEL:-qwen2.5-7b-instruct}
       # API (required by tests/config/endpoints.py)
       - API_HOST=http://orchestrator:8000
       # Gateway (for integration tests)
