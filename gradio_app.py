@@ -106,17 +106,28 @@ async def chat(message: str, history: List):
 
     try:
         # Build conversation history from Gradio format
+        # Gradio ChatInterface passes history as [[user_msg, assistant_msg], ...]
         conversation_history = []
         for msg in history:
-            role = msg.get('role', 'user')
-            content_list = msg.get('content', [])
-            text = ''
-            for item in content_list:
-                if item.get('type') == 'text':
-                    text = item.get('text', '')
-                    break
-            if text:
-                conversation_history.append({"role": role, "content": text})
+            if isinstance(msg, (list, tuple)) and len(msg) >= 2:
+                # Gradio format: [user_message, assistant_message]
+                user_msg, assistant_msg = msg[0], msg[1]
+                if user_msg:
+                    conversation_history.append({"role": "user", "content": str(user_msg)})
+                if assistant_msg:
+                    conversation_history.append({"role": "assistant", "content": str(assistant_msg)})
+            elif isinstance(msg, dict):
+                # Alternative dict format (if Gradio changes)
+                role = msg.get('role', 'user')
+                content = msg.get('content', '')
+                if isinstance(content, list):
+                    # Handle content list format
+                    for item in content:
+                        if isinstance(item, dict) and item.get('type') == 'text':
+                            content = item.get('text', '')
+                            break
+                if content:
+                    conversation_history.append({"role": role, "content": str(content)})
 
         # Build metadata
         metadata = {

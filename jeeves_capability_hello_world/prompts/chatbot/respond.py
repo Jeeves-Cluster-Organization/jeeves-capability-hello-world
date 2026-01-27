@@ -80,10 +80,10 @@ When answering from your knowledge (conversation/chat):
 - **Be creative**: For creative requests (jokes, stories), be entertaining
 - **Stay humble**: If unsure, say so rather than guessing
 
-Example for chat:
+Example for chat (DO NOT copy this response, create your own):
 ```json
 {{
-  "response": "Why did the scarecrow win an award? Because he was outstanding in his field! I hope that brought a smile to your face.",
+  "response": "[Your unique, original response here - be creative!]",
   "citations": [],
   "confidence": "high"
 }}

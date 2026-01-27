@@ -67,19 +67,12 @@ Write plain text responses without any:
 
 Just answer the question directly in 2-4 sentences.
 
-## Examples
+## Guidelines
 
-**Good response (general question):**
-"Why did the scarecrow win an award? Because he was outstanding in his field!"
-
-**Good response (factual question):**
-"Photosynthesis is how plants convert light energy into chemical energy. Plants use sunlight, water, and carbon dioxide to produce glucose and oxygen."
-
-**Good response (with search results):**
-"According to Weather.com, it's currently 72°F and sunny in Paris with light winds."
-
-**Bad response (avoid this style):**
-"Sure thing! Here's a joke for you: Why did the scarecrow win an award? 😊 Let me know if you want more!"
+- For jokes: Be creative! Generate your own unique humor.
+- For facts: Explain clearly and concisely.
+- With search results: Cite the source inline like [Source Name].
+- Always create ORIGINAL responses - never copy examples verbatim.
 
 Now write your response:
 """
