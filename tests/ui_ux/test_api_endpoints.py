@@ -31,7 +31,7 @@ class TestRequestFormats:
     """Tests for API request format validation."""
 
     def test_analyze_request_format(self):
-        """Test code analysis request format."""
+        """Test chatbot request format."""
         # Valid request per contract
         valid_request = {
             "query": "What does the main function do?",

@@ -1,32 +1,31 @@
-# Node 1: Fast agents (perception, intent, integration)
-# Derived from config/deployment.py PROFILES["node1"]
+# Node 1: Hello World agents
 #
 # Resources: 6GB VRAM, 20GB RAM
 # Model: qwen2.5-7b-instruct-q4_K_M.gguf (4.4GB)
-# Agents: perception, intent, integration
+# Agents: understand, think, respond
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jeeves-node1
   labels:
-    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/name: jeeves-hello-world
     app.kubernetes.io/component: node1
-    jeeves.io/agents: "perception,intent,integration"
+    jeeves.io/agents: "understand,think,respond"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: jeeves-code-analysis
+      app.kubernetes.io/name: jeeves-hello-world
       app.kubernetes.io/component: node1
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: jeeves-code-analysis
+        app.kubernetes.io/name: jeeves-hello-world
         app.kubernetes.io/component: node1
     spec:
       containers:
         - name: orchestrator
-          image: jeeves-code-analysis:latest
+          image: jeeves-hello-world:latest
           ports:
             - name: grpc
               containerPort: 50051
@@ -41,7 +40,7 @@ spec:
             - name: NODE_ID
               value: "node1"
             - name: AGENTS
-              value: "perception,intent,integration"
+              value: "understand,think,respond"
             - name: LLAMASERVER_HOST
               value: "http://llama-server-node1:8080"
         - name: llama-server

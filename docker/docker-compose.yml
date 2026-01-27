@@ -1,4 +1,4 @@
-# Docker Compose configuration for Jeeves Code Analysis Capability
+# Docker Compose configuration for Jeeves Hello World Capability
 #
 # Cross-platform: Works on Linux, Windows (Docker Desktop + WSL2), and macOS.
 # GPU auto-detection: Falls back to CPU if NVIDIA GPU unavailable.
@@ -55,7 +55,7 @@ services:
       target: orchestrator
       args:
         CODE_VERSION: ${CODE_VERSION:-dev}
-    image: jeeves-code-analysis:latest
+    image: jeeves-hello-world:latest
 
     # Port mapping (host:container) - Gradio UI listens on 8000 inside container
     ports:
@@ -85,28 +85,14 @@ services:
       - API_PORT=8000
       - LOG_FORMAT=json
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      # Code Analysis Configuration
+      # Hello World Configuration
       - REPO_PATH=${REPO_PATH:-/workspace}
 
     # Volume mounts (data persistence)
     volumes:
       - ../data:/app/data
       - ../.env:/app/.env:ro
-      # ══════════════════════════════════════════════════════════════════════
-      # CODE ANALYSIS REPOSITORY MOUNT
-      # ══════════════════════════════════════════════════════════════════════
-      # HOST_REPO_PATH: Set in .env to the repository you want to analyze
-      # The repo is mounted at /workspace (read-only) inside the container
-      #
-      # Example .env configuration:
-      #   HOST_REPO_PATH=/home/user/projects/my-target-repo
-      #
-      # Tools will search within REPO_PATH (default: /workspace)
-      #
-      # Default fallback uses ".." (project root) since docker-compose.yml
-      # is in the docker/ subdirectory. This ensures proper mounting even if
-      # .env is not loaded (e.g., running from docker/ without --env-file).
-      # ══════════════════════════════════════════════════════════════════════
+      # Optional workspace mount (not required for hello-world)
       - ${HOST_REPO_PATH:-..}:/workspace:ro
 
     # Resource limits
@@ -144,7 +130,7 @@ services:
     # Labels
     labels:
       com.jeeves.service: "orchestrator"
-      com.jeeves.capability: "code-analysis"
+      com.jeeves.capability: "hello-world"
       com.jeeves.version: "1.0.0"
 
 
@@ -200,7 +186,7 @@ services:
     # Labels
     labels:
       com.jeeves.service: "database"
-      com.jeeves.capability: "code-analysis"
+      com.jeeves.capability: "hello-world"
       com.jeeves.version: "1.0.0"
 
 
@@ -229,8 +215,8 @@ services:
     # Override LLAMA_MODEL env var to use a different model
     # Default: Qwen 2.5-3B-Instruct (2GB) - download with scripts/setup/setup-docker-windows.ps1
     # Alternative: Qwen2.5-7B-Instruct-Q4_K_M.gguf (4.68GB, better quality)
-    # CRITICAL: --ctx-size must be >= 16384 for Qwen2.5-3B.
-    # Agents use num_ctx=16384 (see agents/code_analysis/*.py).
+    # CRITICAL: --ctx-size must be >= 16384 for Qwen2.5.
+    # Agents use num_ctx=16384 for consistent context handling.
     #
     # IMPORTANT: With --parallel N, context is divided: n_ctx_per_slot = ctx_size / N
     # Default parallel=1 ensures full 16384 context per request (no truncation).
@@ -281,7 +267,7 @@ services:
     # Labels
     labels:
       com.jeeves.service: "llm"
-      com.jeeves.capability: "code-analysis"
+      com.jeeves.capability: "hello-world"
       com.jeeves.version: "1.0.0"
 
 
@@ -345,7 +331,7 @@ services:
     # Labels
     labels:
       com.jeeves.service: "test"
-      com.jeeves.capability: "code-analysis"
+      com.jeeves.capability: "hello-world"
       com.jeeves.version: "1.0.0"
 
 
@@ -356,7 +342,7 @@ networks:
   jeeves-network:
     driver: bridge
     labels:
-      com.jeeves.network: "code-analysis"
+      com.jeeves.network: "hello-world"
 
 
 # =============================================================================
@@ -373,4 +359,4 @@ volumes:
     driver: local
     labels:
       com.jeeves.volume: "database"
-      com.jeeves.capability: "code-analysis"
+      com.jeeves.capability: "hello-world"

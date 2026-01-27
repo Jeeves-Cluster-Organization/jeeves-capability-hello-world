@@ -90,7 +90,7 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
     docker compose -f docker/docker-compose.yml down -v 2>$null
 
     Write-Host "Removing project Docker images..."
-    $images = docker images | Select-String -Pattern "assistant-gateway|assistant-7agent|codeanalysis"
+    $images = docker images | Select-String -Pattern "assistant-gateway|assistant-7agent|helloworld"
     if ($images) {
         $images | ForEach-Object {
             $imageId = ($_ -split '\s+')[2]
@@ -146,7 +146,7 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
         Write-Host "[NOEMOJI]  PostgreSQL is not ready. Database initialization skipped." -ForegroundColor Yellow
         Write-Host "   You may need to run schema initialization manually:"
         Write-Host "   - Base schema: python jeeves-core/jeeves_mission_system/scripts/database/init.py"
-        Write-Host "   - Code analysis schema: bash jeeves-capability-code-analyser/apply_schema.sh"
+        Write-Host "   - Hello world schema: bash jeeves-capability-hello-world/apply_schema.sh"
     } else {
         Write-Host ""
 
@@ -159,28 +159,28 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
             Write-Host "[NOEMOJI]  Base schema initialization failed: $_" -ForegroundColor Yellow
         }
 
-        # Initialize code analysis schema
-        Write-Host "Initializing code analysis schema..."
+        # Initialize hello world schema
+        Write-Host "Initializing hello world schema..."
         try {
-            if (Test-Path "jeeves-capability-code-analyser/apply_schema.sh") {
+            if (Test-Path "jeeves_capability_hello_world/database/schemas/002_hello_world_schema.sql") {
                 # Use bash if available (WSL or Git Bash)
                 if (Get-Command bash -ErrorAction SilentlyContinue) {
-                    bash jeeves-capability-code-analyser/apply_schema.sh
-                    Write-Host "[NOEMOJI] Code analysis schema initialized" -ForegroundColor Green
+                    bash -c "psql -h ${env:POSTGRES_HOST} -p ${env:POSTGRES_PORT} -U ${env:POSTGRES_USER} -d ${env:POSTGRES_DATABASE} -f jeeves_capability_hello_world/database/schemas/002_hello_world_schema.sql"
+                    Write-Host "[NOEMOJI] Hello world schema initialized" -ForegroundColor Green
                 } else {
                     # Fallback: use psql directly if available
                     if (Get-Command psql -ErrorAction SilentlyContinue) {
                         $env:PGPASSWORD = "${env:POSTGRES_PASSWORD}"
-                        psql -h "${env:POSTGRES_HOST}" -p "${env:POSTGRES_PORT}" -U "${env:POSTGRES_USER}" -d "${env:POSTGRES_DATABASE}" -f jeeves-capability-code-analyser/database/schemas/002_code_analysis_schema.sql
-                        Write-Host "[NOEMOJI] Code analysis schema initialized" -ForegroundColor Green
+                        psql -h "${env:POSTGRES_HOST}" -p "${env:POSTGRES_PORT}" -U "${env:POSTGRES_USER}" -d "${env:POSTGRES_DATABASE}" -f jeeves_capability_hello_world/database/schemas/002_hello_world_schema.sql
+                        Write-Host "[NOEMOJI] Hello world schema initialized" -ForegroundColor Green
                     } else {
-                        Write-Host "[NOEMOJI]  bash/psql not available. Skipping code analysis schema." -ForegroundColor Yellow
+                        Write-Host "[NOEMOJI]  bash/psql not available. Skipping hello world schema." -ForegroundColor Yellow
                         Write-Host "   Install WSL/Git Bash or PostgreSQL client tools to enable this feature"
                     }
                 }
             }
         } catch {
-            Write-Host "[NOEMOJI]  Code analysis schema initialization failed: $_" -ForegroundColor Yellow
+            Write-Host "[NOEMOJI]  Hello world schema initialization failed: $_" -ForegroundColor Yellow
         }
     }
 } else {

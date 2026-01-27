@@ -12,7 +12,7 @@ Clean, organized documentation for jeeves-core test implementation.
 - **[RCA_COVERAGE_ISSUE.md](RCA_COVERAGE_ISSUE.md)** - Python 3.13 coverage tool issue analysis
 
 ### Project Documentation
-- **[README.md](README.md)** - Main project README (Jeeves Code Analysis Capability)
+- **[README.md](README.md)** - Main project README (Jeeves Hello World Capability)
 
 ## Organized Folders
 

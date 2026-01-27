@@ -2,7 +2,7 @@
 
 > **Note:** This document provides implementation details for capability layer integration. For the authoritative source of truth on jeeves-core contracts and interfaces, see **[JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md)**.
 
-This document describes how capability layer repositories (e.g., `jeeves-capability-code-analysis`) integrate with `jeeves-core` when used as a git submodule.
+This document describes how capability layer repositories (e.g., `jeeves-capability-hello-world`) integrate with `jeeves-core` when used as a git submodule.
 
 ## Package Import Hierarchy
 

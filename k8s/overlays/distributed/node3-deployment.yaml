@@ -1,32 +1,31 @@
-# Node 3: Reasoning hub (complex planning, synthesis, validation)
-# Derived from config/deployment.py PROFILES["node3"]
+# Node 3: Reserved for future use
 #
 # Resources: 12GB VRAM, 32GB RAM
-# Model: qwen2.5-14b-instruct-q4_K_M.gguf (8.5GB) - larger for reasoning
-# Agents: planner, synthesizer, critic
+# Model: qwen2.5-14b-instruct-q4_K_M.gguf (8.5GB)
+# Agents: (reserved)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jeeves-node3
   labels:
-    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/name: jeeves-hello-world
     app.kubernetes.io/component: node3
     jeeves.io/agents: "planner,synthesizer,critic"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: jeeves-code-analysis
+      app.kubernetes.io/name: jeeves-hello-world
       app.kubernetes.io/component: node3
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: jeeves-code-analysis
+        app.kubernetes.io/name: jeeves-hello-world
         app.kubernetes.io/component: node3
     spec:
       containers:
         - name: orchestrator
-          image: jeeves-code-analysis:latest
+          image: jeeves-hello-world:latest
           ports:
             - name: grpc
               containerPort: 50051

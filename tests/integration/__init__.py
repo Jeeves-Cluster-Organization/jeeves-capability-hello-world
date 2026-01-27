@@ -1,1 +1,1 @@
-# Integration tests for code analysis capability
+# Integration tests for hello world capability

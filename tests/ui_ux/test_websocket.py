@@ -133,7 +133,7 @@ class TestWebSocketEventFormats:
             "thread_id": "thread-123",
             "payload": {
                 "tool_name": "read_code",
-                "tool_id": "code_analysis.read_code",
+                "tool_id": "hello_world.web_search",
                 "params": {
                     "file_path": "main.py",
                     "start_line": 1,

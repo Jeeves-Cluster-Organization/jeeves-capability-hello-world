@@ -3,8 +3,7 @@ Jeeves Hello World - General Chatbot Capability
 
 A simplified 3-agent template demonstrating multi-agent orchestration patterns.
 
-This is a minimal, general-purpose chatbot (NOT code-analysis specific) that
-anyone can customize for their domain.
+This is a minimal, general-purpose chatbot that anyone can customize for their domain.
 
 Architecture:
     Understand (LLM) → Think (Tools) → Respond (LLM)

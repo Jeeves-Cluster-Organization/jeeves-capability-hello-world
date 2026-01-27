@@ -19,7 +19,7 @@ This is `jeeves-capability-hello-world`, a simplified general-purpose chatbot ca
 
 **Status:** ✅ Complete and ready for deployment
 
-**For the advanced version**, see the `main` branch: 7-agent code analysis capability with 30+ tools.
+**For the advanced version**, see the `main` branch for more complex capability examples.
 
 ## Architecture
 
@@ -76,7 +76,7 @@ Response to user (Gradio)
 ### Project Structure
 
 ```
-jeeves-capability-code-analysis/
+jeeves-capability-hello-world/
 ├── jeeves_capability_hello_world/      # Main capability package
 │   ├── __init__.py                     # Package exports, register_capability
 │   ├── registration.py                 # Constitution R7 capability registration
@@ -125,20 +125,20 @@ jeeves-capability-code-analysis/
 - ✅ Docker deployment (3 services: postgres, llama-server, chatbot)
 - ✅ Setup scripts for Linux/macOS and Windows
 
-### Comparison: Hello World vs Code Analysis
+### What Makes Hello World Special
 
-| Aspect | Hello World (This Branch) | Code Analysis (main Branch) |
-|--------|---------------------------|------------------------------|
-| **Domain** | General purpose (chat, Q&A, web search) | Code understanding |
-| **Agents** | 3 (Understand → Think → Respond) | 7 (Perception → Intent → Planner → Traverser → Synthesizer → Critic → Integration) |
-| **LLM Calls** | 2 (Understand + Respond) | 5 (Intent + Planner + Synthesizer + Critic + Integration) |
-| **Tools** | 3 (web_search, get_time, list_tools) | 30+ (search_code, read_code, git tools, semantic search, etc.) |
-| **Iterations** | Max 2 | Max 5 |
-| **Deployment** | Docker Compose (3 services) | K8s (distributed) |
-| **LLM Backend** | llama.cpp (local, 3B model) | llama.cpp (larger model) or API |
-| **Response Time** | ~3-8 sec | ~10-30 sec |
-| **Use Case** | Learning, general chatbot template | Production code analysis |
-| **Complexity** | Beginner-friendly | Advanced patterns |
+| Aspect | Hello World (This Branch) |
+|--------|---------------------------|
+| **Domain** | General purpose (chat, Q&A, web search) |
+| **Agents** | 3 (Understand → Think → Respond) |
+| **LLM Calls** | 2 (Understand + Respond) |
+| **Tools** | 3 (web_search, get_time, list_tools) |
+| **Iterations** | Max 2 |
+| **Deployment** | Docker Compose (3 services) |
+| **LLM Backend** | llama.cpp (local) or API providers |
+| **Response Time** | ~3-8 sec |
+| **Use Case** | Learning, general chatbot template |
+| **Complexity** | Beginner-friendly |
 
 ## Dependencies
 
@@ -171,7 +171,7 @@ git submodule update --init --recursive
 ```bash
 # 1. Clone and initialize submodules
 git clone <repository-url>
-cd jeeves-capability-code-analysis
+cd jeeves-capability-hello-world
 git checkout jeeves-capability-hello-world
 git submodule update --init --recursive
 
@@ -505,7 +505,7 @@ That's it! The 3-agent pattern (Understand → Think → Respond) works for:
 This hello-world branch is the **first step** in understanding multi-agent orchestration:
 
 1. **Start here** (jeeves-capability-hello-world): 3 agents, general chatbot, ~2000 lines of code
-2. **Then explore** (main branch): 7 agents, code analysis, ~15000+ lines of code
+2. **Then explore** (main branch): More advanced capability patterns
 
 ### What You'll Learn
 
@@ -519,26 +519,11 @@ This hello-world branch is the **first step** in understanding multi-agent orche
 - Configuration-driven agent architecture
 - Simple hook functions (pre_process, post_process)
 
-**In Code Analysis (main branch):**
-- Advanced 7-agent pipeline with critic loop
-- Complex tool orchestration (30+ tools)
-- Bounded context management
-- Citation validation and anti-hallucination
+**Advanced Patterns (main branch):**
+- More complex multi-agent pipelines
+- Additional tool orchestration patterns
 - Production-grade error handling
-- Kubernetes deployment
-
-### Switching to Advanced Version
-
-```bash
-# View current branch
-git branch
-
-# Switch to main (code analysis)
-git checkout main
-
-# Compare the two
-git diff jeeves-capability-hello-world main
-```
+- Kubernetes deployment options
 
 ## Contributing
 

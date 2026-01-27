@@ -7,7 +7,7 @@ This is a simplified, general-purpose chatbot capability that demonstrates
 the core multi-agent orchestration pattern using jeeves-core.
 
 Domain: General-purpose assistant (conversation, Q&A, web search)
-Agents: 3 (vs 7 in full code-analysis capability)
+Agents: 3 (minimal pipeline for general-purpose chatbot)
 Use case: Learning template, simple chatbot applications
 """
 

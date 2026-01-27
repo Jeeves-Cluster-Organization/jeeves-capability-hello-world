@@ -1,11 +1,10 @@
-# Configuration for Jeeves Code Analysis
-# Derived from config/deployment.py PROFILES
+# Configuration for Jeeves Hello World
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: jeeves-config
   labels:
-    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/name: jeeves-hello-world
 data:
   # LLM Configuration
   llamaserver_host: "http://llama-server:8080"
@@ -23,5 +22,5 @@ data:
   log_level: "INFO"
   log_format: "json"
   
-  # Agent Configuration (from CODE_ANALYSIS_AGENTS)
-  agents: "perception,intent,planner,traverser,synthesizer,critic,integration"
+  # Agent Configuration (from HELLO_WORLD_AGENTS)
+  agents: "understand,think,respond"

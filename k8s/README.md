@@ -6,7 +6,7 @@
 
 ## Overview
 
-This directory contains Kubernetes manifests for deploying the Jeeves Code Analysis capability. The manifests are organized using Kustomize for easy customization across environments.
+This directory contains Kubernetes manifests for deploying the Jeeves Hello World capability. The manifests are organized using Kustomize for easy customization across environments.
 
 ## Directory Structure
 
@@ -22,9 +22,9 @@ k8s/
     └── distributed/          # Multi-node deployment (production)
         ├── kustomization.yaml
         ├── patch-disable-single-node.yaml
-        ├── node1-deployment.yaml  # perception, intent, integration
-        ├── node2-deployment.yaml  # traverser (code-specialized)
-        └── node3-deployment.yaml  # planner, synthesizer, critic
+        ├── node1-deployment.yaml  # understand, think, respond
+        ├── node2-deployment.yaml  # (reserved for future)
+        └── node3-deployment.yaml  # (reserved for future)
 ```
 
 ---
@@ -33,7 +33,7 @@ k8s/
 
 ### Single-Node (Development)
 
-All 7 agents run on a single node with one LLM server.
+All 3 agents run on a single node with one LLM server.
 
 **Resources:**
 - VRAM: 6GB minimum
@@ -47,13 +47,7 @@ kubectl apply -k k8s/base/
 
 ### Distributed (Production)
 
-Agents distributed across 3 nodes with specialized models:
-
-| Node | Agents | Model | VRAM | Purpose |
-|------|--------|-------|------|---------|
-| node1 | perception, intent, integration | qwen2.5-7b | 6GB | Fast agents |
-| node2 | traverser | deepseek-coder-6.7b | 6GB | Code-specialized |
-| node3 | planner, synthesizer, critic | qwen2.5-14b | 12GB | Reasoning hub |
+For the hello-world capability, a single node is sufficient. The distributed overlay is provided for consistency with other capabilities.
 
 **Deploy:**
 ```bash
@@ -68,32 +62,22 @@ kubectl apply -k k8s/overlays/distributed/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PIPELINE_MODE` | `full` | Pipeline mode: `standard` (fast) or `full` (thorough) |
+| `PIPELINE_MODE` | `general_chatbot` | Pipeline mode |
 | `LOG_LEVEL` | `INFO` | Logging level |
 | `LLAMASERVER_HOST` | `http://llama-server:8080` | LLM server URL |
 
-### Pipeline Modes
+### Pipeline Configuration
 
-Controlled via `PIPELINE_MODE` environment variable:
-
-- **`full`** (default): 7 agents including critic validation
-- **`standard`**: 6 agents, skips critic for faster responses
+The hello-world capability uses a 3-agent pipeline:
+- **understand**: Analyze user intent
+- **think**: Execute tools if needed
+- **respond**: Generate response
 
 Set in deployment:
 ```yaml
 env:
   - name: PIPELINE_MODE
-    value: "full"
-```
-
-Or via ConfigMap:
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: jeeves-config
-data:
-  pipeline_mode: "full"
+    value: "general_chatbot"
 ```
 
 ---
@@ -117,18 +101,6 @@ Ensure nodes have:
 - nvidia-device-plugin-daemonset installed
 - Node labels for GPU scheduling
 
-### Node Selectors
-
-For distributed deployment, label nodes appropriately:
-
-```bash
-# Standard GPU nodes (6GB VRAM)
-kubectl label node <node-name> jeeves.io/node-type=standard
-
-# High-memory GPU nodes (12GB+ VRAM)
-kubectl label node <node-name> jeeves.io/node-type=high-memory
-```
-
 ---
 
 ## Prerequisites
@@ -136,7 +108,6 @@ kubectl label node <node-name> jeeves.io/node-type=high-memory
 1. **Kubernetes cluster** with GPU support
 2. **Persistent volumes** for:
    - `llama-models-pvc`: LLM model storage
-   - `workspace-pvc`: Repository to analyze (read-only)
    - `postgres-data`: Database storage
 3. **Secrets** for database credentials:
    ```bash
@@ -147,14 +118,11 @@ kubectl label node <node-name> jeeves.io/node-type=high-memory
 
 ---
 
-## Derived From
+## See Also
 
-These manifests were extracted from `config/deployment.py` PROFILES to follow infrastructure-as-code principles. The Python module now only contains `CODE_ANALYSIS_AGENTS` list.
-
-See also:
-- [Capability CONSTITUTION](../jeeves-capability-code-analyser/CONSTITUTION.md)
+- [Capability CONSTITUTION](../jeeves_capability_hello_world/CONSTITUTION.md)
 - [Docker Compose](../docker/docker-compose.yml) for local development
 
 ---
 
-*Last Updated: 2026-01-23*
+*Last Updated: 2025-01-27*

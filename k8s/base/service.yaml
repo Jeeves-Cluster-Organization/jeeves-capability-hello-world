@@ -1,10 +1,10 @@
-# Services for Jeeves Code Analysis
+# Services for Jeeves Hello World
 apiVersion: v1
 kind: Service
 metadata:
   name: jeeves-orchestrator
   labels:
-    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/name: jeeves-hello-world
     app.kubernetes.io/component: orchestrator
 spec:
   type: ClusterIP
@@ -18,7 +18,7 @@ spec:
       targetPort: metrics
       protocol: TCP
   selector:
-    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/name: jeeves-hello-world
     app.kubernetes.io/component: orchestrator
 ---
 apiVersion: v1
@@ -26,7 +26,7 @@ kind: Service
 metadata:
   name: llama-server
   labels:
-    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/name: jeeves-hello-world
     app.kubernetes.io/component: llm
 spec:
   type: ClusterIP
@@ -36,5 +36,5 @@ spec:
       targetPort: http
       protocol: TCP
   selector:
-    app.kubernetes.io/name: jeeves-code-analysis
+    app.kubernetes.io/name: jeeves-hello-world
     app.kubernetes.io/component: llm

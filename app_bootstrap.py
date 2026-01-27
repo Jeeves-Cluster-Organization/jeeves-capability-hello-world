@@ -26,15 +26,15 @@ def get_enabled_verticals() -> List[str]:
 
     Environment:
         ENABLED_VERTICALS: Comma-separated list of vertical IDs
-                          (default: "code_analysis")
+                          (default: "hello_world")
                           (empty string: core-only mode)
 
     Examples:
-        ENABLED_VERTICALS="code_analysis"           # Default
-        ENABLED_VERTICALS=""                        # Core-only mode
-        ENABLED_VERTICALS="code_analysis,other"     # Multiple verticals
+        ENABLED_VERTICALS="hello_world"           # Default
+        ENABLED_VERTICALS=""                      # Core-only mode
+        ENABLED_VERTICALS="hello_world,other"    # Multiple verticals
     """
-    enabled = os.getenv("ENABLED_VERTICALS", "code_analysis")
+    enabled = os.getenv("ENABLED_VERTICALS", "hello_world")
     if not enabled:
         return []
     return [v.strip() for v in enabled.split(",") if v.strip()]
@@ -44,16 +44,16 @@ def bootstrap_vertical(vertical_id: str) -> None:
     """Bootstrap a single vertical by ID.
 
     Args:
-        vertical_id: Vertical identifier (e.g., "code_analysis")
+        vertical_id: Vertical identifier (e.g., "hello_world")
 
     Raises:
         ValueError: If vertical ID is unknown
     """
     _logger = get_current_logger()
-    if vertical_id == "code_analysis":
-        # Code analysis app is standalone, no bootstrap needed
-        _logger.info("code_analysis_app_standalone",
-                    message="Code analysis app is standalone, no vertical registration needed")
+    if vertical_id == "hello_world":
+        # Hello world app is standalone, no bootstrap needed
+        _logger.info("hello_world_app_standalone",
+                    message="Hello world app is standalone, no vertical registration needed")
     else:
         _logger.warning("unknown_vertical", vertical_id=vertical_id)
         raise ValueError(f"Unknown vertical ID: {vertical_id}")
@@ -73,12 +73,12 @@ def bootstrap_all_verticals(app_context: "AppContextProtocol") -> None:
         app_context: AppContext with vertical registry (ADR-001 Decision 3)
 
     Environment:
-        ENABLED_VERTICALS: Comma-separated vertical IDs (default: "code_analysis")
+        ENABLED_VERTICALS: Comma-separated vertical IDs (default: "hello_world")
 
     Examples:
-        ENABLED_VERTICALS="code_analysis"  # Default
-        ENABLED_VERTICALS=""               # Core-only mode
-        ENABLED_VERTICALS="code_analysis,other_vertical"  # Multiple
+        ENABLED_VERTICALS="hello_world"  # Default
+        ENABLED_VERTICALS=""             # Core-only mode
+        ENABLED_VERTICALS="hello_world,other_vertical"  # Multiple
     """
     _logger = get_current_logger()
     enabled = get_enabled_verticals()

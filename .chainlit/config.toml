@@ -1,5 +1,5 @@
 [project]
-name = "Jeeves Code Analysis"
+name = "Jeeves Hello World"
 enable_telemetry = false
 
 [features]
@@ -7,7 +7,7 @@ prompt_playground = false
 
 [UI]
 name = "Jeeves"
-description = "AI-powered code analysis assistant"
+description = "AI-powered general-purpose chatbot"
 default_theme = "dark"
 
 [meta]
