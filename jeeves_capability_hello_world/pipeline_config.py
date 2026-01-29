@@ -18,7 +18,7 @@ from mission_system.contracts_core import (
     ToolAccess,
     TerminalReason,
 )
-from protocols.config import AgentOutputMode, TokenStreamMode, GenerationParams
+from jeeves_infra.protocols import AgentOutputMode, TokenStreamMode, GenerationParams
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -39,7 +39,7 @@ def _format_conversation_history(history: list) -> str:
     return "\n".join(lines)
 
 
-def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
+async def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
     """
     Build context for Understand agent.
 
@@ -64,7 +64,7 @@ def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
     return envelope
 
 
-def understand_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
+async def understand_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
     """
     Process Understand agent output and prepare for Think agent.
 
@@ -90,7 +90,7 @@ def understand_post_process(envelope: Any, output: Dict[str, Any], agent: Any = 
     return envelope
 
 
-def think_pre_process(envelope: Any, agent: Any = None) -> Any:
+async def think_pre_process(envelope: Any, agent: Any = None) -> Any:
     """
     Prepare Think agent for tool execution.
 
@@ -115,7 +115,7 @@ def think_pre_process(envelope: Any, agent: Any = None) -> Any:
     return envelope
 
 
-def think_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
+async def think_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
     """
     Process Think agent output (tool results).
 
@@ -147,7 +147,7 @@ def think_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None)
     return envelope
 
 
-def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
+async def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
     """
     Build context for Respond agent.
 
@@ -202,7 +202,7 @@ def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
     return envelope
 
 
-def respond_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
+async def respond_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
     """
     Finalize response and terminate pipeline.
 

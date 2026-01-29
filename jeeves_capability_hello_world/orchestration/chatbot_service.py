@@ -22,10 +22,10 @@ from mission_system.contracts_core import (
     ToolExecutorProtocol,
     PipelineConfig,
 )
-from protocols import RequestContext
+from jeeves_infra.protocols import RequestContext
 
 if TYPE_CHECKING:
-    from control_tower.protocols import ControlTowerProtocol
+    from jeeves_infra.kernel_client import KernelClient
 
 
 @dataclass
@@ -47,7 +47,7 @@ class ChatbotService:
     - 3-agent pipeline (Understand → Think → Respond)
     - Real LLM inference (no mocks by default)
     - Streaming support (token-level)
-    - Control Tower integration for resource tracking and quota enforcement
+    - KernelClient integration for resource tracking and quota enforcement
     """
 
     def __init__(
@@ -57,7 +57,7 @@ class ChatbotService:
         tool_executor: ToolExecutorProtocol,
         logger: LoggerProtocol,
         pipeline_config: PipelineConfig,
-        control_tower: "ControlTowerProtocol",
+        kernel_client: Optional["KernelClient"] = None,
         use_mock: bool = False,
     ):
         """
@@ -68,7 +68,7 @@ class ChatbotService:
             tool_executor: Tool executor for agent tool calls
             logger: Logger instance
             pipeline_config: Pipeline configuration (GENERAL_CHATBOT_PIPELINE)
-            control_tower: Control Tower for resource tracking and quota enforcement
+            kernel_client: KernelClient for resource tracking via Go kernel
             use_mock: Use mock handlers for testing (default: False - use real LLM)
         """
         # Get the global prompt registry
@@ -85,7 +85,7 @@ class ChatbotService:
             use_mock=use_mock,
         )
         self._logger = logger
-        self._control_tower = control_tower
+        self._kernel_client = kernel_client
 
     async def _run_with_resource_tracking(
         self,
@@ -93,7 +93,7 @@ class ChatbotService:
         thread_id: str,
     ) -> Envelope:
         """
-        Run pipeline with Control Tower resource tracking.
+        Run pipeline with KernelClient resource tracking.
 
         Args:
             envelope: Request envelope
@@ -104,18 +104,20 @@ class ChatbotService:
         """
         pid = envelope.envelope_id
 
-        # Track initial agent hop (entering pipeline)
-        self._control_tower.resources.record_usage(pid=pid, agent_hops=1)
-        if quota_exceeded := self._control_tower.resources.check_quota(pid):
-            self._logger.warning(
-                "quota_exceeded_before_run",
-                envelope_id=pid,
-                reason=quota_exceeded,
-            )
-            envelope.terminated = True
-            envelope.termination_reason = quota_exceeded
-            envelope.terminal_reason = TerminalReason.MAX_ITERATIONS_EXCEEDED
-            return envelope
+        # Track initial agent hop (entering pipeline) via kernel_client
+        if self._kernel_client:
+            await self._kernel_client.record_usage(pid=pid, agent_hops=1)
+            quota_result = await self._kernel_client.check_quota(pid)
+            if not quota_result.within_bounds:
+                self._logger.warning(
+                    "quota_exceeded_before_run",
+                    envelope_id=pid,
+                    reason=quota_result.exceeded_reason,
+                )
+                envelope.terminated = True
+                envelope.termination_reason = quota_result.exceeded_reason
+                envelope.terminal_reason = TerminalReason.MAX_ITERATIONS_EXCEEDED
+                return envelope
 
         # Run the pipeline
         result_envelope = await self._runtime.run(envelope, thread_id=thread_id)
@@ -127,30 +129,32 @@ class ChatbotService:
         tokens_in = result_envelope.metadata.get("total_tokens_in", 0)
         tokens_out = result_envelope.metadata.get("total_tokens_out", 0)
 
-        # Record final resource usage
-        self._control_tower.resources.record_usage(
-            pid=pid,
-            agent_hops=max(0, runtime_hops - 1),  # Subtract initial hop
-            llm_calls=runtime_llm_calls,
-            tool_calls=runtime_tool_calls,
-            tokens_in=tokens_in,
-            tokens_out=tokens_out,
-        )
-
-        # Check quota after run
-        if quota_exceeded := self._control_tower.resources.check_quota(pid):
-            self._logger.warning(
-                "quota_exceeded_after_run",
-                envelope_id=pid,
-                reason=quota_exceeded,
+        # Record final resource usage via kernel_client
+        if self._kernel_client:
+            await self._kernel_client.record_usage(
+                pid=pid,
+                agent_hops=max(0, runtime_hops - 1),  # Subtract initial hop
+                llm_calls=runtime_llm_calls,
+                tool_calls=runtime_tool_calls,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
             )
-            if not result_envelope.terminated:
-                result_envelope.terminated = True
-                result_envelope.termination_reason = quota_exceeded
-                if "llm" in quota_exceeded.lower():
-                    result_envelope.terminal_reason = TerminalReason.MAX_LLM_CALLS_EXCEEDED
-                else:
-                    result_envelope.terminal_reason = TerminalReason.MAX_ITERATIONS_EXCEEDED
+
+            # Check quota after run
+            quota_result = await self._kernel_client.check_quota(pid)
+            if not quota_result.within_bounds:
+                self._logger.warning(
+                    "quota_exceeded_after_run",
+                    envelope_id=pid,
+                    reason=quota_result.exceeded_reason,
+                )
+                if not result_envelope.terminated:
+                    result_envelope.terminated = True
+                    result_envelope.termination_reason = quota_result.exceeded_reason
+                    if "llm" in quota_result.exceeded_reason.lower():
+                        result_envelope.terminal_reason = TerminalReason.MAX_LLM_CALLS_EXCEEDED
+                    else:
+                        result_envelope.terminal_reason = TerminalReason.MAX_ITERATIONS_EXCEEDED
 
         return result_envelope
 
@@ -204,17 +208,18 @@ class ChatbotService:
 
             # Log resource usage
             pid = envelope.envelope_id
-            usage = self._control_tower.resources.get_usage(pid)
-            if usage:
-                self._logger.info(
-                    "chatbot_resource_usage",
-                    request_id=request_id,
-                    llm_calls=usage.llm_calls,
-                    tool_calls=usage.tool_calls,
-                    agent_hops=usage.agent_hops,
-                    tokens_in=usage.tokens_in,
-                    tokens_out=usage.tokens_out,
-                )
+            if self._kernel_client:
+                process_info = await self._kernel_client.get_process(pid)
+                if process_info:
+                    self._logger.info(
+                        "chatbot_resource_usage",
+                        request_id=request_id,
+                        llm_calls=process_info.llm_calls,
+                        tool_calls=process_info.tool_calls,
+                        agent_hops=process_info.agent_hops,
+                        tokens_in=process_info.tokens_in,
+                        tokens_out=process_info.tokens_out,
+                    )
 
             # Convert envelope to result
             result = self._envelope_to_result(result_envelope, request_id)
@@ -265,7 +270,7 @@ class ChatbotService:
         - No further events after terminal
         - Cancellation propagates (no synthetic error by default)
         """
-        from protocols.envelope import PipelineEvent
+        from jeeves_infra.protocols import PipelineEvent
 
         request_id = f"req_{uuid4().hex[:16]}"
         request_context = RequestContext(
@@ -290,20 +295,22 @@ class ChatbotService:
             session_id=session_id,
         )
 
-        # Track initial agent hop (entering pipeline)
-        self._control_tower.resources.record_usage(pid=pid, agent_hops=1)
-        if quota_exceeded := self._control_tower.resources.check_quota(pid):
-            self._logger.warning(
-                "quota_exceeded_before_stream",
-                envelope_id=pid,
-                reason=quota_exceeded,
-            )
-            yield PipelineEvent(
-                "error",
-                "__end__",
-                {"error": f"Quota exceeded: {quota_exceeded}", "request_id": request_id}
-            )
-            return
+        # Track initial agent hop (entering pipeline) via kernel_client
+        if self._kernel_client:
+            await self._kernel_client.record_usage(pid=pid, agent_hops=1)
+            quota_result = await self._kernel_client.check_quota(pid)
+            if not quota_result.within_bounds:
+                self._logger.warning(
+                    "quota_exceeded_before_stream",
+                    envelope_id=pid,
+                    reason=quota_result.exceeded_reason,
+                )
+                yield PipelineEvent(
+                    "error",
+                    "__end__",
+                    {"error": f"Quota exceeded: {quota_result.exceeded_reason}", "request_id": request_id}
+                )
+                return
 
         try:
             # Stage 1: Understand (buffered - internal JSON needed)
@@ -325,7 +332,7 @@ class ChatbotService:
             respond_agent = self._runtime.agents.get("respond")
             if respond_agent:
                 # Check if agent supports streaming
-                from protocols.config import TokenStreamMode
+                from jeeves_infra.protocols import TokenStreamMode
 
                 if respond_agent.config.token_stream == TokenStreamMode.AUTHORITATIVE:
                     # TRUE STREAMING: Yield tokens as they arrive
@@ -347,34 +354,35 @@ class ChatbotService:
 
                 yield PipelineEvent("stage", "respond", {"status": "completed"})
 
-            # Record final resource usage
+            # Record final resource usage via kernel_client
             runtime_hops = envelope.metadata.get("agent_hops", 0)
             runtime_llm_calls = envelope.metadata.get("llm_call_count", 0)
             runtime_tool_calls = envelope.metadata.get("tool_call_count", 0)
             tokens_in = envelope.metadata.get("total_tokens_in", 0)
             tokens_out = envelope.metadata.get("total_tokens_out", 0)
 
-            self._control_tower.resources.record_usage(
-                pid=pid,
-                agent_hops=max(0, runtime_hops - 1),  # Subtract initial hop
-                llm_calls=runtime_llm_calls,
-                tool_calls=runtime_tool_calls,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-            )
-
-            # Log resource usage
-            usage = self._control_tower.resources.get_usage(pid)
-            if usage:
-                self._logger.info(
-                    "chatbot_streaming_resource_usage",
-                    request_id=request_id,
-                    llm_calls=usage.llm_calls,
-                    tool_calls=usage.tool_calls,
-                    agent_hops=usage.agent_hops,
-                    tokens_in=usage.tokens_in,
-                    tokens_out=usage.tokens_out,
+            if self._kernel_client:
+                await self._kernel_client.record_usage(
+                    pid=pid,
+                    agent_hops=max(0, runtime_hops - 1),  # Subtract initial hop
+                    llm_calls=runtime_llm_calls,
+                    tool_calls=runtime_tool_calls,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
                 )
+
+                # Log resource usage
+                process_info = await self._kernel_client.get_process(pid)
+                if process_info:
+                    self._logger.info(
+                        "chatbot_streaming_resource_usage",
+                        request_id=request_id,
+                        llm_calls=process_info.llm_calls,
+                        tool_calls=process_info.tool_calls,
+                        agent_hops=process_info.agent_hops,
+                        tokens_in=process_info.tokens_in,
+                        tokens_out=process_info.tokens_out,
+                    )
 
             # Terminal event: done
             yield PipelineEvent(
@@ -499,17 +507,18 @@ class ChatbotService:
 
         # Log final resource usage
         pid = envelope.envelope_id
-        usage = self._control_tower.resources.get_usage(pid)
-        if usage:
-            self._logger.info(
-                "dispatch_resource_usage",
-                envelope_id=pid,
-                llm_calls=usage.llm_calls,
-                tool_calls=usage.tool_calls,
-                agent_hops=usage.agent_hops,
-                tokens_in=usage.tokens_in,
-                tokens_out=usage.tokens_out,
-            )
+        if self._kernel_client:
+            process_info = await self._kernel_client.get_process(pid)
+            if process_info:
+                self._logger.info(
+                    "dispatch_resource_usage",
+                    envelope_id=pid,
+                    llm_calls=process_info.llm_calls,
+                    tool_calls=process_info.tool_calls,
+                    agent_hops=process_info.agent_hops,
+                    tokens_in=process_info.tokens_in,
+                    tokens_out=process_info.tokens_out,
+                )
 
         return result_envelope
 

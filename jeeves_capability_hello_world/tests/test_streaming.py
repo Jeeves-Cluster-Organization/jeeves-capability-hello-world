@@ -182,24 +182,26 @@ async def test_cancellation_propagates():
 
     class MockResources:
         """Mock resources tracker."""
-        def record_usage(self, *args, **kwargs):
-            pass
-        def check_quota(self, *args, **kwargs):
-            return None  # No quota exceeded
+    class MockKernelClient:
+        """Mock KernelClient for testing."""
+        async def record_usage(self, *args, **kwargs):
+            from jeeves_infra.kernel_client import QuotaCheckResult
+            return QuotaCheckResult(within_bounds=True)
 
-    class MockControlTower:
-        """Mock Control Tower for testing."""
-        def __init__(self):
-            self.resources = MockResources()
+        async def check_quota(self, *args, **kwargs):
+            from jeeves_infra.kernel_client import QuotaCheckResult
+            return QuotaCheckResult(within_bounds=True)
 
-        async def start_process(self, *args, **kwargs):
-            return "mock-pid-123"
-        async def end_process(self, *args, **kwargs):
-            pass
-        async def record_llm_call(self, *args, **kwargs):
-            return None
-        async def get_process_status(self, *args, **kwargs):
-            return {"status": "running"}
+        async def get_process(self, *args, **kwargs):
+            from jeeves_infra.kernel_client import ProcessInfo
+            return ProcessInfo(
+                pid="mock-pid",
+                request_id="mock-req",
+                user_id="test",
+                session_id="test",
+                state="RUNNING",
+                priority="NORMAL",
+            )
 
     # Create service
     from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
@@ -215,7 +217,7 @@ async def test_cancellation_propagates():
             tool_executor=MockToolExecutor(),
             logger=Mock(),
             pipeline_config=GENERAL_CHATBOT_PIPELINE,
-            control_tower=MockControlTower(),
+            kernel_client=MockKernelClient(),
             use_mock=False,
         )
 
@@ -445,26 +447,26 @@ async def test_exactly_one_terminal_event():
         def get_instance():
             return MockPromptRegistry()
 
-    class MockResources:
-        """Mock resources tracker."""
-        def record_usage(self, *args, **kwargs):
-            pass
-        def check_quota(self, *args, **kwargs):
-            return None  # No quota exceeded
+    class MockKernelClient:
+        """Mock KernelClient for testing."""
+        async def record_usage(self, *args, **kwargs):
+            from jeeves_infra.kernel_client import QuotaCheckResult
+            return QuotaCheckResult(within_bounds=True)
 
-    class MockControlTower:
-        """Mock Control Tower for testing."""
-        def __init__(self):
-            self.resources = MockResources()
+        async def check_quota(self, *args, **kwargs):
+            from jeeves_infra.kernel_client import QuotaCheckResult
+            return QuotaCheckResult(within_bounds=True)
 
-        async def start_process(self, *args, **kwargs):
-            return "mock-pid-123"
-        async def end_process(self, *args, **kwargs):
-            pass
-        async def record_llm_call(self, *args, **kwargs):
-            return None
-        async def get_process_status(self, *args, **kwargs):
-            return {"status": "running"}
+        async def get_process(self, *args, **kwargs):
+            from jeeves_infra.kernel_client import ProcessInfo
+            return ProcessInfo(
+                pid="mock-pid",
+                request_id="mock-req",
+                user_id="test",
+                session_id="test",
+                state="RUNNING",
+                priority="NORMAL",
+            )
 
     from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
 
@@ -478,7 +480,7 @@ async def test_exactly_one_terminal_event():
             tool_executor=MockToolExecutor(),
             logger=Mock(),
             pipeline_config=GENERAL_CHATBOT_PIPELINE,
-            control_tower=MockControlTower(),
+            kernel_client=MockKernelClient(),
             use_mock=False,
         )
 

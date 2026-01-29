@@ -4,9 +4,16 @@ Orchestration Wiring for Hello World Capability.
 Constitution R7 compliant dependency injection.
 Factory functions create service instances with all dependencies injected.
 
+This module provides convenience wiring functions that wrap the capability
+registration pattern from capability/wiring.py.
+
 Architecture:
     Apps use create_hello_world_service() instead of constructing services directly.
     This centralizes wiring logic and makes dependencies explicit.
+
+See Also:
+    - capability/wiring.py: Full capability registration with jeeves_infra protocols
+    - mission_system.capability_wiring: Standard capability registration entry point
 """
 
 from typing import Any, Callable, Optional, TYPE_CHECKING
@@ -15,9 +22,15 @@ import structlog
 from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
 
 if TYPE_CHECKING:
-    from control_tower.protocols import ControlTowerProtocol
+    from jeeves_infra.kernel_client import KernelClient
+    from jeeves_infra.protocols import CapabilityToolCatalog
+
 from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
 from jeeves_capability_hello_world.tools import initialize_all_tools, tool_catalog
+from jeeves_capability_hello_world.capability.wiring import (
+    CAPABILITY_ID,
+    _create_tool_catalog,
+)
 
 
 def get_logger() -> Any:
@@ -29,7 +42,7 @@ def create_hello_world_service(
     *,
     llm_provider_factory: Callable,
     tool_executor: Any,
-    control_tower: "ControlTowerProtocol",
+    kernel_client: Optional["KernelClient"] = None,
     logger: Optional[Any] = None,
     use_mock: bool = False,
 ) -> ChatbotService:
@@ -42,7 +55,8 @@ def create_hello_world_service(
     Args:
         llm_provider_factory: Factory function to create LLM providers
         tool_executor: Tool executor instance
-        control_tower: Control Tower for resource tracking and quota enforcement
+        kernel_client: Optional KernelClient for resource tracking via Go kernel
+                      (None for standalone operation without resource tracking)
         logger: Optional logger (creates one if None)
         use_mock: Whether to use mock LLM (for testing)
 
@@ -55,7 +69,7 @@ def create_hello_world_service(
             create_tool_executor,
             get_settings,
         )
-        from control_tower import ControlTower
+        from jeeves_infra.kernel_client import get_kernel_client
         from jeeves_capability_hello_world.orchestration.wiring import (
             create_hello_world_service,
         )
@@ -63,12 +77,19 @@ def create_hello_world_service(
         settings = get_settings()
         llm_factory = create_llm_provider_factory(settings)
         tool_executor = create_tool_executor(tool_registry)
-        control_tower = ControlTower(logger=logger)
 
+        # With Go kernel (production)
+        kernel_client = await get_kernel_client()
         service = create_hello_world_service(
             llm_provider_factory=llm_factory,
             tool_executor=tool_executor,
-            control_tower=control_tower,
+            kernel_client=kernel_client,
+        )
+
+        # Standalone mode (no resource tracking)
+        service = create_hello_world_service(
+            llm_provider_factory=llm_factory,
+            tool_executor=tool_executor,
         )
     """
     if logger is None:
@@ -77,6 +98,7 @@ def create_hello_world_service(
     logger.info(
         "creating_hello_world_service",
         use_mock=use_mock,
+        has_kernel_client=kernel_client is not None,
     )
 
     service = ChatbotService(
@@ -84,7 +106,7 @@ def create_hello_world_service(
         tool_executor=tool_executor,
         logger=logger,
         pipeline_config=GENERAL_CHATBOT_PIPELINE,
-        control_tower=control_tower,
+        kernel_client=kernel_client,
         use_mock=use_mock,
     )
 
@@ -97,12 +119,29 @@ def create_hello_world_service(
     return service
 
 
-def create_tool_registry_adapter() -> Any:
+def get_capability_tool_catalog() -> "CapabilityToolCatalog":
+    """
+    Get the CapabilityToolCatalog for hello-world.
+
+    This follows the minisweagent pattern of using CapabilityToolCatalog
+    from jeeves_infra.protocols for tool registration.
+
+    Returns:
+        CapabilityToolCatalog instance with all tools registered
+    """
+    return _create_tool_catalog()
+
+
+def create_tool_registry_adapter(use_capability_catalog: bool = False) -> Any:
     """
     Create a tool registry adapter from the tool catalog.
 
     Adapts the capability's tool_catalog to the ToolRegistryProtocol
     expected by ToolExecutor.
+
+    Args:
+        use_capability_catalog: If True, use the new CapabilityToolCatalog
+                               pattern from capability/wiring.py
 
     Returns:
         Tool registry adapter implementing has_tool() and get_tool()
@@ -125,6 +164,8 @@ def create_tool_registry_adapter() -> Any:
                 return tool_info
             return None
 
+    if use_capability_catalog:
+        return ToolRegistryAdapter(get_capability_tool_catalog())
     return ToolRegistryAdapter(tool_catalog)
 
 
@@ -146,7 +187,7 @@ def create_wiring(
         Dict with wiring components:
         - llm_provider_factory: LLM factory function
         - tool_executor: Tool executor instance
-        - control_tower: Control Tower instance
+        - kernel_client: KernelClient instance (or None for standalone)
         - logger: Logger instance
 
     Example:
@@ -168,8 +209,6 @@ def create_wiring(
         create_llm_provider_factory,
         create_tool_executor,
     )
-    from control_tower import ControlTower
-    from control_tower.types import ResourceQuota
 
     logger.info("creating_hello_world_wiring")
 
@@ -185,25 +224,14 @@ def create_wiring(
     # Create tool executor
     tool_executor = create_tool_executor(tool_registry)
 
-    # Create Control Tower with default quota
-    ct_logger = structlog.get_logger("control_tower")
-    control_tower = ControlTower(
-        logger=ct_logger,
-        default_quota=ResourceQuota(
-            max_llm_calls=10,
-            max_tool_calls=50,
-            max_agent_hops=21,
-            max_iterations=3,
-        ),
-        default_service="hello_world",
-    )
-
-    logger.info("hello_world_wiring_created", has_control_tower=True)
+    # kernel_client is None for standalone mode
+    # When running with Go kernel, pass kernel_client from AppContext
+    logger.info("hello_world_wiring_created", standalone_mode=True)
 
     return {
         "llm_provider_factory": llm_provider_factory,
         "tool_executor": tool_executor,
-        "control_tower": control_tower,
+        "kernel_client": None,  # Set from AppContext when running with Go kernel
         "logger": logger,
     }
 
@@ -212,4 +240,6 @@ __all__ = [
     "create_hello_world_service",
     "create_tool_registry_adapter",
     "create_wiring",
+    "get_capability_tool_catalog",
+    "CAPABILITY_ID",
 ]

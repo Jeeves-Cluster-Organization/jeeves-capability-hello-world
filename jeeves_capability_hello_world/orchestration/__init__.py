@@ -6,23 +6,24 @@ Constitution R7 compliant service wiring and orchestration.
 The ChatbotService provides a clean interface for the general chatbot
 capability using the Understand → Think → Respond pattern.
 
-Includes Control Tower integration for resource tracking and quota enforcement.
+Includes KernelClient integration for resource tracking and quota enforcement.
 
 Usage:
     from jeeves_capability_hello_world.orchestration import (
         create_hello_world_service,
         ChatbotService,
     )
-    from control_tower import ControlTower
+    from jeeves_infra.kernel_client import get_kernel_client
 
     # Use factory function (recommended)
+    kernel_client = await get_kernel_client()
     service = create_hello_world_service(
         llm_provider_factory=llm_factory,
         tool_executor=tool_executor,
-        control_tower=control_tower,
+        kernel_client=kernel_client,
     )
 
-    # Or use complete wiring (creates Control Tower automatically)
+    # Or use complete wiring
     from jeeves_capability_hello_world.orchestration import create_wiring
     wiring = create_wiring(settings)
     service = create_hello_world_service(**wiring)
