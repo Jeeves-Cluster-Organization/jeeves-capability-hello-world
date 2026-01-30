@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 CAPABILITY_ID = "hello_world"
-CAPABILITY_DESCRIPTION = "General-purpose chatbot with 3-agent pipeline"
+CAPABILITY_DESCRIPTION = "Onboarding chatbot for Jeeves ecosystem with 3-agent pipeline"
 CAPABILITY_VERSION = "0.2.0"
 CAPABILITY_ROOT = Path(__file__).resolve().parent.parent
 
@@ -99,7 +99,7 @@ AGENT_LLM_CONFIGS = {
 AGENT_DEFINITIONS = [
     DomainAgentConfig(
         name="understand",
-        description="Analyzes user intent and plans approach",
+        description="Analyzes user intent for onboarding questions",
         layer="perception",
         tools=[],  # LLM-only
     ),
@@ -107,11 +107,11 @@ AGENT_DEFINITIONS = [
         name="think",
         description="Executes tools based on analyzed intent",
         layer="execution",
-        tools=["web_search", "get_time", "list_tools"],
+        tools=["get_time", "list_tools"],
     ),
     DomainAgentConfig(
         name="respond",
-        description="Synthesizes final response from gathered information",
+        description="Synthesizes onboarding response from embedded knowledge",
         layer="synthesis",
         tools=[],  # LLM-only
     ),
@@ -129,25 +129,11 @@ def _create_tool_catalog() -> CapabilityToolCatalog:
     This avoids circular imports and allows lazy loading.
     """
     from jeeves_capability_hello_world.tools.hello_world_tools import (
-        web_search,
         get_time,
         list_tools,
     )
 
     catalog = CapabilityToolCatalog(CAPABILITY_ID)
-
-    # Register web_search tool
-    catalog.register(
-        tool_id="web_search",
-        func=web_search,
-        description="Search the web for current information",
-        parameters={
-            "query": "string - The search query",
-            "max_results": "integer? - Maximum results to return (default: 5)",
-        },
-        category="standalone",
-        risk_level="read_only",
-    )
 
     # Register get_time tool
     catalog.register(
@@ -166,7 +152,7 @@ def _create_tool_catalog() -> CapabilityToolCatalog:
     catalog.register(
         tool_id="list_tools",
         func=list_tools,
-        description="List available tools with their descriptions",
+        description="List available tools and onboarding capabilities",
         parameters={},
         category="standalone",
         risk_level="read_only",
@@ -204,7 +190,7 @@ def _create_orchestrator_service(
         - jeeves_infra.memory.services.SessionStateService for sessions
     """
     from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
-    from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
+    from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
     # Return ChatbotService directly - it properly wraps PipelineRunner
     # Session memory and events handled at API layer with framework components
@@ -212,7 +198,7 @@ def _create_orchestrator_service(
         llm_provider_factory=llm_factory,
         tool_executor=tool_executor,
         logger=log,
-        pipeline_config=GENERAL_CHATBOT_PIPELINE,
+        pipeline_config=ONBOARDING_CHATBOT_PIPELINE,
         kernel_client=kernel_client,
         use_mock=False,
     )
@@ -259,7 +245,7 @@ def register_capability() -> None:
     registry.register_tools(
         CAPABILITY_ID,
         CapabilityToolsConfig(
-            tool_ids=["web_search", "get_time", "list_tools"],
+            tool_ids=["get_time", "list_tools"],
             initializer=_create_tool_catalog,
         ),
     )
@@ -293,7 +279,7 @@ def register_capability() -> None:
             "capability_id": CAPABILITY_ID,
             "version": CAPABILITY_VERSION,
             "agents": [a.name for a in AGENT_DEFINITIONS],
-            "tools": ["web_search", "get_time", "list_tools"],
+            "tools": ["get_time", "list_tools"],
         }
     )
 
@@ -363,7 +349,7 @@ def create_hello_world_from_app_context(
         create_tool_executor,
     )
     from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
-    from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
+    from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
     # Get tool registry from capability registration
     registry = get_capability_resource_registry()
@@ -394,7 +380,7 @@ def create_hello_world_from_app_context(
         llm_provider_factory=llm_factory,
         tool_executor=tool_executor,
         logger=app_context.logger,
-        pipeline_config=GENERAL_CHATBOT_PIPELINE,
+        pipeline_config=ONBOARDING_CHATBOT_PIPELINE,
         kernel_client=kernel_client,
         use_mock=False,
     )

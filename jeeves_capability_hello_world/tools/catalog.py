@@ -1,5 +1,5 @@
 """
-Tool Catalog for Hello World Capability.
+Tool Catalog for Onboarding Capability.
 
 Constitution R7 compliant tool catalog with metadata.
 Provides typed tool identifiers, categories, and risk levels.
@@ -14,9 +14,8 @@ from typing import Any, Callable, Dict, FrozenSet, Optional
 
 
 class ToolId(str, Enum):
-    """Typed tool identifiers for Hello World capability."""
+    """Typed tool identifiers for Onboarding capability."""
 
-    WEB_SEARCH = "web_search"
     GET_TIME = "get_time"
     LIST_TOOLS = "list_tools"
 
@@ -24,7 +23,6 @@ class ToolId(str, Enum):
 class ToolCategory(str, Enum):
     """Tool categories for routing and access control."""
 
-    SEARCH = "search"  # Information retrieval
     UTILITY = "utility"  # General utilities
     INTROSPECTION = "introspection"  # Self-inspection
 
@@ -39,7 +37,6 @@ class RiskLevel(str, Enum):
 
 # Exposed tools available to agents
 EXPOSED_TOOL_IDS: FrozenSet[str] = frozenset([
-    ToolId.WEB_SEARCH.value,
     ToolId.GET_TIME.value,
     ToolId.LIST_TOOLS.value,
 ])
@@ -47,7 +44,7 @@ EXPOSED_TOOL_IDS: FrozenSet[str] = frozenset([
 
 class CapabilityToolCatalog:
     """
-    Tool catalog for Hello World capability.
+    Tool catalog for Onboarding capability.
 
     Maintains registry of tools with metadata including:
     - Function reference
@@ -60,11 +57,11 @@ class CapabilityToolCatalog:
     Example:
         catalog = CapabilityToolCatalog()
         catalog.register(
-            tool_id=ToolId.WEB_SEARCH.value,
-            func=web_search,
-            description="Search the web",
-            category=ToolCategory.SEARCH.value,
-            risk_level=RiskLevel.EXTERNAL.value,
+            tool_id=ToolId.GET_TIME.value,
+            func=get_time,
+            description="Get current time",
+            category=ToolCategory.UTILITY.value,
+            risk_level=RiskLevel.READ_ONLY.value,
         )
     """
 
@@ -147,7 +144,7 @@ class CapabilityToolCatalog:
 # Global tool catalog instance for this capability
 tool_catalog = CapabilityToolCatalog(
     capability_id="hello_world",
-    description="Hello World capability tools for general chatbot",
+    description="Onboarding capability tools for Jeeves ecosystem explanation",
 )
 
 

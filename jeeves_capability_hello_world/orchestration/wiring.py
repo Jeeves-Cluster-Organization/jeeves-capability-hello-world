@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from jeeves_infra.kernel_client import KernelClient
     from jeeves_infra.protocols import CapabilityToolCatalog
 
-from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
+from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 from jeeves_capability_hello_world.tools import initialize_all_tools, tool_catalog
 from jeeves_capability_hello_world.capability.wiring import (
     CAPABILITY_ID,
@@ -105,7 +105,7 @@ def create_hello_world_service(
         llm_provider_factory=llm_provider_factory,
         tool_executor=tool_executor,
         logger=logger,
-        pipeline_config=GENERAL_CHATBOT_PIPELINE,
+        pipeline_config=ONBOARDING_CHATBOT_PIPELINE,
         kernel_client=kernel_client,
         use_mock=use_mock,
     )

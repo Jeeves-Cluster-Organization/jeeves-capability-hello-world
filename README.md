@@ -71,20 +71,20 @@ User Message
     ↓
 ┌─────────────────────────────────────────┐
 │  UNDERSTAND (LLM)                       │
-│  - Analyzes user intent                 │
-│  - Decides if web search is needed      │
-│  - Output: {intent, needs_search}       │
+│  - Classifies user intent               │
+│  - Identifies topic for knowledge       │
+│  - Output: {intent, topic, reasoning}   │
 └─────────────────────────────────────────┘
     ↓
 ┌─────────────────────────────────────────┐
-│  THINK (Tools Only - No LLM)            │
-│  - Executes tools if needed             │
-│  - Pure tool execution, no inference    │
-│  - Output: {information, sources}       │
+│  THINK (Knowledge Retrieval - No LLM)   │
+│  - Retrieves targeted knowledge         │
+│  - Maps intent → knowledge sections     │
+│  - Output: {targeted_knowledge}         │
 └─────────────────────────────────────────┘
     ↓
 ┌─────────────────────────────────────────┐
-│  RESPOND (LLM)                          │
+│  RESPOND (LLM - Streaming)              │
 │  - Synthesizes information              │
 │  - Crafts helpful response              │
 │  - Streams tokens to user               │
@@ -93,7 +93,19 @@ User Message
 Response to User
 ```
 
-**Key insight**: The middle agent has **no LLM** - it only executes tools. This is a common pattern that separates reasoning from action.
+### Intent Classification
+
+The chatbot classifies questions into categories for targeted knowledge retrieval:
+
+| Intent | Description | Example |
+|--------|-------------|---------|
+| `architecture` | System design, layers, data flow | "How do the layers connect?" |
+| `concept` | Core concepts: Envelope, AgentConfig | "What is an Envelope?" |
+| `getting_started` | Setup, running, adding tools | "How do I add a tool?" |
+| `component` | Specific components: jeeves-core, etc. | "What is jeeves-core?" |
+| `general` | Greetings, conversation, off-topic | "Hello!", "Summarize our chat" |
+
+**Key insight**: The middle agent has **no LLM** - it retrieves relevant knowledge based on the classified intent, avoiding the cost of unnecessary inference.
 
 ## Quick Start
 
@@ -124,17 +136,21 @@ pip install -r requirements/all.txt
 ### 3. Configure LLM Provider
 
 ```bash
-# Option A: OpenAI
-export LLM_PROVIDER=openai
-export OPENAI_API_KEY=your_key_here
+# Option A: Ollama (default - recommended for local development)
+# No configuration needed if Ollama is running on default port
+# Or explicitly set:
+export JEEVES_LLM_BASE_URL=http://localhost:11434/v1
+export JEEVES_LLM_MODEL=llama3.2
 
-# Option B: Anthropic
-export LLM_PROVIDER=anthropic
-export ANTHROPIC_API_KEY=your_key_here
+# Option B: OpenAI
+export JEEVES_LLM_BASE_URL=https://api.openai.com/v1
+export JEEVES_LLM_API_KEY=sk-your-key-here
+export JEEVES_LLM_MODEL=gpt-4o-mini
 
-# Option C: Local llama.cpp (see Docker section)
-export LLM_PROVIDER=llamaserver
-export LLAMASERVER_HOST=http://localhost:8080
+# Option C: Any OpenAI-compatible endpoint
+export JEEVES_LLM_BASE_URL=http://your-server:8080/v1
+export JEEVES_LLM_MODEL=your-model
+export JEEVES_LLM_API_KEY=your-key  # if required
 ```
 
 ### 4. Run the Chatbot
@@ -155,14 +171,16 @@ jeeves-capability-hello-world/
 │   ├── pipeline_config.py           # 3-agent pipeline configuration
 │   ├── CONSTITUTION.md              # Architectural rules
 │   │
-│   ├── prompts/chatbot/             # LLM prompts
-│   │   ├── understand.py            # Intent classification
-│   │   ├── respond.py               # Response synthesis
-│   │   └── respond_streaming.py     # Streaming-optimized
+│   ├── prompts/                     # LLM prompts and knowledge
+│   │   ├── knowledge_base.py        # Embedded knowledge (sectioned)
+│   │   └── chatbot/
+│   │       ├── understand.py        # Intent classification
+│   │       ├── respond.py           # Response synthesis (JSON)
+│   │       └── respond_streaming.py # Streaming plain text
 │   │
 │   ├── tools/                       # Available tools
-│   │   ├── hello_world_tools.py     # web_search, get_time, list_tools
-│   │   ├── catalog.py               # Tool metadata
+│   │   ├── hello_world_tools.py     # get_time, list_tools
+│   │   ├── catalog.py               # Tool registry and metadata
 │   │   └── registration.py          # Tool registration
 │   │
 │   ├── capability/                  # Registration with framework
@@ -213,8 +231,11 @@ AgentConfig(
     model_role="planner",
     prompt_key="chatbot.understand",
     output_key="understanding",
-    max_tokens=2000,
+    required_output_fields=["intent", "topic"],
+    max_tokens=4000,        # Supports 8k context models
     temperature=0.3,
+    pre_process=understand_pre_process,   # Build context
+    post_process=understand_post_process, # Map intent → knowledge
 )
 ```
 
@@ -256,9 +277,23 @@ Services:
 
 | Tool | Description | Async |
 |------|-------------|-------|
-| `web_search` | Search the web for current information | Yes |
 | `get_time` | Get current UTC date/time | No |
 | `list_tools` | List available tools (introspection) | No |
+
+## Knowledge Base
+
+The chatbot includes an embedded knowledge base in `prompts/knowledge_base.py` with sections:
+
+| Section | Content |
+|---------|---------|
+| `ecosystem_overview` | High-level architecture overview |
+| `layer_details` | Detailed explanation of each layer |
+| `key_concepts` | Core concepts (Envelope, AgentConfig, etc.) |
+| `code_examples` | Practical code snippets |
+| `hello_world_structure` | This capability's file structure |
+| `how_to_guides` | Step-by-step guides for common tasks |
+
+Knowledge is retrieved based on the classified intent, enabling targeted and relevant responses.
 
 ## Customization
 

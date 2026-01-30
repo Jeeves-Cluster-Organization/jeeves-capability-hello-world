@@ -1,5 +1,5 @@
 """
-Tool Registration for Hello World Capability.
+Tool Registration for Onboarding Capability.
 
 Constitution R7 compliant tool registration.
 Single entry point for registering all tools with the catalog.
@@ -22,7 +22,7 @@ from jeeves_capability_hello_world.tools.catalog import (
 
 def register_all_tools(logger: Optional[Any] = None) -> Dict[str, Any]:
     """
-    Register all Hello World tools with the catalog.
+    Register all Onboarding tools with the catalog.
 
     SINGLE entry point for tool registration.
     Called at capability bootstrap time, NOT at import time.
@@ -40,35 +40,11 @@ def register_all_tools(logger: Optional[Any] = None) -> Dict[str, Any]:
 
     # Import tool functions (deferred to avoid import-time side effects)
     from jeeves_capability_hello_world.tools.hello_world_tools import (
-        web_search,
         get_time,
         list_tools,
     )
 
-    logger.info("registering_hello_world_tools")
-
-    # Register web_search tool
-    tool_catalog.register(
-        tool_id=ToolId.WEB_SEARCH.value,
-        func=web_search,
-        description="Search the web for current information, news, and facts",
-        category=ToolCategory.SEARCH.value,
-        risk_level=RiskLevel.EXTERNAL.value,
-        parameters={
-            "query": {
-                "type": "string",
-                "description": "The search query",
-                "required": True,
-            },
-            "max_results": {
-                "type": "integer",
-                "description": "Maximum number of results (default: 5)",
-                "required": False,
-                "default": 5,
-            },
-        },
-        is_async=True,
-    )
+    logger.info("registering_onboarding_tools")
 
     # Register get_time tool
     tool_catalog.register(
@@ -85,7 +61,7 @@ def register_all_tools(logger: Optional[Any] = None) -> Dict[str, Any]:
     tool_catalog.register(
         tool_id=ToolId.LIST_TOOLS.value,
         func=list_tools,
-        description="List all available tools and their capabilities",
+        description="List all available tools and onboarding capabilities",
         category=ToolCategory.INTROSPECTION.value,
         risk_level=RiskLevel.READ_ONLY.value,
         parameters={},
@@ -93,13 +69,12 @@ def register_all_tools(logger: Optional[Any] = None) -> Dict[str, Any]:
     )
 
     registered_ids = [
-        ToolId.WEB_SEARCH.value,
         ToolId.GET_TIME.value,
         ToolId.LIST_TOOLS.value,
     ]
 
     logger.info(
-        "hello_world_tools_registered",
+        "onboarding_tools_registered",
         count=len(registered_ids),
         tools=registered_ids,
     )

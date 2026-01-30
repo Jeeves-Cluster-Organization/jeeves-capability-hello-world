@@ -15,10 +15,16 @@ import time
 from typing import List, AsyncIterator
 from unittest.mock import Mock, AsyncMock, MagicMock
 
-from protocols.config import AgentConfig, AgentOutputMode, TokenStreamMode
-from protocols.envelope import Envelope, PipelineEvent
-from protocols.agents import Agent, create_envelope
-from protocols.protocols import RequestContext
+from jeeves_infra.protocols import (
+    AgentConfig,
+    AgentOutputMode,
+    TokenStreamMode,
+    Envelope,
+    PipelineEvent,
+    Agent,
+    create_envelope,
+    RequestContext,
+)
 
 
 # =============================================================================
@@ -163,7 +169,7 @@ async def test_cancellation_propagates():
     # Create mock service components
     class MockLLMProvider:
         async def generate(self, model, prompt, options):
-            return '{"intent": "question", "needs_search": false}'
+            return '{"intent": "concept", "topic": "envelope", "reasoning": "User asking about Envelope"}'
 
     class MockLLMFactory:
         def __call__(self, role):
@@ -204,7 +210,7 @@ async def test_cancellation_propagates():
             )
 
     # Create service
-    from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
+    from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
     # Mock the registry to avoid import issues
     import mission_system.prompts.core.registry as registry_module
@@ -216,7 +222,7 @@ async def test_cancellation_propagates():
             llm_provider_factory=MockLLMFactory(),
             tool_executor=MockToolExecutor(),
             logger=Mock(),
-            pipeline_config=GENERAL_CHATBOT_PIPELINE,
+            pipeline_config=ONBOARDING_CHATBOT_PIPELINE,
             kernel_client=MockKernelClient(),
             use_mock=False,
         )
@@ -252,7 +258,7 @@ async def test_cancellation_propagates():
 @pytest.mark.asyncio
 async def test_inline_citations_best_effort():
     """Verify inline citations are extracted but not guaranteed."""
-    from protocols.agents import Agent
+    from jeeves_infra.protocols import Agent
 
     config = AgentConfig(name="test", output_key="test")
     agent = Agent(config=config, logger=Mock())
@@ -424,7 +430,7 @@ async def test_exactly_one_terminal_event():
 
     class MockLLMProvider:
         async def generate(self, model, prompt, options):
-            return '{"intent": "question", "needs_search": false}'
+            return '{"intent": "concept", "topic": "architecture", "reasoning": "User asking about architecture"}'
 
         async def generate_stream(self, model, prompt, options):
             for token in ["test", " response"]:
@@ -468,7 +474,7 @@ async def test_exactly_one_terminal_event():
                 priority="NORMAL",
             )
 
-    from jeeves_capability_hello_world.pipeline_config import GENERAL_CHATBOT_PIPELINE
+    from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
     import mission_system.prompts.core.registry as registry_module
     original_registry = getattr(registry_module, 'PromptRegistry', None)
@@ -479,7 +485,7 @@ async def test_exactly_one_terminal_event():
             llm_provider_factory=MockLLMFactory(),
             tool_executor=MockToolExecutor(),
             logger=Mock(),
-            pipeline_config=GENERAL_CHATBOT_PIPELINE,
+            pipeline_config=ONBOARDING_CHATBOT_PIPELINE,
             kernel_client=MockKernelClient(),
             use_mock=False,
         )

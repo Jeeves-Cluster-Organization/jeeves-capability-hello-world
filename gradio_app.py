@@ -1,13 +1,15 @@
 """
-Jeeves Hello World - General Chatbot Gradio Application
+Jeeves Onboarding Assistant - Gradio Application
 
-3-agent pipeline (Understand → Think → Respond) with REAL LLM via Gradio UI.
-Shows each agent's output as the pipeline progresses.
+3-agent pipeline (Understand → Think → Respond) that explains the Jeeves ecosystem.
+Shows intent classification and knowledge retrieval as the pipeline progresses.
+
+Features:
+- Intent classification: architecture, concept, getting_started, component, general
+- Targeted knowledge retrieval based on classified intent
+- Streaming responses with pipeline visibility
 
 Supports Ollama and other OpenAI-compatible endpoints.
-
-Constitution R7 compliant: Uses mission_system.adapters instead of direct
-avionics imports.
 
 Usage:
     # With Ollama (default)
@@ -19,7 +21,7 @@ Usage:
     # With OpenAI
     JEEVES_LLM_API_KEY=sk-xxx JEEVES_LLM_BASE_URL=https://api.openai.com/v1 python gradio_app.py
 
-Open browser: http://localhost:8000
+Open browser: http://localhost:8001
 """
 import gradio as gr
 import structlog
@@ -121,7 +123,7 @@ def get_or_create_service() -> ChatbotService:
         )
 
         logger.info("chatbot_service_ready",
-                    pipeline="general_chatbot",
+                    pipeline="onboarding_chatbot",
                     agents=3,
                     use_real_llm=True,
                     has_kernel_client=kernel_client is not None)
@@ -130,49 +132,20 @@ def get_or_create_service() -> ChatbotService:
 
 
 def format_agent_output(agent_name: str, data: dict, status: str) -> str:
-    """Format agent output for display in the UI."""
-    if status == "started":
-        emoji = {"understand": "🧠", "think": "⚙️", "respond": "💬"}.get(agent_name, "▶️")
-        return f"{emoji} **{agent_name.title()}** agent started..."
-
+    """Format agent output for display - shows classification and knowledge retrieval."""
     if status == "completed":
-        emoji = {"understand": "🧠", "think": "⚙️", "respond": "💬"}.get(agent_name, "✅")
-
-        # Try to extract meaningful output from data
         if agent_name == "understand":
-            # Extract intent analysis
-            intent = data.get("intent") or data.get("user_intent", "analyzing...")
+            intent = data.get("intent", "")
             topic = data.get("topic", "")
-            needs_search = data.get("needs_search", False)
-
-            parts = [f"{emoji} **Understand** complete"]
-            if intent:
-                parts.append(f"  - Intent: `{intent}`")
-            if topic:
-                parts.append(f"  - Topic: `{topic}`")
-            if needs_search:
-                parts.append(f"  - Needs tool: Yes")
-            return "\n".join(parts)
-
+            if intent and topic:
+                return f"📋 *{intent}: {topic}*"
+            elif intent:
+                return f"📋 *{intent}*"
         elif agent_name == "think":
-            # Extract tool results
-            tool_results = data.get("tool_results", [])
-            findings = data.get("findings", [])
-
-            parts = [f"{emoji} **Think** complete"]
-            if tool_results:
-                for result in tool_results[:3]:  # Limit to 3
-                    tool_name = result.get("tool_name", "unknown")
-                    success = "✓" if result.get("success", True) else "✗"
-                    parts.append(f"  - Tool `{tool_name}`: {success}")
-            if findings:
-                parts.append(f"  - Findings: {len(findings)} items")
-            if not tool_results and not findings:
-                parts.append("  - No tools needed")
-            return "\n".join(parts)
-
-        return f"{emoji} **{agent_name.title()}** complete"
-
+            # Show knowledge retrieval status
+            info = data.get("information", {})
+            if info.get("knowledge_retrieved"):
+                return "📚 *Knowledge retrieved*"
     return ""
 
 
@@ -200,7 +173,7 @@ async def chat_with_pipeline(message: str, history: List[List]) -> Generator:
     logger.info("message_received", message=message, session_id=session_id)
 
     # Initialize pipeline status display
-    pipeline_status = "### Pipeline Status\n\n"
+    pipeline_status = ""
     current_response = ""
 
     # Agent outputs collected during pipeline
@@ -253,56 +226,33 @@ async def chat_with_pipeline(message: str, history: List[List]) -> Generator:
             data = event.data if hasattr(event, 'data') else {}
 
             if event_type == "stage":
-                # Agent stage update
                 status = data.get("status", "")
                 agent_name = agent_name or data.get("agent", "")
 
-                if status == "started":
-                    output = format_agent_output(agent_name, data, "started")
-                    pipeline_status += f"{output}\n"
-
-                elif status == "completed":
-                    # Store agent output for display
-                    agent_outputs[agent_name] = data
-                    output = format_agent_output(agent_name, data, "completed")
-                    # Replace "started" line with "completed" info
-                    lines = pipeline_status.split("\n")
-                    new_lines = []
-                    for line in lines:
-                        if f"**{agent_name.title()}** agent started" in line:
-                            new_lines.append(output)
-                        else:
-                            new_lines.append(line)
-                    pipeline_status = "\n".join(new_lines)
-
-                # Build display with pipeline info above response
-                display = pipeline_status
-                if current_response:
-                    display += f"\n---\n\n{current_response}"
-                yield display
+                # Capture agent outputs for understand and think
+                if status == "completed":
+                    output_text = format_agent_output(agent_name, data, "completed")
+                    if output_text:
+                        if agent_name == "understand":
+                            pipeline_status = output_text + " "
+                        elif agent_name == "think":
+                            pipeline_status += output_text + "\n\n"
 
             elif event_type == "token" and not getattr(event, 'debug', False):
                 # Streaming token from Respond agent
                 token = data.get("token", "")
                 current_response += token
-
-                # Show pipeline status + response
-                display = pipeline_status + f"\n---\n\n{current_response}"
-                yield display
+                yield pipeline_status + current_response
 
             elif event_type == "error":
                 error_msg = data.get("error", "Unknown error")
                 logger.error("streaming_error", error=error_msg)
-                pipeline_status += f"\n❌ **Error**: {error_msg}"
-                yield pipeline_status
+                yield f"Error: {error_msg}"
                 break
 
             elif event_type == "done":
-                # Terminal event - streaming complete
                 logger.info("response_completed", session_id=session_id)
-                pipeline_status += "\n✅ **Pipeline complete**"
-                display = pipeline_status + f"\n---\n\n{current_response}"
-                yield display
+                yield pipeline_status + current_response
                 break
 
     except Exception as e:
@@ -346,16 +296,9 @@ def update_llm_config(base_url: str, model: str, api_key: str) -> str:
     return f"Configuration updated. Using model `{model}` at `{base_url}`"
 
 
-# Create custom Gradio interface with pipeline visibility
-with gr.Blocks(title="Jeeves Hello World - Pipeline Chatbot") as demo:
-    gr.Markdown("""
-    # Jeeves Hello World - Pipeline Chatbot
-
-    A 3-agent AI assistant showing the full pipeline:
-    **Understand** (analyze intent) → **Think** (use tools) → **Respond** (stream answer)
-
-    Watch each agent's output as the pipeline progresses!
-    """)
+# Create custom Gradio interface
+with gr.Blocks(title="Jeeves Onboarding Assistant") as demo:
+    gr.Markdown("# Jeeves Onboarding Assistant")
 
     # Settings accordion (collapsed by default)
     with gr.Accordion("LLM Settings (Ollama / OpenAI)", open=False):
@@ -402,7 +345,7 @@ with gr.Blocks(title="Jeeves Hello World - Pipeline Chatbot") as demo:
     with gr.Row():
         msg = gr.Textbox(
             label="Your message",
-            placeholder="Ask me anything...",
+            placeholder="Ask a question...",
             scale=4,
             show_label=False,
         )
@@ -410,16 +353,6 @@ with gr.Blocks(title="Jeeves Hello World - Pipeline Chatbot") as demo:
 
     with gr.Row():
         clear_btn = gr.Button("Clear Chat")
-
-    gr.Examples(
-        examples=[
-            "Tell me a joke",
-            "What time is it?",
-            "Search for the latest news about AI",
-            "Explain quantum computing in simple terms",
-        ],
-        inputs=msg,
-    )
 
     async def respond(message: str, chat_history: List):
         """Handle message and update chat with pipeline visibility."""

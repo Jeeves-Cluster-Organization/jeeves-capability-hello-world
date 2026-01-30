@@ -1,13 +1,12 @@
 """
-Tools module for Hello World chatbot capability.
+Tools module for Onboarding chatbot capability.
 
 Constitution R7 compliant tool initialization.
 Tools are registered at bootstrap time, not at import time.
 
-Contains minimal general-purpose tools for demonstration:
-- web_search: Search the web for current information
+Contains minimal tools for demonstration:
 - get_time: Get current date/time
-- list_tools: Tool introspection
+- list_tools: Tool introspection and onboarding capabilities
 
 Usage:
     from jeeves_capability_hello_world.tools import initialize_all_tools
@@ -27,7 +26,6 @@ from .catalog import (
 )
 from .registration import register_all_tools
 from .hello_world_tools import (
-    web_search,
     get_time,
     list_tools,
 )
@@ -87,7 +85,6 @@ __all__ = [
     "EXPOSED_TOOL_IDS",
     "tool_catalog",
     # Individual tools (for direct access if needed)
-    "web_search",
     "get_time",
     "list_tools",
 ]

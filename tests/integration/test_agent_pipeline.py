@@ -65,26 +65,30 @@ class TestAgentPipelineFlow:
 
     @pytest.mark.unit
     async def test_intent_agent_classifies_query(self, mock_runtime):
-        """Test that intent agent classifies query type."""
-        # Test different query types
+        """Test that intent agent classifies query type for onboarding."""
+        # Test different onboarding query types
         test_cases = [
-            ("trace the flow of data from input", "trace_flow"),
-            ("find the definition of UserClass", "find_definition"),
-            ("explain how authentication works", "explain"),
-            ("search for error handling", "search"),
+            ("What is the architecture?", "architecture"),
+            ("How do the layers connect?", "architecture"),
+            ("Explain the Envelope concept", "concept"),
+            ("What is an AgentConfig?", "concept"),
+            ("How do I run this?", "getting_started"),
+            ("How do I add a tool?", "getting_started"),
+            ("What does jeeves-core do?", "component"),
+            ("What is mission_system?", "component"),
+            ("Hello!", "general"),
         ]
 
         for query, expected_intent in test_cases:
             # Mock intent classification result
             intent_result = {
                 "query": query,
-                "intent_type": expected_intent,
-                "confidence": 0.95,
-                "extracted_entities": [],
+                "intent": expected_intent,
+                "topic": query.split()[-1].rstrip("?"),
+                "reasoning": f"Classification for: {query}",
             }
 
-            assert intent_result["intent_type"] == expected_intent
-            assert intent_result["confidence"] > 0.8
+            assert intent_result["intent"] == expected_intent
 
     @pytest.mark.unit
     async def test_planner_agent_creates_valid_plan(self, mock_runtime):

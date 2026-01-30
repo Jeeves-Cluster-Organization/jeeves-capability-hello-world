@@ -100,9 +100,10 @@ Orchestration framework:
 ### Layer 4: Capabilities (Python)
 
 Your domain logic:
-- **Prompts** - LLM instructions
+- **Prompts** - LLM instructions for each agent
+- **Knowledge Base** - Embedded domain knowledge (sectioned)
 - **Tools** - Domain-specific actions
-- **Pipeline config** - Agent orchestration
+- **Pipeline config** - Agent orchestration with hooks
 - **Service layer** - Business logic wrapper
 
 ---
@@ -128,8 +129,34 @@ AgentConfig(
     has_tools=False,        # No tool access
     prompt_key="chatbot.understand",
     output_key="understanding",
+    required_output_fields=["intent", "topic"],
+    pre_process=understand_pre_process,
+    post_process=understand_post_process,
 )
 ```
+
+### Intent-Based Knowledge Retrieval
+
+The chatbot uses a sectioned knowledge base with intent-based retrieval:
+
+```python
+# In pipeline hooks (pipeline_config.py)
+def _get_knowledge_sections_for_intent(intent: str, topic: str) -> list:
+    section_map = {
+        "architecture": ["ecosystem_overview", "layer_details"],
+        "concept": ["key_concepts", "code_examples"],
+        "getting_started": ["hello_world_structure", "how_to_guides"],
+        "component": ["ecosystem_overview", "layer_details"],
+        "general": ["ecosystem_overview"],
+    }
+    return section_map.get(intent, ["ecosystem_overview"])
+
+# In think_pre_process
+targeted_knowledge = get_knowledge_for_sections(knowledge_sections)
+envelope.metadata["targeted_knowledge"] = targeted_knowledge
+```
+
+This pattern avoids dumping all knowledge into the prompt, reducing token usage and improving relevance.
 
 ### Tool Registration
 

@@ -1,14 +1,14 @@
 """
-Hello World Pipeline Configuration - General Chatbot
+Hello World Pipeline Configuration - Onboarding Chatbot
 
 3-Agent template: Understand → Think → Respond
 
-This is a simplified, general-purpose chatbot capability that demonstrates
-the core multi-agent orchestration pattern using jeeves-core.
+This is an onboarding assistant capability that explains the Jeeves ecosystem
+to newcomers, demonstrating the core multi-agent orchestration pattern.
 
-Domain: General-purpose assistant (conversation, Q&A, web search)
-Agents: 3 (minimal pipeline for general-purpose chatbot)
-Use case: Learning template, simple chatbot applications
+Domain: Onboarding assistant (ecosystem explanation, concept clarification)
+Agents: 3 (minimal pipeline for onboarding chatbot)
+Use case: Learning template, ecosystem onboarding
 """
 
 from typing import Any, Dict
@@ -56,8 +56,8 @@ async def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
     context = {
         "user_message": user_message,
         "conversation_history": formatted_history,
-        "system_identity": "Helpful AI Assistant",
-        "capabilities": "conversation, web search, general knowledge",
+        "system_identity": "Jeeves Onboarding Assistant",
+        "capabilities": "ecosystem explanation, concept clarification, getting started help",
     }
 
     envelope.metadata.update(context)
@@ -66,82 +66,69 @@ async def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
 
 async def understand_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
     """
-    Process Understand agent output and prepare for Think agent.
+    Process Understand agent output and prepare context for Think and Respond agents.
 
-    Determines if web search is needed and prepares action for Think agent.
+    Extracts intent and topic to enable targeted knowledge retrieval.
     """
-    needs_search = output.get("needs_search", False)
-    search_query = output.get("search_query", "")
+    intent = output.get("intent", "general")
+    topic = output.get("topic", "")
 
-    # Prepare for Think agent
-    if needs_search and search_query:
-        # Think will execute web search
-        envelope.outputs["think_plan"] = {
-            "action": "web_search",
-            "query": search_query
-        }
-    else:
-        # Think will pass through (no tools needed)
-        envelope.outputs["think_plan"] = {
-            "action": "none",
-            "query": None
-        }
+    # Store classification for downstream agents
+    envelope.metadata["classified_intent"] = intent
+    envelope.metadata["classified_topic"] = topic
+
+    # Map intent to relevant knowledge sections for targeted retrieval
+    knowledge_sections = _get_knowledge_sections_for_intent(intent, topic)
+    envelope.metadata["knowledge_sections"] = knowledge_sections
 
     return envelope
 
 
+def _get_knowledge_sections_for_intent(intent: str, topic: str) -> list:
+    """Map intent to relevant knowledge base sections."""
+    section_map = {
+        "architecture": ["ecosystem_overview", "layer_details"],
+        "concept": ["key_concepts", "code_examples"],
+        "getting_started": ["hello_world_structure", "how_to_guides"],
+        "component": ["ecosystem_overview", "layer_details"],
+        "general": ["ecosystem_overview"],
+    }
+    return section_map.get(intent, ["ecosystem_overview"])
+
+
 async def think_pre_process(envelope: Any, agent: Any = None) -> Any:
     """
-    Prepare Think agent for tool execution.
+    Prepare Think agent for knowledge retrieval.
 
-    Converts the plan from Understand into tool calls for executor.
+    Uses the classified intent to retrieve targeted knowledge sections.
     """
-    think_plan = envelope.outputs.get("think_plan", {})
+    from jeeves_capability_hello_world.prompts.knowledge_base import get_knowledge_for_sections
 
-    action = think_plan.get("action", "none")
-    query = think_plan.get("query")
+    # Get the knowledge sections identified by understand agent
+    knowledge_sections = envelope.metadata.get("knowledge_sections", ["ecosystem_overview"])
+    intent = envelope.metadata.get("classified_intent", "general")
+    topic = envelope.metadata.get("classified_topic", "")
 
-    # Build tool calls for executor
-    tool_calls = []
-    if action == "web_search" and query:
-        tool_calls.append({
-            "name": "web_search",
-            "params": {"query": query}
-        })
+    # Retrieve targeted knowledge
+    targeted_knowledge = get_knowledge_for_sections(knowledge_sections)
 
-    # Store for tool executor
-    envelope.metadata["tool_calls"] = tool_calls
+    # Store for Respond agent
+    envelope.metadata["targeted_knowledge"] = targeted_knowledge
+    envelope.metadata["tool_calls"] = []  # No external tool calls for onboarding
 
     return envelope
 
 
 async def think_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
     """
-    Process Think agent output (tool results).
+    Process Think agent output.
 
-    Extracts web search results and sources for Respond agent.
+    For onboarding, this is a pass-through that ensures knowledge context is available.
     """
-    tool_results = output.get("tool_results", [])
-
-    # Extract search results
-    search_results = []
-    sources = []
-
-    for result in tool_results:
-        tool_name = result.get("tool", "")
-        if tool_name == "web_search":
-            result_data = result.get("result", {})
-            # Handle both direct data and wrapped data
-            data = result_data.get("data", result_data)
-
-            search_results.extend(data.get("results", []))
-            sources.extend(data.get("sources", []))
-
-    # Store for Respond agent
+    # Store knowledge retrieval results for Respond agent
     output["information"] = {
-        "has_data": bool(search_results),
-        "results": search_results[:5],  # Top 5 results
-        "sources": sources[:5]
+        "has_data": True,
+        "knowledge_retrieved": True,
     }
 
     return envelope
@@ -151,51 +138,31 @@ async def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
     """
     Build context for Respond agent.
 
-    Combines original message, intent, conversation history, and search results.
+    Combines original message, intent, conversation history, and targeted knowledge.
     """
     understand_output = envelope.outputs.get("understanding", {})
-    think_output = envelope.outputs.get("think_results", {})
 
     user_message = envelope.raw_input
-    intent = understand_output.get("intent", "chat")
-    information = think_output.get("information", {})
+    intent = envelope.metadata.get("classified_intent", understand_output.get("intent", "general"))
+    topic = envelope.metadata.get("classified_topic", understand_output.get("topic", ""))
 
-    # Get and format conversation history for context
+    # Get formatted conversation history
     conversation_history = envelope.metadata.get("conversation_history", [])
     if isinstance(conversation_history, str):
-        # Already formatted from understand_pre_process
         formatted_history = conversation_history
     else:
         formatted_history = _format_conversation_history(conversation_history)
 
-    # Format search results and sources properly for LLM consumption
-    has_search_results = information.get("has_data", False)
-    results = information.get("results", [])
-    sources_list = information.get("sources", [])
-
-    # Format search results as readable text (not Python list repr)
-    if results:
-        search_results_text = "\n".join(
-            f"- {result.get('title', 'N/A')}: {result.get('snippet', 'N/A')}"
-            for result in results[:5]
-        )
-    else:
-        search_results_text = "None"
-
-    # Format sources as readable text (not Python list repr)
-    if sources_list:
-        sources_text = "\n".join(f"- {source}" for source in sources_list[:5])
-    else:
-        sources_text = "None"
+    # Get targeted knowledge from Think agent
+    targeted_knowledge = envelope.metadata.get("targeted_knowledge", "")
 
     context = {
         "user_message": user_message,
         "intent": intent,
+        "topic": topic,
         "conversation_history": formatted_history,
-        "has_search_results": has_search_results,
-        "search_results": search_results_text,
-        "sources": sources_text,
-        "task": "Craft a helpful, accurate response"
+        "targeted_knowledge": targeted_knowledge,
+        "task": "Craft a helpful, accurate response about the Jeeves ecosystem"
     }
 
     envelope.metadata.update(context)
@@ -224,8 +191,8 @@ async def respond_post_process(envelope: Any, output: Dict[str, Any], agent: Any
 # PIPELINE CONFIGURATION
 # ═══════════════════════════════════════════════════════════════
 
-GENERAL_CHATBOT_PIPELINE = PipelineConfig(
-    name="general_chatbot",
+ONBOARDING_CHATBOT_PIPELINE = PipelineConfig(
+    name="onboarding_chatbot",
     max_iterations=2,           # Simple queries don't need many iterations
     max_llm_calls=4,            # 2 LLM agents × 2 potential calls each
     max_agent_hops=10,
@@ -241,8 +208,8 @@ GENERAL_CHATBOT_PIPELINE = PipelineConfig(
             model_role="planner",
             prompt_key="chatbot.understand",
             output_key="understanding",
-            required_output_fields=["intent", "needs_search"],
-            max_tokens=2000,
+            required_output_fields=["intent", "topic"],
+            max_tokens=4000,                 # Increased for 8k context models
             temperature=0.3,                 # Low temp for consistent classification
             pre_process=understand_pre_process,
             post_process=understand_post_process,
@@ -274,8 +241,8 @@ GENERAL_CHATBOT_PIPELINE = PipelineConfig(
             prompt_key="chatbot.respond",
             output_key="final_response",
             required_output_fields=["response"],
-            max_tokens=150,                  # Reduced for concise responses
-            temperature=0.3,                 # Lower temp to reduce repetition
+            max_tokens=4000,                 # Increased for 8k context models
+            temperature=0.5,                 # Balanced for natural responses
 
             # K8s-style generation spec
             generation=GenerationParams(
@@ -301,17 +268,17 @@ GENERAL_CHATBOT_PIPELINE = PipelineConfig(
 # ═══════════════════════════════════════════════════════════════
 
 PIPELINE_MODES = {
-    "general_chatbot": GENERAL_CHATBOT_PIPELINE,
-    "hello_world": GENERAL_CHATBOT_PIPELINE,  # Alias for compatibility
+    "onboarding_chatbot": ONBOARDING_CHATBOT_PIPELINE,
+    "hello_world": ONBOARDING_CHATBOT_PIPELINE,  # Alias for compatibility
 }
 
 
-def get_pipeline_for_mode(mode: str = "general_chatbot") -> PipelineConfig:
+def get_pipeline_for_mode(mode: str = "onboarding_chatbot") -> PipelineConfig:
     """
     Get pipeline configuration for specified mode.
 
     Args:
-        mode: Pipeline mode ("general_chatbot" or "hello_world")
+        mode: Pipeline mode ("onboarding_chatbot" or "hello_world")
 
     Returns:
         PipelineConfig for the specified mode
