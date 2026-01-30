@@ -1,48 +1,148 @@
 # Documentation Index
 
-**Parent:** [README.md](../README.md)
+**Your guide to understanding the Jeeves ecosystem**
 
 ---
 
-## Core Documents
+## Getting Started
 
-| Document | Purpose |
-|----------|---------|
-| [CONSTITUTION.md](CONSTITUTION.md) | Capability layer constitution and governing rules |
-| [CAPABILITY_INTEGRATION_GUIDE.md](CAPABILITY_INTEGRATION_GUIDE.md) | How to integrate with jeeves-core submodule |
-| [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md) | Runtime contract for jeeves-core capabilities |
-| [AIRFRAME.md](AIRFRAME.md) | Airframe LLM adapter infrastructure documentation |
-| [envelope_json_schema.md](envelope_json_schema.md) | JSON schema for envelope state exchange |
+| Document | Description |
+|----------|-------------|
+| [README.md](../README.md) | Project overview and quick start |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | How to contribute |
+| [SECURITY.md](../SECURITY.md) | Security policy |
 
 ---
 
-## Deployment Documentation
+## Architecture
 
-| Document | Purpose |
-|----------|---------|
-| [../k8s/README.md](../k8s/README.md) | Kubernetes deployment manifests and configuration |
-| [../docker/docker-compose.yml](../docker/docker-compose.yml) | Docker Compose for local development |
+### This Capability
+
+| Document | Description |
+|----------|-------------|
+| [CONSTITUTION.md](CONSTITUTION.md) | Capability layer constitution and rules |
+| [CAPABILITY_CONSTITUTION.md](CAPABILITY_CONSTITUTION.md) | Detailed capability architecture |
+| [Package CONSTITUTION](../jeeves_capability_hello_world/CONSTITUTION.md) | Internal capability rules |
+
+### Jeeves Core (Micro-Kernel)
+
+| Document | Description |
+|----------|-------------|
+| [jeeves-core README](../jeeves-core/README.md) | Go micro-kernel overview |
+| [jeeves-core CONSTITUTION](../jeeves-core/CONSTITUTION.md) | Kernel layer rules |
+| [jeeves-core CONTRIBUTING](../jeeves-core/CONTRIBUTING.md) | Contributing to the kernel |
+
+### Infrastructure Layer
+
+| Document | Description |
+|----------|-------------|
+| [jeeves-airframe README](../jeeves-airframe/README.md) | Infrastructure layer overview |
+| [mission_system CONSTITUTION](../jeeves-airframe/mission_system/CONSTITUTION.md) | Orchestration framework rules |
+| [mission_system INDEX](../jeeves-airframe/mission_system/INDEX.md) | Mission system documentation |
 
 ---
 
-## Audit Reports
+## Integration Guides
 
-| Document | Purpose |
-|----------|---------|
-| [CAPABILITY_LAYER_AUDIT_REPORT.md](CAPABILITY_LAYER_AUDIT_REPORT.md) | Import wiring and compatibility audit |
-| [analysis-reports/COVERAGE_ANALYSIS.md](analysis-reports/COVERAGE_ANALYSIS.md) | Code coverage analysis report |
-| [analysis-reports/DOCUMENTATION_AUDIT_2026-01-23.md](analysis-reports/DOCUMENTATION_AUDIT_2026-01-23.md) | Documentation audit report |
-| [analysis-reports/JEEVES_CORE_ANALYSIS.md](analysis-reports/JEEVES_CORE_ANALYSIS.md) | jeeves-core submodule analysis |
-
----
-
-## Package Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [../jeeves-capability-code-analyser/CONSTITUTION.md](../jeeves-capability-code-analyser/CONSTITUTION.md) | Detailed capability rules and architecture |
-| [../jeeves-capability-code-analyser/tests/README.md](../jeeves-capability-code-analyser/tests/README.md) | Test suite documentation |
+| Document | Description |
+|----------|-------------|
+| [CAPABILITY_INTEGRATION_GUIDE.md](CAPABILITY_INTEGRATION_GUIDE.md) | How capabilities integrate with jeeves-core |
+| [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md) | Runtime contract specification |
+| [envelope_json_schema.md](envelope_json_schema.md) | Envelope state JSON schema |
 
 ---
 
-*Last Updated: 2026-01-23*
+## Deployment
+
+| Document | Description |
+|----------|-------------|
+| [k8s/README.md](../k8s/README.md) | Kubernetes deployment |
+| [docker/](../docker/) | Docker Compose files |
+
+---
+
+## Analysis & Audits
+
+| Document | Description |
+|----------|-------------|
+| [CAPABILITY_LAYER_AUDIT_REPORT.md](CAPABILITY_LAYER_AUDIT_REPORT.md) | Import wiring audit |
+| [analysis-reports/COVERAGE_ANALYSIS.md](analysis-reports/COVERAGE_ANALYSIS.md) | Test coverage analysis |
+| [analysis-reports/JEEVES_CORE_ANALYSIS.md](analysis-reports/JEEVES_CORE_ANALYSIS.md) | jeeves-core integration analysis |
+
+---
+
+## Understanding the Layers
+
+### Layer 1: jeeves-core (Go)
+
+The micro-kernel provides:
+- **Pipeline orchestration** - Multi-stage agent execution
+- **Envelope state** - Immutable state transitions
+- **Resource quotas** - Limits on iterations, LLM calls, agent hops
+- **gRPC services** - Communication with Python layer
+
+### Layer 2: jeeves-infra (Python)
+
+Infrastructure implementations:
+- **LLM providers** - OpenAI, Anthropic, llama.cpp adapters
+- **Database clients** - PostgreSQL, pgvector
+- **Protocols** - Type definitions and interfaces
+- **Gateway** - HTTP/WebSocket/gRPC translation
+
+### Layer 3: mission_system (Python)
+
+Orchestration framework:
+- **Agent profiles** - Per-agent configuration
+- **Adapters** - Clean interface for capabilities
+- **Event handling** - Pipeline event emission
+- **Prompt registry** - Centralized prompt management
+
+### Layer 4: Capabilities (Python)
+
+Your domain logic:
+- **Prompts** - LLM instructions
+- **Tools** - Domain-specific actions
+- **Pipeline config** - Agent orchestration
+- **Service layer** - Business logic wrapper
+
+---
+
+## Key Patterns
+
+### Import Boundaries (Constitution R7)
+
+```python
+# CORRECT - Capabilities use adapters
+from mission_system.adapters import create_llm_provider_factory
+
+# INCORRECT - Don't bypass the adapter layer
+from avionics.llm import LLMProvider  # DON'T DO THIS
+```
+
+### Agent Configuration
+
+```python
+AgentConfig(
+    name="understand",
+    has_llm=True,           # Uses LLM
+    has_tools=False,        # No tool access
+    prompt_key="chatbot.understand",
+    output_key="understanding",
+)
+```
+
+### Tool Registration
+
+```python
+catalog.register(
+    tool_id="my_tool",
+    func=my_tool_function,
+    description="What it does",
+    category="standalone",
+    risk_level="read_only",
+)
+```
+
+---
+
+*Last Updated: 2026-01-30*
