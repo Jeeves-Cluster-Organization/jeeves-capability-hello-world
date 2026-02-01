@@ -1,10 +1,16 @@
 """
-ChatbotService - Wrapper for PipelineRunner with general chatbot pipeline.
+ChatbotService - Kernel-driven pipeline execution for general chatbot.
 
 Provides a clean interface for running the 3-agent chatbot pipeline
-(Understand → Think → Respond) using the centralized architecture.
+(Understand → Think → Respond) using kernel-driven orchestration.
 
-Includes Control Tower integration for resource tracking and quota enforcement.
+The Go kernel controls:
+- Pipeline loop
+- Routing decisions
+- Bounds checking
+- State management
+
+Python workers just execute agents as instructed.
 """
 
 from typing import Any, Dict, List, Optional, AsyncIterator, TYPE_CHECKING
@@ -23,6 +29,7 @@ from mission_system.contracts_core import (
     PipelineConfig,
 )
 from jeeves_infra.protocols import RequestContext
+from jeeves_infra.pipeline_worker import PipelineWorker, WorkerResult
 
 if TYPE_CHECKING:
     from jeeves_infra.kernel_client import KernelClient
@@ -68,13 +75,14 @@ class ChatbotService:
             tool_executor: Tool executor for agent tool calls
             logger: Logger instance
             pipeline_config: Pipeline configuration (GENERAL_CHATBOT_PIPELINE)
-            kernel_client: KernelClient for resource tracking via Go kernel
+            kernel_client: KernelClient for kernel-driven orchestration
             use_mock: Use mock handlers for testing (default: False - use real LLM)
         """
         # Get the global prompt registry
         from mission_system.prompts.core.registry import PromptRegistry
         prompt_registry = PromptRegistry.get_instance()
 
+        # PipelineRunner still used for agent construction and access
         self._runtime = create_pipeline_runner(
             config=pipeline_config,
             llm_provider_factory=llm_provider_factory,
@@ -86,6 +94,18 @@ class ChatbotService:
         )
         self._logger = logger
         self._kernel_client = kernel_client
+        self._pipeline_config = pipeline_config
+
+        # Create PipelineWorker for kernel-driven orchestration
+        if kernel_client:
+            self._worker = PipelineWorker(
+                kernel_client=kernel_client,
+                agents=self._runtime.agents,
+                logger=logger,
+                persistence=None,
+            )
+        else:
+            self._worker = None
 
     async def _run_with_resource_tracking(
         self,
@@ -93,7 +113,10 @@ class ChatbotService:
         thread_id: str,
     ) -> Envelope:
         """
-        Run pipeline with KernelClient resource tracking.
+        Run pipeline with kernel-driven orchestration.
+
+        The kernel controls the pipeline loop, routing, and bounds checking.
+        Python just executes agents as instructed.
 
         Args:
             envelope: Request envelope
@@ -104,59 +127,81 @@ class ChatbotService:
         """
         pid = envelope.envelope_id
 
-        # Track initial agent hop (entering pipeline) via kernel_client
-        if self._kernel_client:
-            await self._kernel_client.record_usage(pid=pid, agent_hops=1)
-            quota_result = await self._kernel_client.check_quota(pid)
-            if not quota_result.within_bounds:
-                self._logger.warning(
-                    "quota_exceeded_before_run",
-                    envelope_id=pid,
-                    reason=quota_result.exceeded_reason,
-                )
-                envelope.terminated = True
-                envelope.termination_reason = quota_result.exceeded_reason
-                envelope.terminal_reason = TerminalReason.MAX_ITERATIONS_EXCEEDED
-                return envelope
+        # Use kernel-driven orchestration if available
+        if self._worker and self._kernel_client:
+            # Convert pipeline config to dict for kernel
+            pipeline_config_dict = {
+                "name": self._pipeline_config.name,
+                "max_iterations": self._pipeline_config.max_iterations,
+                "max_llm_calls": self._pipeline_config.max_llm_calls,
+                "max_agent_hops": self._pipeline_config.max_agent_hops,
+                "agents": [
+                    {
+                        "name": agent.name,
+                        "stage_order": agent.stage_order,
+                        "default_next": agent.default_next,
+                        "error_next": agent.error_next,
+                        "output_key": agent.output_key,
+                        "routing_rules": [
+                            {
+                                "condition": rule.condition,
+                                "value": rule.value,
+                                "target": rule.target,
+                            }
+                            for rule in agent.routing_rules
+                        ] if agent.routing_rules else [],
+                    }
+                    for agent in self._pipeline_config.agents
+                ],
+                "edge_limits": dict(self._pipeline_config.edge_limits) if self._pipeline_config.edge_limits else {},
+            }
 
-        # Run the pipeline
-        result_envelope = await self._runtime.run(envelope, thread_id=thread_id)
-
-        # Extract metrics from envelope metadata (set by runtime)
-        runtime_hops = result_envelope.metadata.get("agent_hops", 0)
-        runtime_llm_calls = result_envelope.metadata.get("llm_call_count", 0)
-        runtime_tool_calls = result_envelope.metadata.get("tool_call_count", 0)
-        tokens_in = result_envelope.metadata.get("total_tokens_in", 0)
-        tokens_out = result_envelope.metadata.get("total_tokens_out", 0)
-
-        # Record final resource usage via kernel_client
-        if self._kernel_client:
-            await self._kernel_client.record_usage(
-                pid=pid,
-                agent_hops=max(0, runtime_hops - 1),  # Subtract initial hop
-                llm_calls=runtime_llm_calls,
-                tool_calls=runtime_tool_calls,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
+            # Execute using PipelineWorker (kernel-driven)
+            result = await self._worker.execute(
+                process_id=pid,
+                pipeline_config=pipeline_config_dict,
+                envelope=envelope,
+                thread_id=thread_id,
             )
 
-            # Check quota after run
-            quota_result = await self._kernel_client.check_quota(pid)
-            if not quota_result.within_bounds:
-                self._logger.warning(
-                    "quota_exceeded_after_run",
-                    envelope_id=pid,
-                    reason=quota_result.exceeded_reason,
-                )
-                if not result_envelope.terminated:
-                    result_envelope.terminated = True
-                    result_envelope.termination_reason = quota_result.exceeded_reason
-                    if "llm" in quota_result.exceeded_reason.lower():
-                        result_envelope.terminal_reason = TerminalReason.MAX_LLM_CALLS_EXCEEDED
-                    else:
-                        result_envelope.terminal_reason = TerminalReason.MAX_ITERATIONS_EXCEEDED
+            result_envelope = result.envelope
 
-        return result_envelope
+            # Map terminal reason from kernel to Python enum
+            if result.terminated:
+                reason_map = {
+                    "TERMINAL_REASON_COMPLETED": TerminalReason.COMPLETED,
+                    "TERMINAL_REASON_MAX_ITERATIONS_EXCEEDED": TerminalReason.MAX_ITERATIONS_EXCEEDED,
+                    "TERMINAL_REASON_MAX_LLM_CALLS_EXCEEDED": TerminalReason.MAX_LLM_CALLS_EXCEEDED,
+                    "TERMINAL_REASON_MAX_AGENT_HOPS_EXCEEDED": TerminalReason.MAX_AGENT_HOPS_EXCEEDED,
+                    "TERMINAL_REASON_MAX_LOOP_EXCEEDED": TerminalReason.MAX_LOOP_EXCEEDED,
+                    "TERMINAL_REASON_TOOL_FAILED_FATALLY": TerminalReason.TOOL_FAILED_FATALLY,
+                }
+                result_envelope.terminal_reason = reason_map.get(
+                    result.terminal_reason,
+                    TerminalReason.COMPLETED if result.terminal_reason == "" else TerminalReason.TOOL_FAILED_FATALLY
+                )
+                result_envelope.terminated = True
+                result_envelope.termination_reason = result.terminal_reason
+
+            self._logger.info(
+                "kernel_orchestration_completed",
+                envelope_id=pid,
+                terminated=result.terminated,
+                terminal_reason=result.terminal_reason,
+            )
+
+            return result_envelope
+
+        # Fallback: No kernel client - cannot run without orchestration
+        self._logger.error(
+            "no_kernel_client",
+            envelope_id=pid,
+            error="KernelClient required for orchestration",
+        )
+        envelope.terminated = True
+        envelope.termination_reason = "KernelClient required for orchestration"
+        envelope.terminal_reason = TerminalReason.TOOL_FAILED_FATALLY
+        return envelope
 
     async def process_message(
         self,
@@ -474,9 +519,17 @@ class ChatbotService:
             terminal_reason=envelope.terminal_reason,
             termination_reason=envelope.termination_reason,
         )
+
+        # Provide user-friendly error messages for common cases
+        error_msg = envelope.termination_reason or "Pipeline failed"
+        if "already exists" in error_msg.lower():
+            error_msg = "A session for this request already exists. Please retry with a new request."
+        elif "deadline" in error_msg.lower():
+            error_msg = "Request timed out. Please try again."
+
         return ChatbotResult(
             status="error",
-            error=envelope.termination_reason or "Pipeline failed",
+            error=error_msg,
             request_id=request_id,
         )
 
