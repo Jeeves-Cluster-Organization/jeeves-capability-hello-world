@@ -9,10 +9,12 @@ This document describes how capability layer repositories (e.g., `jeeves-capabil
 Capability layers follow this import boundary pattern:
 
 ```
-capability → mission_system → avionics → protocols
-                                ↓
-                            shared (L0)
+capability → mission_system → jeeves_infra → jeeves_infra.protocols
+                                   ↓
+                            jeeves_infra.memory (L2)
 ```
+
+> **Note:** `avionics` was the legacy name for `jeeves_infra`. The kernel is now Go code accessed via `KernelClient`.
 
 **Important:** Capabilities MUST NOT import directly from `coreengine/` (Go package).
 
@@ -168,12 +170,14 @@ from mission_system.config.registry import (
 
 ---
 
-## 3. avionics Exports
+## 3. jeeves_infra Exports
+
+> **Legacy note:** `avionics` was renamed to `jeeves_infra`. Update imports accordingly.
 
 ### logging Module
 
 ```python
-from avionics.logging import (
+from jeeves_infra.logging import (
     # Configuration
     configure_logging, configure_from_flags,
 
@@ -199,7 +203,7 @@ from avionics.logging import (
 ### settings Module
 
 ```python
-from avionics.settings import (
+from jeeves_infra.settings import (
     Settings, get_settings,
 )
 ```
@@ -207,7 +211,7 @@ from avionics.settings import (
 ### capability_registry Module
 
 ```python
-from avionics.capability_registry import (
+from jeeves_infra.capability_registry import (
     CapabilityLLMConfigRegistry,
     get_capability_registry, set_capability_registry, reset_capability_registry,
 )
@@ -216,12 +220,12 @@ from avionics.capability_registry import (
 ### llm Module
 
 ```python
-from avionics.llm.factory import (
+from jeeves_infra.llm.factory import (
     create_llm_provider, create_agent_provider,
     create_agent_provider_with_node_awareness, LLMFactory,
 )
 
-from avionics.llm.providers import (
+from jeeves_infra.llm.providers import (
     LLMProvider, MockProvider, LlamaServerProvider,
     OpenAIProvider, AnthropicProvider, AzureAIFoundryProvider,
 )
@@ -230,7 +234,7 @@ from avionics.llm.providers import (
 ### database Module
 
 ```python
-from avionics.database.client import (
+from jeeves_infra.database.client import (
     DatabaseClientProtocol, create_database_client,
 )
 ```
@@ -238,7 +242,7 @@ from avionics.database.client import (
 ### wiring Module
 
 ```python
-from avionics.wiring import (
+from jeeves_infra.wiring import (
     ToolExecutor, AgentContext,
     create_tool_executor, create_llm_provider_factory,
     get_database_client,
@@ -286,7 +290,7 @@ from protocols import (
     CapabilityModeConfig,
     AgentLLMConfig,
 )
-from avionics.capability_registry import get_capability_registry
+from jeeves_infra.capability_registry import get_capability_registry
 
 def register_capability():
     """Register code-analysis capability resources."""
@@ -351,16 +355,17 @@ Per the capability layer CONSTITUTION:
 |-------------|--------|-------|
 | Capability can import from `protocols` | ✅ | All types available |
 | Capability can import from `mission_system` | ✅ | All adapters available |
-| Capability can import from `avionics` | ⚠️ | Should prefer adapters |
+| Capability can import from `jeeves_infra` | ⚠️ | Should prefer adapters |
 | Capability MUST NOT import from `coreengine/` | ✅ | Go package isolation |
-| Import boundary: capability → mission_system → avionics | ✅ | Enforced via adapters |
+| Import boundary: capability → mission_system → jeeves_infra | ✅ | Enforced via adapters |
 
 ### Layer Rules
 
-1. **L0 (shared, protocols)**: No dependencies on other Jeeves packages
-2. **L1 (avionics)**: Can import from L0
-3. **L2 (mission_system)**: Can import from L0 and L1
-4. **L3 (capability layers)**: Can import from L0, L1, L2
+1. **L0 (jeeves_infra.protocols, jeeves_infra.utils)**: No dependencies on other Jeeves packages
+2. **L1 (Go kernel)**: Accessed via KernelClient (gRPC), not directly importable
+3. **L2 (jeeves_infra.memory)**: Can import from L0
+4. **L3 (jeeves_infra)**: Can import from L0 and L2
+5. **L4 (mission_system, capabilities)**: Can import from L0, L2, L3
 
 ---
 
@@ -393,8 +398,8 @@ def test_mission_system_importable():
 
 def test_avionics_importable():
     """Verify avionics services are importable."""
-    from avionics.logging import create_logger
-    from avionics.capability_registry import get_capability_registry
+    from jeeves_infra.logging import create_logger
+    from jeeves_infra.capability_registry import get_capability_registry
     assert create_logger is not None
     assert get_capability_registry() is not None
 

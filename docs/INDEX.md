@@ -61,50 +61,42 @@
 
 ---
 
-## Analysis & Audits
-
-| Document | Description |
-|----------|-------------|
-| [CAPABILITY_LAYER_AUDIT_REPORT.md](CAPABILITY_LAYER_AUDIT_REPORT.md) | Import wiring audit |
-| [analysis-reports/COVERAGE_ANALYSIS.md](analysis-reports/COVERAGE_ANALYSIS.md) | Test coverage analysis |
-| [analysis-reports/JEEVES_CORE_ANALYSIS.md](analysis-reports/JEEVES_CORE_ANALYSIS.md) | jeeves-core integration analysis |
-
----
-
 ## Understanding the Layers
 
-### Layer 1: jeeves-core (Go)
+### Layer 0: Protocols (jeeves_infra.protocols)
 
-The micro-kernel provides:
-- **Pipeline orchestration** - Multi-stage agent execution
-- **Envelope state** - Immutable state transitions
+Zero-dependency type definitions:
+- **Protocols** - Interface contracts (LLMProviderProtocol, etc.)
+- **Types** - Enums, dataclasses (AgentConfig, PipelineConfig, Envelope)
+- **Utilities** - Shared helpers
+
+### Layer 1: Go Kernel (jeeves-core/coreengine/kernel)
+
+The Go micro-kernel (accessed via `KernelClient` gRPC bridge):
+- **Process lifecycle** - NEW → READY → RUNNING → TERMINATED
 - **Resource quotas** - Limits on iterations, LLM calls, agent hops
-- **gRPC services** - Communication with Python layer
+- **Pipeline orchestration** - Multi-stage agent execution
 
-### Layer 2: jeeves-infra (Python)
+### Layer 2: Memory (jeeves_infra.memory)
+
+Memory and event sourcing:
+- **Session state** - Working memory, focus state
+- **Semantic search** - pgvector integration
+- **Event sourcing** - Domain events with deduplication
+
+### Layer 3: Infrastructure (jeeves_infra)
 
 Infrastructure implementations:
 - **LLM providers** - OpenAI, Anthropic, llama.cpp adapters
 - **Database clients** - PostgreSQL, pgvector
-- **Protocols** - Type definitions and interfaces
-- **Gateway** - HTTP/WebSocket/gRPC translation
+- **KernelClient** - gRPC bridge to Go kernel
+- **Gateway** - HTTP/WebSocket translation
 
-### Layer 3: mission_system (Python)
+### Layer 4: Mission System & Capabilities
 
-Orchestration framework:
-- **Agent profiles** - Per-agent configuration
-- **Adapters** - Clean interface for capabilities
-- **Event handling** - Pipeline event emission
-- **Prompt registry** - Centralized prompt management
-
-### Layer 4: Capabilities (Python)
-
-Your domain logic:
-- **Prompts** - LLM instructions for each agent
-- **Knowledge Base** - Embedded domain knowledge (sectioned)
-- **Tools** - Domain-specific actions
-- **Pipeline config** - Agent orchestration with hooks
-- **Service layer** - Business logic wrapper
+Orchestration + domain logic:
+- **mission_system** - Adapters, agent profiles, prompt registry
+- **Capabilities** - Prompts, tools, pipeline config
 
 ---
 
@@ -117,8 +109,10 @@ Your domain logic:
 from mission_system.adapters import create_llm_provider_factory
 
 # INCORRECT - Don't bypass the adapter layer
-from avionics.llm import LLMProvider  # DON'T DO THIS
+from jeeves_infra.llm import LLMProvider  # DON'T DO THIS
 ```
+
+> **Note:** `avionics` was the legacy name for `jeeves_infra`.
 
 ### Agent Configuration
 
@@ -172,4 +166,4 @@ catalog.register(
 
 ---
 
-*Last Updated: 2026-01-30*
+*Last Updated: 2026-02-02*

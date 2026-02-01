@@ -149,7 +149,7 @@ register_capability()
    - `contracts` - Tool catalog, logging, persistence
    - `adapters` - Logger, database
 
-3. **From avionics** (for infrastructure)
+3. **From jeeves_infra** (for infrastructure, via adapters preferred)
    - `wiring.py` - ToolExecutor
    - `settings.py` - Configuration
 

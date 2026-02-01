@@ -24,12 +24,12 @@ This constitution defines the contract between capabilities and the platform lay
 
 | Concern | Belongs To |
 |---------|------------|
-| LLM wire protocol (HTTP, SSE, JSON) | LiteLLM / Avionics LLM Providers |
+| LLM wire protocol (HTTP, SSE, JSON) | LiteLLM / jeeves_infra LLM Providers |
 | Provider-specific API handling | LiteLLM |
 | Backend-specific payload formatting | LiteLLM |
 | Mission orchestration (checkpointing, recovery) | Mission System |
-| Tool execution framework | Avionics |
-| Database schemas (sessions, memory) | Avionics |
+| Tool execution framework | jeeves_infra |
+| Database schemas (sessions, memory) | jeeves_infra |
 | gRPC service scaffolding | Mission System |
 
 ## 2) Layer Dependencies
@@ -58,7 +58,7 @@ This constitution defines the contract between capabilities and the platform lay
                                       |
                                       v
                            +-------------------+
-                           |     Avionics      |
+                           |   jeeves_infra    |
                            | (infra/tools/llm) |
                            +---------+---------+
                                      |
@@ -83,7 +83,7 @@ from mission_system.contracts import PersistenceProtocol
 from mission_system.contracts_core import ContextBounds
 
 # Capability MUST NOT import from:
-# - avionics (go through mission_system.adapters)
+# - jeeves_infra directly (go through mission_system.adapters)
 # - jeeves_core (go through mission_system.contracts)
 
 # Capability MUST NOT be imported by:
@@ -92,17 +92,19 @@ from mission_system.contracts_core import ContextBounds
 # - other capabilities (no cross-capability imports)
 ```
 
-### Why No Direct Avionics Imports?
+### Why No Direct jeeves_infra Imports?
 
-Mission System provides **adapters** that wrap avionics functionality:
-- `mission_system.adapters.create_database_client` -> wraps avionics DB
-- `mission_system.adapters.create_tool_executor` -> wraps avionics tools
-- `mission_system.adapters.create_llm_provider_factory` -> wraps avionics LLM (via LiteLLM)
+Mission System provides **adapters** that wrap jeeves_infra functionality:
+- `mission_system.adapters.create_database_client` -> wraps jeeves_infra DB
+- `mission_system.adapters.create_tool_executor` -> wraps jeeves_infra tools
+- `mission_system.adapters.create_llm_provider_factory` -> wraps jeeves_infra LLM
 
 This ensures:
 1. Mission System can swap implementations without breaking capabilities
-2. Capabilities don't couple to avionics internals
+2. Capabilities don't couple to jeeves_infra internals
 3. Testing is easier (mock at mission_system boundary)
+
+> **Note:** `avionics` was the legacy name for `jeeves_infra`.
 
 ## 3) LLM Integration Contract
 
@@ -203,14 +205,14 @@ class LLMProvider(Protocol):
 | Domain timeouts | `ANALYSIS_TIMEOUT=300` | Capability |
 | Prompt templates | `chatbot.understand`, `chatbot.respond` | Capability |
 
-### Avionics-Owned Configuration (via LiteLLM)
+### jeeves_infra-Owned Configuration (via LiteLLM)
 
 | Config | Example | Owner |
 |--------|---------|-------|
-| Provider URL | `LLAMASERVER_HOST` | Avionics (read by capability) |
-| Provider type | `llamaserver`, `openai`, `anthropic` | Avionics |
+| Provider URL | `LLAMASERVER_HOST` | jeeves_infra (read by capability) |
+| Provider type | `llamaserver`, `openai`, `anthropic` | jeeves_infra |
 | Retry policy | 3 retries, exponential backoff | LiteLLM |
-| API keys | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Avionics/Environment |
+| API keys | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | jeeves_infra/Environment |
 
 ### Configuration Flow
 
@@ -277,10 +279,10 @@ def test_pipeline_with_local_llm(llama_server):
     assert result.status == "complete"
 ```
 
-### Avionics Test Guarantees
+### jeeves_infra Test Guarantees
 
-- Avionics tests **never depend** on capability code
-- Avionics provides **test utilities** (MockProvider, test settings)
+- jeeves_infra tests **never depend** on capability code
+- jeeves_infra provides **test utilities** (MockProvider, test settings)
 - LiteLLM integration tests cover **all provider types** independently
 
 ## 8) Deployment Independence
@@ -297,7 +299,7 @@ Capabilities depend on jeeves-core (which includes LiteLLM providers):
 
 ### Version Compatibility
 
-| Avionics Change | Capability Impact |
+| jeeves_infra Change | Capability Impact |
 |-----------------|-------------------|
 | New LLM provider | None (opt-in) |
 | New error type | Handle in catch-all |
@@ -308,9 +310,9 @@ Capabilities depend on jeeves-core (which includes LiteLLM providers):
 
 A capability change is acceptable only if:
 
-- [ ] No avionics internals accessed (only mission_system.adapters)
+- [ ] No jeeves_infra internals accessed (only mission_system.adapters)
 - [ ] LLM configuration policy is capability-owned
 - [ ] Error handling is capability-owned
 - [ ] No provider-specific payload formatting
 - [ ] Tests don't require real LLM endpoints (use mocks or local llama-server)
-- [ ] Configuration documented in capability, not avionics
+- [ ] Configuration documented in capability, not jeeves_infra

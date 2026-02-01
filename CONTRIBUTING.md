@@ -39,7 +39,7 @@ Jeeves Hello World is part of a layered architecture:
 
 Contributions should:
 
-1. **Respect layer boundaries** - Capabilities must not directly import from avionics; use `mission_system.adapters`
+1. **Respect layer boundaries** - Capabilities must not directly import from jeeves_infra (formerly "avionics"); use `mission_system.adapters`
 2. **Follow Constitution R7** - Import boundaries are enforced by tests
 3. **Include tests** - All new code needs test coverage
 4. **Update documentation** - Keep docs in sync with code changes
