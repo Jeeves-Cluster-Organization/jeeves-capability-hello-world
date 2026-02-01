@@ -107,6 +107,8 @@ The chatbot classifies questions into categories for targeted knowledge retrieva
 
 **Key insight**: The middle agent has **no LLM** - it retrieves relevant knowledge based on the classified intent, avoiding the cost of unnecessary inference.
 
+> **Note:** This is a linear pipeline for simplicity. Jeeves supports DAG topologies, conditional branching via `RoutingRule`, and parallel execution. See [Pipeline Patterns](docs/PIPELINE_PATTERNS.md).
+
 ## Quick Start
 
 ### Prerequisites
@@ -236,6 +238,21 @@ AgentConfig(
     temperature=0.3,
     pre_process=understand_pre_process,   # Build context
     post_process=understand_post_process, # Map intent → knowledge
+)
+```
+
+### Routing Rules
+
+For non-linear pipelines, agents can define conditional routing:
+
+```python
+AgentConfig(
+    name="classifier",
+    routing_rules=[
+        RoutingRule(condition="type", value="urgent", target="priority_handler"),
+        RoutingRule(condition="type", value="routine", target="batch_handler"),
+    ],
+    default_next="general_handler",
 )
 ```
 

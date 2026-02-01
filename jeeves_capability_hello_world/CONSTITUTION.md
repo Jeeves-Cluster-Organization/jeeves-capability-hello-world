@@ -35,6 +35,8 @@ Response to User
 | Think | No | Execution | Execute tools based on intent |
 | Respond | Yes | Synthesis | Generate final response |
 
+> **Note:** This linear pipeline is for simplicity. See [PIPELINE_PATTERNS.md](../docs/PIPELINE_PATTERNS.md) for branching and DAG examples.
+
 ## Import Boundaries (R7)
 
 ### Allowed Imports
@@ -47,8 +49,8 @@ Capability code MAY import from:
 ### Forbidden Imports
 
 Capability code MUST NOT import from:
-- `avionics.*` - Direct infrastructure access forbidden
-- `memory_module.*` - Use mission_system.adapters instead
+- `jeeves_infra.*` directly - Use mission_system.adapters instead
+- `coreengine.*` - Go kernel accessed via KernelClient only
 
 ### Correct Pattern
 
@@ -68,9 +70,9 @@ from mission_system.adapters import (
 ### Incorrect Pattern (FORBIDDEN)
 
 ```python
-# WRONG: Direct avionics import
-from avionics.llm.factory import LLMFactory
-from avionics.wiring import ToolExecutor
+# WRONG: Direct jeeves_infra import (bypass adapters)
+from jeeves_infra.llm.factory import LLMFactory
+from jeeves_infra.wiring import ToolExecutor
 ```
 
 ## Tool Suite

@@ -114,6 +114,15 @@ from jeeves_capability_hello_world import register_capability
 register_capability()
 ```
 
+### R6: Pipeline Topology
+
+Capabilities may use any supported topology:
+- **Linear:** Sequential agent chain (simplest)
+- **Branching:** Conditional routing via `RoutingRule`
+- **DAG:** Parallel execution via `requires`/`after`/`JoinStrategy`
+
+The kernel evaluates routing rules; capabilities define them declaratively.
+
 ---
 
 ## Pipeline Configuration

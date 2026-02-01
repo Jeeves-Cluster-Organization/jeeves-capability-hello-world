@@ -47,6 +47,7 @@
 | Document | Description |
 |----------|-------------|
 | [CAPABILITY_INTEGRATION_GUIDE.md](CAPABILITY_INTEGRATION_GUIDE.md) | How capabilities integrate with jeeves-core |
+| [PIPELINE_PATTERNS.md](PIPELINE_PATTERNS.md) | Advanced routing, DAGs, branching |
 | [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md) | Runtime contract specification |
 | [envelope_json_schema.md](envelope_json_schema.md) | Envelope state JSON schema |
 
@@ -128,6 +129,23 @@ AgentConfig(
     post_process=understand_post_process,
 )
 ```
+
+### Conditional Routing
+
+For non-linear pipelines, use `RoutingRule`:
+
+```python
+AgentConfig(
+    name="router",
+    routing_rules=[
+        RoutingRule(condition="type", value="A", target="handler_a"),
+        RoutingRule(condition="type", value="B", target="handler_b"),
+    ],
+    default_next="default_handler",
+)
+```
+
+See [PIPELINE_PATTERNS.md](PIPELINE_PATTERNS.md) for DAG and fan-out/fan-in examples.
 
 ### Intent-Based Knowledge Retrieval
 

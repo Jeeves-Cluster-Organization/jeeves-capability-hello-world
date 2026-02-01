@@ -170,6 +170,39 @@ from mission_system.config.registry import (
 
 ---
 
+## 2.5 Advanced Pipeline Configuration
+
+Beyond linear pipelines, capabilities can use routing and DAG patterns.
+
+### Routing Rules
+
+```python
+from protocols import AgentConfig, RoutingRule
+
+AgentConfig(
+    name="classifier",
+    routing_rules=[
+        RoutingRule(condition="type", value="urgent", target="priority_handler"),
+    ],
+    default_next="general_handler",
+    error_next="error_recovery",
+)
+```
+
+### DAG Dependencies
+
+```python
+from protocols import JoinStrategy
+
+AgentConfig(name="fetcher_a", requires=["planner"]),
+AgentConfig(name="fetcher_b", requires=["planner"]),
+AgentConfig(name="aggregator", requires=["fetcher_a", "fetcher_b"], join_strategy=JoinStrategy.ALL),
+```
+
+See [PIPELINE_PATTERNS.md](PIPELINE_PATTERNS.md) for complete examples.
+
+---
+
 ## 3. jeeves_infra Exports
 
 > **Legacy note:** `avionics` was renamed to `jeeves_infra`. Update imports accordingly.
