@@ -507,25 +507,11 @@ Both Python and Go produce compatible formats:
 ### Python (Pydantic)
 
 ```python
-from jeeves_core_engine.agents.envelope.generic import GenericEnvelope
+from jeeves_infra.protocols import GenericEnvelope
 import json
 
 data = json.loads(json_string)
 envelope = GenericEnvelope.from_state_dict(data)  # Validates during construction
-```
-
-### Go
-
-```go
-import (
-    "encoding/json"
-    "github.com/.../go/coreengine/envelope"
-)
-
-var state map[string]any
-json.Unmarshal([]byte(jsonString), &state)
-env := envelope.FromStateDict(state)
-// Additional validation via struct field access
 ```
 
 ---

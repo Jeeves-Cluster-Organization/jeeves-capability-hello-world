@@ -3,12 +3,12 @@
 
 This script enforces the Jeeves layer architecture invariants:
 - L0 (jeeves_infra.protocols): Zero dependencies, type definitions
-- L1 (Go kernel): Process lifecycle, resources - accessed via KernelClient (gRPC)
-- L2 (jeeves_infra.memory): Event sourcing, semantic memory - imports L0 only
+- L1 (Rust kernel): Process lifecycle, resources - accessed via KernelClient (gRPC)
+- L2 (mission_system.memory): Event sourcing, semantic memory - imports L0 only
 - L3 (jeeves_infra): Infrastructure - LLM, DB, Gateway - imports L0, L2
 - L4 (mission_system): API layer - orchestration, services - imports L0, L2, L3
 
-Note: L1 is implemented in Go (jeeves-core/coreengine/kernel/). Python code
+Note: L1 is implemented in Rust (jeeves-core/src/). Python code
 accesses it via jeeves_infra.kernel_client (gRPC bridge), which is part of L3.
 
 Run as part of CI to prevent layer violations.
@@ -36,7 +36,7 @@ from typing import Dict, List, Optional, Set
 # The Jeeves architecture uses a layered approach where higher layers can
 # import from lower layers, but not vice versa.
 #
-# Note: L1 (kernel) is implemented in Go and accessed via gRPC. The Python
+# Note: L1 (kernel) is implemented in Rust and accessed via gRPC. The Python
 # KernelClient is part of L3 (jeeves_infra) and provides the bridge.
 # =============================================================================
 
@@ -47,8 +47,8 @@ LAYERS: Dict[str, int] = {
     "jeeves_infra.protocols": 0,
     "jeeves_infra.utils": 0,
 
-    # L2: Memory module (L1 is Go kernel, not Python)
-    "jeeves_infra.memory": 2,
+    # L2: Memory module (L1 is Rust kernel, not Python)
+    "mission_system.memory": 2,
 
     # L3: Infrastructure layer
     "jeeves_infra": 3,
@@ -62,7 +62,7 @@ LAYERS: Dict[str, int] = {
 LAYER_MAPPING: Dict[str, int] = {
     "jeeves_infra.protocols": 0,
     "jeeves_infra.utils": 0,
-    "jeeves_infra.memory": 2,
+    "mission_system.memory": 2,
     "jeeves_infra": 3,  # Catch-all for other jeeves_infra imports
     "mission_system": 4,
 }
@@ -74,7 +74,7 @@ LAYER_RULES: Dict[str, List[str]] = {
     "jeeves_infra.utils": ["jeeves_infra.protocols"],
 
     # L2: Can import from L0
-    "jeeves_infra.memory": [
+    "mission_system.memory": [
         "jeeves_infra.protocols",
         "jeeves_infra.utils",
     ],
@@ -83,14 +83,14 @@ LAYER_RULES: Dict[str, List[str]] = {
     "jeeves_infra": [
         "jeeves_infra.protocols",
         "jeeves_infra.utils",
-        "jeeves_infra.memory",
+        "mission_system.memory",
     ],
 
     # L4: Can import from L0, L2, L3
     "mission_system": [
         "jeeves_infra.protocols",
         "jeeves_infra.utils",
-        "jeeves_infra.memory",
+        "mission_system.memory",
         "jeeves_infra",
     ],
 }
@@ -164,10 +164,10 @@ def get_layer_for_file(filepath: Path) -> Optional[str]:
                 return "jeeves_infra.protocols"
             elif parts[1] == "utils":
                 return "jeeves_infra.utils"
-            elif parts[1] == "memory":
-                return "jeeves_infra.memory"
         return "jeeves_infra"
     elif parts[0] == "mission_system":
+        if len(parts) > 1 and parts[1] == "memory":
+            return "mission_system.memory"
         return "mission_system"
 
     return None
@@ -328,10 +328,10 @@ Jeeves Layer Architecture:
 │ L3: jeeves_infra (jeeves-airframe/jeeves_infra/)                │
 │     Infrastructure - LLM, DB, Gateway, Tools, KernelClient      │
 ├─────────────────────────────────────────────────────────────────┤
-│ L2: jeeves_infra.memory (jeeves-airframe/jeeves_infra/memory/)  │
+│ L2: mission_system.memory (jeeves-airframe/mission_system/memory/) │
 │     Event sourcing, semantic search, session state              │
 ├─────────────────────────────────────────────────────────────────┤
-│ L1: Go Kernel (jeeves-core/coreengine/kernel/) [NOT PYTHON]     │
+│ L1: Rust Kernel (jeeves-core/src/) [NOT PYTHON]                 │
 │     Process lifecycle, resources, orchestration                 │
 │     Python access via: KernelClient (gRPC) in L3                │
 ├─────────────────────────────────────────────────────────────────┤
@@ -343,12 +343,12 @@ Import Rules:
   - Higher layers may import from lower layers
   - Lower layers MUST NOT import from higher layers
   - Same-layer imports are allowed
-  - L1 is Go code, accessed via KernelClient (gRPC bridge in L3)
+  - L1 is Rust code, accessed via KernelClient (gRPC bridge in L3)
 
 Legacy naming (deprecated):
   - avionics      -> jeeves_infra
-  - control_tower -> Go kernel (jeeves-core/coreengine/kernel/)
-  - memory_module -> jeeves_infra.memory
+  - control_tower -> Rust kernel (jeeves-core/src/)
+  - memory_module -> mission_system.memory
 """)
 
 

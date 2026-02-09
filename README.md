@@ -192,7 +192,7 @@ jeeves-capability-hello-world/
 │       ├── chatbot_service.py       # Pipeline execution wrapper
 │       └── wiring.py                # Service factory
 │
-├── jeeves-core/                     # Go micro-kernel (submodule)
+├── jeeves-core/                     # Rust micro-kernel (submodule)
 ├── jeeves-airframe/                 # Python infrastructure (submodule)
 │   ├── jeeves_infra/                # Infrastructure implementations
 │   └── mission_system/              # Orchestration framework

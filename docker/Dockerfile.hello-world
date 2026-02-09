@@ -32,13 +32,13 @@ COPY requirements/base.txt requirements/
 COPY requirements/all.txt requirements/
 
 # Install Python dependencies
-# Note: For hello-world, we need gradio, structlog, and jeeves-core dependencies
+# Note: For hello-world, we need gradio, structlog, and jeeves-airframe dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements/all.txt && \
     pip install --no-cache-dir gradio structlog
 
-# Copy jeeves-core submodule (infrastructure)
-COPY jeeves-core/ /app/jeeves-core/
+# Copy jeeves-airframe submodule (Python infrastructure)
+COPY jeeves-airframe/ /app/jeeves-airframe/
 
 # Copy capability code
 COPY jeeves_capability_hello_world/ /app/jeeves_capability_hello_world/
@@ -49,8 +49,8 @@ COPY gradio_app.py /app/
 # Create data directory
 RUN mkdir -p /app/data
 
-# Set Python path to include jeeves-core
-ENV PYTHONPATH=/app:/app/jeeves-core:$PYTHONPATH
+# Set Python path to include jeeves-airframe
+ENV PYTHONPATH=/app:/app/jeeves-airframe:$PYTHONPATH
 
 # Expose Gradio port
 EXPOSE 8000

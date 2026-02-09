@@ -27,10 +27,9 @@ from typing import List, Set, Tuple
 
 # Directories to check
 CHECK_DIRS = [
-    "jeeves_core_engine",
-    "avionics",
-    "mission_system",
-    "jeeves-capability-code-analyser",
+    "jeeves-airframe/jeeves_infra",
+    "jeeves-airframe/mission_system",
+    "jeeves_capability_hello_world",
 ]
 
 # Files/patterns to exclude
@@ -47,8 +46,7 @@ EXCLUDE_PATTERNS = [
 
 # Allowed files for structlog.get_logger()
 STRUCTLOG_ALLOWED_FILES = {
-    "avionics/logging/__init__.py",
-    "jeeves_core_engine/config/logging_config.py",
+    "jeeves-airframe/jeeves_infra/logging/__init__.py",
 }
 
 
@@ -254,7 +252,7 @@ BARE_EXCEPT:
 
 GLOBAL_STRUCTLOG:
   Replace: logger = structlog.get_logger()
-  With:    from avionics.logging import create_logger
+  With:    from jeeves_infra.logging import create_logger
            # In constructor:
            self._logger = logger or create_logger("component_name")
 """)

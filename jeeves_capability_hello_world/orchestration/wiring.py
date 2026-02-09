@@ -55,7 +55,7 @@ def create_hello_world_service(
     Args:
         llm_provider_factory: Factory function to create LLM providers
         tool_executor: Tool executor instance
-        kernel_client: Optional KernelClient for resource tracking via Go kernel
+        kernel_client: Optional KernelClient for resource tracking via Rust kernel
                       (None for standalone operation without resource tracking)
         logger: Optional logger (creates one if None)
         use_mock: Whether to use mock LLM (for testing)
@@ -78,7 +78,7 @@ def create_hello_world_service(
         llm_factory = create_llm_provider_factory(settings)
         tool_executor = create_tool_executor(tool_registry)
 
-        # With Go kernel (production)
+        # With Rust kernel (production)
         kernel_client = await get_kernel_client()
         service = create_hello_world_service(
             llm_provider_factory=llm_factory,
@@ -225,13 +225,13 @@ def create_wiring(
     tool_executor = create_tool_executor(tool_registry)
 
     # kernel_client is None for standalone mode
-    # When running with Go kernel, pass kernel_client from AppContext
+    # When running with Rust kernel, pass kernel_client from AppContext
     logger.info("hello_world_wiring_created", standalone_mode=True)
 
     return {
         "llm_provider_factory": llm_provider_factory,
         "tool_executor": tool_executor,
-        "kernel_client": None,  # Set from AppContext when running with Go kernel
+        "kernel_client": None,  # Set from AppContext when running with Rust kernel
         "logger": logger,
     }
 

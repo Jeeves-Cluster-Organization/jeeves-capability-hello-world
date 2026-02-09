@@ -12,7 +12,7 @@ ADR-001 Decision 3: All bootstrap functions receive AppContext for DI.
 import os
 from typing import List, TYPE_CHECKING
 
-from avionics.logging import get_current_logger
+from jeeves_infra.logging import get_current_logger
 
 if TYPE_CHECKING:
     from protocols import AppContextProtocol

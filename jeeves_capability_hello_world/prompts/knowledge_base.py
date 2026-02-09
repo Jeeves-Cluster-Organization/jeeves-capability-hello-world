@@ -24,11 +24,11 @@ ECOSYSTEM_OVERVIEW = """
 
 Jeeves is a multi-layered AI agent orchestration system designed for building
 production-grade AI applications. It follows a micro-kernel architecture where
-a Go core handles orchestration while Python provides the AI/ML capabilities.
+a Rust core handles orchestration while Python provides the AI/ML capabilities.
 
 ### The Four Layers
 
-1. **jeeves-core** (Go) - The micro-kernel that orchestrates everything
+1. **jeeves-core** (Rust) - The micro-kernel that orchestrates everything
 2. **jeeves-infra** (Python) - Infrastructure: LLM providers, databases, protocols
 3. **mission_system** (Python) - Orchestration framework: agents, prompts, adapters
 4. **Capabilities** (Python) - Your domain-specific code: prompts, tools, services
@@ -49,9 +49,9 @@ transitions and full auditability.
 LAYER_DETAILS = """
 ## Layer Details
 
-### Layer 1: jeeves-core (Go Micro-Kernel)
+### Layer 1: jeeves-core (Rust Micro-Kernel)
 
-The foundation of Jeeves, written in Go for performance and reliability.
+The foundation of Jeeves, written in Rust for performance and reliability.
 
 **Responsibilities:**
 - Pipeline orchestration engine - routes envelopes through agent stages
@@ -61,9 +61,9 @@ The foundation of Jeeves, written in Go for performance and reliability.
 - gRPC services - communication bridge to Python layer
 
 **Key Files:**
-- `kernel/` - Core orchestration logic
-- `envelope/` - State container implementation
-- `pipeline/` - Agent routing and execution
+- `src/` - Core orchestration logic
+- `proto/` - gRPC protocol definitions
+- `tests/` - Integration tests
 
 ### Layer 2: jeeves-infra (Python Infrastructure)
 
@@ -343,7 +343,7 @@ jeeves-capability-hello-world/
 │   │
 │   └── tests/                       # Unit tests
 │
-├── jeeves-core/                     # Go micro-kernel (git submodule)
+├── jeeves-core/                     # Rust micro-kernel (git submodule)
 └── jeeves-airframe/                 # Python infrastructure (git submodule)
 ```
 
@@ -414,8 +414,8 @@ Edit `pipeline_config.py`:
 ### How to Run the Capability
 
 ```bash
-# Start jeeves-core (Go kernel)
-cd jeeves-core && go run cmd/kernel/main.go
+# Start jeeves-core (Rust kernel)
+cd jeeves-core && cargo run
 
 # In another terminal, start the Gradio UI
 python gradio_app.py

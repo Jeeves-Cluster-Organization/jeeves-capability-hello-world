@@ -145,7 +145,7 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
         Write-Host ""
         Write-Host "[NOEMOJI]  PostgreSQL is not ready. Database initialization skipped." -ForegroundColor Yellow
         Write-Host "   You may need to run schema initialization manually:"
-        Write-Host "   - Base schema: python jeeves-core/jeeves_mission_system/scripts/database/init.py"
+        Write-Host "   - Base schema: python jeeves-airframe/jeeves_infra/database/init_schema.py"
         Write-Host "   - Hello world schema: bash jeeves-capability-hello-world/apply_schema.sh"
     } else {
         Write-Host ""
@@ -153,7 +153,7 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
         # Initialize base schema
         Write-Host "Initializing base schema..."
         try {
-            python jeeves-core/jeeves_mission_system/scripts/database/init.py --verify
+            python jeeves-airframe/jeeves_infra/database/init_schema.py --verify
             Write-Host "[NOEMOJI] Base schema initialized" -ForegroundColor Green
         } catch {
             Write-Host "[NOEMOJI]  Base schema initialization failed: $_" -ForegroundColor Yellow
@@ -204,14 +204,6 @@ if (Test-Path "requirements/all.txt") {
     pip install -r requirements.txt
 }
 
-# Install Node.js dependencies if package.json exists
-if (Test-Path "jeeves_mission_system/tests/frontend/package.json") {
-    Write-Host "Installing frontend dependencies..."
-    Push-Location jeeves_mission_system/tests/frontend
-    npm install
-    Pop-Location
-}
-
 Write-Host "[NOEMOJI] Dependencies installed" -ForegroundColor Green
 Write-Host ""
 
@@ -222,10 +214,8 @@ Write-Host "[NOEMOJI] Step 7: Running verification tests..." -ForegroundColor Ye
 
 # Run fast tier 1 tests to verify setup
 python -m pytest -c pytest-light.ini `
-    jeeves_core_engine/tests `
-    jeeves_avionics/tests/unit/llm `
-    jeeves_mission_system/tests/contract `
-    jeeves-capability-code-analyser/tests `
+    jeeves_capability_hello_world/tests `
+    jeeves-airframe/mission_system/tests/contract `
     -v
 
 Write-Host ""

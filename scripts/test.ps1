@@ -1,7 +1,6 @@
 # PowerShell Test Runner
 # Usage: .\test.ps1 <command>
 # Example: .\test.ps1 ci
-#          .\test.ps1 core
 #          .\test.ps1 fast
 
 param(
@@ -17,12 +16,8 @@ function Show-Help {
     Write-Host "Usage: .\test.ps1 <command>" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Fast Tests (No External Dependencies):" -ForegroundColor Green
-    Write-Host "  ci             - CI test suite (Core + Avionics + App) - < 10s" -ForegroundColor White
+    Write-Host "  ci             - CI test suite (Capability tests) - < 10s" -ForegroundColor White
     Write-Host "  fast           - Same as ci (Tier 1 tests)" -ForegroundColor White
-    Write-Host "  core           - Core engine only (128 tests) - < 1s" -ForegroundColor White
-    Write-Host "  avionics       - Avionics lightweight (33 tests) - < 2s" -ForegroundColor White
-    Write-Host "  memory         - Memory module tests - < 5s" -ForegroundColor White
-    Write-Host "  app            - App layer (all mocked) - < 3s" -ForegroundColor White
     Write-Host "  contract       - Constitutional contract tests - < 5s" -ForegroundColor White
     Write-Host ""
     Write-Host "Integration Tests (Requires Docker):" -ForegroundColor Green
@@ -40,7 +35,6 @@ function Show-Help {
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor Yellow
     Write-Host "  .\test.ps1 ci              # Run CI tests (fastest)" -ForegroundColor Gray
-    Write-Host "  .\test.ps1 core            # Test core engine only" -ForegroundColor Gray
     Write-Host "  .\test.ps1 full            # Run complete test flow (all tiers)" -ForegroundColor Gray
     Write-Host "  .\test.ps1 mission         # Test mission system (lightweight)" -ForegroundColor Gray
     Write-Host ""
@@ -49,15 +43,11 @@ function Show-Help {
 function Test-CI {
     Write-Host ""
     Write-Host "🤖 Running CI test suite (fast, no external dependencies)" -ForegroundColor Cyan
-    Write-Host "   - Core engine: 109 tests" -ForegroundColor Gray
-    Write-Host "   - Avionics: 33 tests (lightweight)" -ForegroundColor Gray
-    Write-Host "   - Skipping: App layer (import errors - needs refactoring)" -ForegroundColor Gray
-    Write-Host "   - Skipping: Mission system (flaky - requires real LLM)" -ForegroundColor Gray
+    Write-Host "   - Capability tests" -ForegroundColor Gray
     Write-Host ""
 
     python -m pytest -c pytest-light.ini `
-        jeeves_core_engine/tests `
-        jeeves_avionics/tests/unit/llm `
+        jeeves_capability_hello_world/tests `
         -v
 
     if ($LASTEXITCODE -eq 0) {
@@ -70,54 +60,6 @@ function Test-CI {
     }
 }
 
-function Test-Core {
-    Write-Host ""
-    Write-Host "⚡ Testing core engine (pure orchestration, no external deps)" -ForegroundColor Cyan
-
-    python -m pytest jeeves_core_engine/tests -v
-
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host ""
-        Write-Host "✅ Core engine tests complete" -ForegroundColor Green
-    } else {
-        Write-Host ""
-        Write-Host "❌ Core engine tests failed" -ForegroundColor Red
-        exit $LASTEXITCODE
-    }
-}
-
-function Test-Avionics {
-    Write-Host ""
-    Write-Host "🛠️  Testing avionics layer (LLM providers, cost calculator)" -ForegroundColor Cyan
-
-    python -m pytest jeeves_avionics/tests -m "not heavy and not requires_ml and not requires_docker" -v
-
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host ""
-        Write-Host "✅ Avionics tests complete (lightweight)" -ForegroundColor Green
-    } else {
-        Write-Host ""
-        Write-Host "❌ Avionics tests failed" -ForegroundColor Red
-        exit $LASTEXITCODE
-    }
-}
-
-function Test-App {
-    Write-Host ""
-    Write-Host "📱 Testing application layer (code analyser)" -ForegroundColor Cyan
-
-    python -m pytest jeeves-capability-code-analyser/tests -v
-
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host ""
-        Write-Host "✅ Application layer tests complete" -ForegroundColor Green
-    } else {
-        Write-Host ""
-        Write-Host "❌ Application layer tests failed" -ForegroundColor Red
-        exit $LASTEXITCODE
-    }
-}
-
 function Test-Contract {
     Write-Host ""
     Write-Host "📜 Running constitutional contract tests" -ForegroundColor Cyan
@@ -125,7 +67,7 @@ function Test-Contract {
     Write-Host "   - Layer boundary enforcement" -ForegroundColor Gray
     Write-Host "   - Evidence chain integrity (P1)" -ForegroundColor Gray
 
-    python -m pytest jeeves_mission_system/tests/contract -v
+    python -m pytest jeeves-airframe/mission_system/tests/contract -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
@@ -142,8 +84,8 @@ function Test-Mission {
     Write-Host "🎯 Testing mission system (contract + unit tests)" -ForegroundColor Cyan
 
     python -m pytest `
-        jeeves_mission_system/tests/contract `
-        jeeves_mission_system/tests/unit `
+        jeeves-airframe/mission_system/tests/contract `
+        jeeves-airframe/mission_system/tests/unit `
         -m "not requires_llamaserver and not requires_postgres" `
         -v
 
@@ -163,7 +105,7 @@ function Test-MissionFull {
     Write-Host "Prerequisites: docker compose up -d postgres llama-server" -ForegroundColor Yellow
     Write-Host ""
 
-    python -m pytest jeeves_mission_system/tests -m "not e2e and not heavy" -v
+    python -m pytest jeeves-airframe/mission_system/tests -m "not e2e and not heavy" -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
@@ -178,15 +120,15 @@ function Test-MissionFull {
 function Test-Tier2 {
     Write-Host ""
     Write-Host "🐳 Running Tier 2: Integration tests (requires Docker)" -ForegroundColor Cyan
-    Write-Host "   - Avionics: Database client tests" -ForegroundColor Gray
+    Write-Host "   - Infra: Unit tests" -ForegroundColor Gray
     Write-Host "   - Mission System: Unit tests without LLM" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Prerequisites: docker compose up -d postgres" -ForegroundColor Yellow
     Write-Host ""
 
     python -m pytest `
-        jeeves_avionics/tests/unit/database `
-        jeeves_mission_system/tests/unit `
+        jeeves-airframe/jeeves_infra/tests/unit `
+        jeeves-airframe/mission_system/tests/unit `
         -m "not requires_llamaserver and not requires_ml" `
         -v
 
@@ -210,7 +152,7 @@ function Test-Tier3 {
     Write-Host ""
 
     python -m pytest `
-        jeeves_mission_system/tests/integration `
+        jeeves-airframe/mission_system/tests/integration `
         -m "not e2e and not heavy" `
         -v
 
@@ -233,7 +175,7 @@ function Test-Tier4 {
     Write-Host ""
 
     python -m pytest `
-        jeeves_mission_system/tests `
+        jeeves-airframe/mission_system/tests `
         -m e2e `
         -v
 
@@ -259,22 +201,6 @@ function Test-Light {
     } else {
         Write-Host ""
         Write-Host "❌ Lightweight tests failed" -ForegroundColor Red
-        exit $LASTEXITCODE
-    }
-}
-
-function Test-Memory {
-    Write-Host ""
-    Write-Host "🧠 Testing memory module" -ForegroundColor Cyan
-
-    python -m pytest jeeves_memory_module/tests -v
-
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host ""
-        Write-Host "✅ Memory module tests complete" -ForegroundColor Green
-    } else {
-        Write-Host ""
-        Write-Host "❌ Memory module tests failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
@@ -359,10 +285,6 @@ function Check-Services {
 switch ($Command.ToLower()) {
     "ci"           { Test-CI }
     "fast"         { Test-CI }
-    "core"         { Test-Core }
-    "avionics"     { Test-Avionics }
-    "memory"       { Test-Memory }
-    "app"          { Test-App }
     "contract"     { Test-Contract }
     "mission"      { Test-Mission }
     "mission-full" { Test-MissionFull }

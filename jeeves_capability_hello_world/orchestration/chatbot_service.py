@@ -4,7 +4,7 @@ ChatbotService - Kernel-driven pipeline execution for general chatbot.
 Provides a clean interface for running the 3-agent chatbot pipeline
 (Understand → Think → Respond) using kernel-driven orchestration.
 
-The Go kernel controls:
+The Rust kernel controls:
 - Pipeline loop
 - Routing decisions
 - Bounds checking

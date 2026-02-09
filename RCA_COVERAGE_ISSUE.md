@@ -235,7 +235,7 @@ The tests are production-ready and provide excellent protection for the pgvector
 ```bash
 # Run tests to verify all pass
 cd jeeves-core
-pytest memory_module/tests/unit/repositories/test_pgvector_repository.py -v --no-cov -p no:hypothesispytest
+pytest jeeves-airframe/mission_system/memory/repositories/test_pgvector_repository.py -v --no-cov -p no:hypothesispytest
 
 # Expected: 28 passed, 1 warning in ~0.6s
 ```

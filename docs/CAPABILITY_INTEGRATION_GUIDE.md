@@ -389,14 +389,14 @@ Per the capability layer CONSTITUTION:
 | Capability can import from `protocols` | ✅ | All types available |
 | Capability can import from `mission_system` | ✅ | All adapters available |
 | Capability can import from `jeeves_infra` | ⚠️ | Should prefer adapters |
-| Capability MUST NOT import from `coreengine/` | ✅ | Go package isolation |
+| Capability MUST NOT import from `coreengine/` | ✅ | Rust kernel isolation |
 | Import boundary: capability → mission_system → jeeves_infra | ✅ | Enforced via adapters |
 
 ### Layer Rules
 
 1. **L0 (jeeves_infra.protocols, jeeves_infra.utils)**: No dependencies on other Jeeves packages
-2. **L1 (Go kernel)**: Accessed via KernelClient (gRPC), not directly importable
-3. **L2 (jeeves_infra.memory)**: Can import from L0
+2. **L1 (Rust kernel)**: Accessed via KernelClient (gRPC), not directly importable
+3. **L2 (mission_system.memory)**: Can import from L0
 4. **L3 (jeeves_infra)**: Can import from L0 and L2
 5. **L4 (mission_system, capabilities)**: Can import from L0, L2, L3
 

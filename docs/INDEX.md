@@ -28,7 +28,7 @@
 
 | Document | Description |
 |----------|-------------|
-| [jeeves-core README](../jeeves-core/README.md) | Go micro-kernel overview |
+| [jeeves-core README](../jeeves-core/README.md) | Rust micro-kernel overview |
 | [jeeves-core CONSTITUTION](../jeeves-core/CONSTITUTION.md) | Kernel layer rules |
 | [jeeves-core CONTRIBUTING](../jeeves-core/CONTRIBUTING.md) | Contributing to the kernel |
 
@@ -48,7 +48,6 @@
 |----------|-------------|
 | [CAPABILITY_INTEGRATION_GUIDE.md](CAPABILITY_INTEGRATION_GUIDE.md) | How capabilities integrate with jeeves-core |
 | [PIPELINE_PATTERNS.md](PIPELINE_PATTERNS.md) | Advanced routing, DAGs, branching |
-| [JEEVES_CORE_RUNTIME_CONTRACT.md](JEEVES_CORE_RUNTIME_CONTRACT.md) | Runtime contract specification |
 | [envelope_json_schema.md](envelope_json_schema.md) | Envelope state JSON schema |
 
 ---
@@ -71,14 +70,14 @@ Zero-dependency type definitions:
 - **Types** - Enums, dataclasses (AgentConfig, PipelineConfig, Envelope)
 - **Utilities** - Shared helpers
 
-### Layer 1: Go Kernel (jeeves-core/coreengine/kernel)
+### Layer 1: Rust Kernel (jeeves-core/src)
 
-The Go micro-kernel (accessed via `KernelClient` gRPC bridge):
+The Rust micro-kernel (accessed via `KernelClient` gRPC bridge):
 - **Process lifecycle** - NEW → READY → RUNNING → TERMINATED
 - **Resource quotas** - Limits on iterations, LLM calls, agent hops
 - **Pipeline orchestration** - Multi-stage agent execution
 
-### Layer 2: Memory (jeeves_infra.memory)
+### Layer 2: Memory (mission_system.memory)
 
 Memory and event sourcing:
 - **Session state** - Working memory, focus state
@@ -90,7 +89,7 @@ Memory and event sourcing:
 Infrastructure implementations:
 - **LLM providers** - OpenAI, Anthropic, llama.cpp adapters
 - **Database clients** - PostgreSQL, pgvector
-- **KernelClient** - gRPC bridge to Go kernel
+- **KernelClient** - gRPC bridge to Rust kernel
 - **Gateway** - HTTP/WebSocket translation
 
 ### Layer 4: Mission System & Capabilities

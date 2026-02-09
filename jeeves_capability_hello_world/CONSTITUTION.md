@@ -50,7 +50,7 @@ Capability code MAY import from:
 
 Capability code MUST NOT import from:
 - `jeeves_infra.*` directly - Use mission_system.adapters instead
-- `coreengine.*` - Go kernel accessed via KernelClient only
+- `coreengine.*` - Rust kernel accessed via KernelClient only
 
 ### Correct Pattern
 

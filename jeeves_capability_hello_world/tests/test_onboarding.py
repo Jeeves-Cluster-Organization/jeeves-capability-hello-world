@@ -35,7 +35,7 @@ class TestKnowledgeBase:
     def test_layer_details_contains_all_layers(self):
         """Verify layer details are documented."""
         # Layer 1: jeeves-core
-        assert "Go Micro-Kernel" in LAYER_DETAILS
+        assert "Rust Micro-Kernel" in LAYER_DETAILS
         assert "Pipeline orchestration" in LAYER_DETAILS
         assert "Envelope state management" in LAYER_DETAILS
 

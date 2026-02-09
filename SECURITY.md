@@ -101,7 +101,7 @@ pip-audit
 ### Submodule Security
 
 This repository includes git submodules:
-- `jeeves-core` - Go micro-kernel
+- `jeeves-core` - Rust micro-kernel
 - `jeeves-airframe` - Python infrastructure
 
 Keep submodules updated:

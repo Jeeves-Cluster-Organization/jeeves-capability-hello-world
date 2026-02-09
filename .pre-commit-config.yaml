@@ -17,29 +17,21 @@ repos:
   # Fast local tests (< 10 seconds)
   - repo: local
     hooks:
-      - id: test-core-engine
-        name: Test Core Engine (109 tests, < 1s)
-        entry: make test-core
+      - id: test-airframe-lightweight
+        name: Test Airframe (lightweight, < 2s)
+        entry: bash -c 'pytest jeeves-airframe/tests/unit/ -m "not heavy and not requires_ml and not requires_docker" -v'
         language: system
         pass_filenames: false
-        # Only run if core engine files changed
-        files: ^jeeves_core_engine/
-        
-      - id: test-avionics-lightweight
-        name: Test Avionics (lightweight, < 2s)
-        entry: bash -c 'pytest avionics/tests/unit/llm -m "not heavy and not requires_ml and not requires_docker" -v'
-        language: system
-        pass_filenames: false
-        # Only run if avionics files changed
-        files: ^avionics/
-        
+        # Only run if airframe files changed
+        files: ^jeeves-airframe/
+
       - id: test-app-layer
         name: Test App Layer (all mocked, < 3s)
-        entry: bash -c 'pytest jeeves-capability-code-analyser/tests -v'
+        entry: bash -c 'pytest jeeves_capability_hello_world/tests -v'
         language: system
         pass_filenames: false
-        # Only run if app files changed
-        files: ^jeeves-capability-code-analyser/
+        # Only run if capability files changed
+        files: ^jeeves_capability_hello_world/
 
   # Optional: Linting (commented out - uncomment if needed)
   # - repo: https://github.com/psf/black

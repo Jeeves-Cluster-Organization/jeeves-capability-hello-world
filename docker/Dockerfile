@@ -1,17 +1,16 @@
-# Multi-stage Dockerfile for Jeeves FF
+# Multi-stage Dockerfile for Jeeves Hello World
 # Optimized for Docker deployment with split gateway/orchestrator architecture
 #
 # OPTIMIZATION: Uses separate requirements files to minimize image sizes
 #   - Gateway: ~200MB (fastapi, grpcio only)
 #   - Orchestrator: ~2.5GB (includes sentence-transformers, pytorch)
-#   - Previous: Both were ~2.5GB due to shared requirements
 #
-# HYBRID PYTHON-GO: Go binaries built and included for performance-critical ops
-#   - go-envelope: Envelope processing (bounds checking, validation)
-#   - Go binaries in /app/bin/, called via subprocess
+# Architecture:
+#   jeeves-core    = Rust micro-kernel (gRPC server, not used in Docker build)
+#   jeeves-airframe = Python infrastructure (jeeves_infra + mission_system)
+#   capability     = Application code (jeeves_capability_hello_world)
 #
 # Stages:
-#   builder-go         - Go binary compilation
 #   builder-base       - Shared proto compilation
 #   builder-gateway    - Gateway-specific dependencies (minimal)
 #   builder-orchestrator - Full orchestrator dependencies (ML, database)
@@ -23,28 +22,6 @@
 #   Gateway:      docker build -t jeeves-gateway:latest --target gateway .
 #   Orchestrator: docker build -t jeeves-orchestrator:latest --target orchestrator .
 #   Test:         docker build -t assistant-7agent:test --target test .
-
-# =============================================================================
-# Builder Go Stage - Compile Go binaries for hybrid execution
-# =============================================================================
-FROM docker.io/library/golang:1.24-alpine AS builder-go
-
-WORKDIR /build
-
-# Copy Go module files first (for caching)
-# jeeves-core submodule contains go.mod at root level
-COPY jeeves-core/go.mod jeeves-core/go.sum* ./
-
-# Download dependencies
-RUN go mod download || true
-
-# Copy Go source from submodule
-COPY jeeves-core/cmd/ ./cmd/
-COPY jeeves-core/commbus/ ./commbus/
-COPY jeeves-core/coreengine/ ./coreengine/
-
-# Build binaries
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /build/bin/go-envelope ./cmd/envelope
 
 # =============================================================================
 # Builder Base Stage - Proto compilation only
@@ -63,8 +40,8 @@ WORKDIR /build
 # Install grpcio-tools for proto compilation
 RUN pip install --no-cache-dir grpcio-tools>=1.60.0
 
-# Compile proto files (located in jeeves-core/mission_system/proto/)
-COPY jeeves-core/mission_system/proto/ ./proto/
+# Compile proto files from jeeves-airframe
+COPY jeeves-airframe/jeeves_infra/gateway/proto/ ./proto/
 RUN python -m grpc_tools.protoc \
     -I. \
     --python_out=. \
@@ -150,24 +127,15 @@ WORKDIR /app
 # Copy compiled proto files from builder-base
 COPY --from=builder-base /build/proto/ ./proto/
 
-# Copy Go binaries for hybrid execution testing
-COPY --from=builder-go /build/bin/ ./bin/
-ENV PATH="/app/bin:$PATH"
-ENV GO_BIN_PATH=/app/bin
-
 # Cache-busting: pass git SHA or timestamp to force rebuild when code changes
 # Usage: docker compose build --build-arg CODE_VERSION=$(git rev-parse --short HEAD)
 ARG CODE_VERSION=dev
 RUN echo "Code version: ${CODE_VERSION}" > /app/.code_version
 
-# Copy application code from jeeves-core submodule
-# Constitutional dependency hierarchy: protocols/shared → control_tower → avionics → mission_system → capability
-COPY --chown=1000:1000 jeeves-core/protocols/ ./protocols/
-COPY --chown=1000:1000 jeeves-core/shared/ ./shared/
-COPY --chown=1000:1000 jeeves-core/control_tower/ ./control_tower/
-COPY --chown=1000:1000 jeeves-core/memory_module/ ./memory_module/
-COPY --chown=1000:1000 jeeves-core/avionics/ ./avionics/
-COPY --chown=1000:1000 jeeves-core/mission_system/ ./mission_system/
+# Copy Python infrastructure from jeeves-airframe submodule
+# Dependency hierarchy: jeeves_infra.protocols → jeeves_infra → mission_system → capability
+COPY --chown=1000:1000 jeeves-airframe/jeeves_infra/ ./jeeves_infra/
+COPY --chown=1000:1000 jeeves-airframe/mission_system/ ./mission_system/
 
 # Copy hello-world capability as Python package
 # This enables: from jeeves_capability_hello_world import register_capability
@@ -179,9 +147,6 @@ COPY --chown=1000:1000 tests/ ./tests/
 
 # Copy Gradio application
 COPY --chown=1000:1000 gradio_app.py ./
-
-# Install local packages in editable mode (required for imports)
-RUN pip install --no-cache-dir -e ./protocols -e ./shared
 
 # Create cache directories for transformers/huggingface models
 RUN mkdir -p /app/data /app/data/.cache/huggingface /app/data/.cache/torch
@@ -223,24 +188,9 @@ COPY --from=builder-base --chown=jeeves:jeeves /build/proto/ ./proto/
 ARG CODE_VERSION=dev
 RUN echo "Code version: ${CODE_VERSION}" > /app/.code_version
 
-# Copy only gateway-related code (minimal footprint) from jeeves-core submodule
-# ADR-001: Gateway requires logging module and core protocols for DI pattern
-# Create minimal package structure (don't copy full __init__.py which has many dependencies)
-RUN mkdir -p avionics protocols shared && \
-    echo '"""Minimal avionics for gateway."""' > avionics/__init__.py && \
-    echo '"""Minimal protocols for gateway."""' > protocols/__init__.py && \
-    echo '"""Minimal shared for gateway."""' > shared/__init__.py && \
-    chown -R jeeves:jeeves avionics protocols shared
-COPY --chown=jeeves:jeeves jeeves-core/avionics/gateway/ ./avionics/gateway/
-COPY --chown=jeeves:jeeves jeeves-core/avionics/logging/ ./avionics/logging/
-COPY --chown=jeeves:jeeves jeeves-core/protocols/ ./protocols/
-COPY --chown=jeeves:jeeves jeeves-core/shared/ ./shared/
-COPY --chown=jeeves:jeeves jeeves-core/mission_system/config/ ./mission_system/config/
-# Copy static files to ./static/ (gateway looks for "static" relative to /app)
-# Frontend assets are now capability-owned (migrated from jeeves-core)
-COPY --chown=jeeves:jeeves frontend/static/ ./static/
-# Copy templates to ./gateway/templates/ (primary path gateway checks)
-COPY --chown=jeeves:jeeves frontend/templates/ ./gateway/templates/
+# Copy gateway-related code from jeeves-airframe submodule
+COPY --chown=jeeves:jeeves jeeves-airframe/jeeves_infra/ ./jeeves_infra/
+COPY --chown=jeeves:jeeves jeeves-airframe/mission_system/ ./mission_system/
 
 # Create directories
 RUN mkdir -p /app/data && chown -R jeeves:jeeves /app/data /home/jeeves
@@ -260,7 +210,7 @@ ENV ORCHESTRATOR_PORT=50051
 ENV LOG_FORMAT=json
 ENV LOG_LEVEL=INFO
 
-CMD ["python", "-m", "uvicorn", "avionics.gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "mission_system.app_server:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # =============================================================================
 # Orchestrator Stage - gRPC service (agents, tools, database)
@@ -281,25 +231,15 @@ WORKDIR /app
 # Copy compiled proto files from builder-base
 COPY --from=builder-base --chown=jeeves:jeeves /build/proto/ ./proto/
 
-# Copy Go binaries for hybrid Python-Go execution
-# These enable performance-critical operations (envelope processing) in Go
-COPY --from=builder-go --chown=jeeves:jeeves /build/bin/ ./bin/
-ENV PATH="/app/bin:$PATH"
-ENV GO_BIN_PATH=/app/bin
-
 # Cache-busting: pass git SHA or timestamp to force rebuild when code changes
 # Usage: docker compose build --build-arg CODE_VERSION=$(git rev-parse --short HEAD)
 ARG CODE_VERSION=dev
 RUN echo "Code version: ${CODE_VERSION}" > /app/.code_version
 
-# Copy all orchestration code from jeeves-core submodule
-# Constitutional dependency hierarchy: protocols/shared → control_tower → avionics → mission_system → capability
-COPY --chown=jeeves:jeeves jeeves-core/protocols/ ./protocols/
-COPY --chown=jeeves:jeeves jeeves-core/shared/ ./shared/
-COPY --chown=jeeves:jeeves jeeves-core/control_tower/ ./control_tower/
-COPY --chown=jeeves:jeeves jeeves-core/memory_module/ ./memory_module/
-COPY --chown=jeeves:jeeves jeeves-core/avionics/ ./avionics/
-COPY --chown=jeeves:jeeves jeeves-core/mission_system/ ./mission_system/
+# Copy Python infrastructure from jeeves-airframe submodule
+# Dependency hierarchy: jeeves_infra.protocols → jeeves_infra → mission_system → capability
+COPY --chown=jeeves:jeeves jeeves-airframe/jeeves_infra/ ./jeeves_infra/
+COPY --chown=jeeves:jeeves jeeves-airframe/mission_system/ ./mission_system/
 
 # Copy hello-world capability as Python package
 # This enables: from jeeves_capability_hello_world import register_capability
@@ -307,10 +247,6 @@ COPY --chown=jeeves:jeeves jeeves_capability_hello_world/ ./jeeves_capability_he
 
 # Copy Gradio application for hello-world chatbot
 COPY --chown=jeeves:jeeves gradio_app.py ./
-
-# Install local packages in editable mode
-# This makes protocols and shared importable
-RUN pip install --no-cache-dir -e ./protocols -e ./shared
 
 # Create directories for cache/data
 RUN mkdir -p /app/data /app/data/.cache/huggingface /app/data/.cache/torch && \

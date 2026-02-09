@@ -36,7 +36,7 @@ All tests located in `jeeves-core/`:
 
 1. `mission_system/tests/unit/orchestrator/test_flow_service.py`
 2. `mission_system/tests/unit/orchestrator/test_governance_service.py`
-3. `memory_module/tests/unit/repositories/test_pgvector_repository.py`
+3. `jeeves-airframe/mission_system/memory/repositories/test_pgvector_repository.py`
 
 ---
 
@@ -49,12 +49,12 @@ cd jeeves-core
 pytest mission_system/tests/unit/orchestrator/ -v
 
 # Run Phase 3 tests (28 tests)
-pytest memory_module/tests/unit/repositories/test_pgvector_repository.py \
+pytest jeeves-airframe/mission_system/memory/repositories/test_pgvector_repository.py \
   -v --no-cov -p no:hypothesispytest
 
 # Run all new tests (70 tests)
 pytest mission_system/tests/unit/orchestrator/ \
-       memory_module/tests/unit/repositories/test_pgvector_repository.py \
+       jeeves-airframe/mission_system/memory/repositories/test_pgvector_repository.py \
        -v --no-cov -p no:hypothesispytest
 ```
 
