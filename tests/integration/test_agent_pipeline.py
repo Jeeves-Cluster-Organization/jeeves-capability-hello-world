@@ -270,11 +270,11 @@ class TestPipelineIntegration:
     def database_url(self):
         """Get database URL from environment."""
         return (
-            f"postgresql://{os.getenv('POSTGRES_USER', 'assistant')}:"
-            f"{os.getenv('POSTGRES_PASSWORD', 'dev_password')}@"
-            f"{os.getenv('POSTGRES_HOST', 'localhost')}:"
-            f"{os.getenv('POSTGRES_PORT', '5432')}/"
-            f"{os.getenv('POSTGRES_DATABASE', 'assistant')}"
+            f"postgresql://{os.getenv('DB_USER', 'assistant')}:"
+            f"{os.getenv('DB_PASSWORD', 'dev_password')}@"
+            f"{os.getenv('DB_HOST', 'localhost')}:"
+            f"{os.getenv('DB_PORT', '5432')}/"
+            f"{os.getenv('DB_NAME', 'assistant')}"
         )
 
     @pytest.mark.requires_postgres
@@ -289,7 +289,7 @@ class TestPipelineIntegration:
         - All environment variables configured
         """
         # Skip if services not available
-        if not os.getenv("POSTGRES_HOST"):
+        if not os.getenv("DB_HOST"):
             pytest.skip("PostgreSQL not configured")
         if not os.getenv("LLAMASERVER_HOST"):
             pytest.skip("LLM server not configured")
@@ -312,7 +312,7 @@ class TestPipelineIntegration:
     async def test_session_persistence(self, database_url):
         """Test that session data persists across requests."""
         # Skip if database not available
-        if not os.getenv("POSTGRES_HOST"):
+        if not os.getenv("DB_HOST"):
             pytest.skip("PostgreSQL not configured")
 
         session_id = "test-session-123"
@@ -330,7 +330,7 @@ class TestPipelineIntegration:
     @pytest.mark.requires_postgres
     async def test_tool_execution_tracking(self, database_url):
         """Test that tool executions are tracked."""
-        if not os.getenv("POSTGRES_HOST"):
+        if not os.getenv("DB_HOST"):
             pytest.skip("PostgreSQL not configured")
 
         # Mock tool execution tracking

@@ -52,8 +52,8 @@ def get_service_config() -> Dict[str, str]:
     return {
         "orchestrator_host": os.getenv("API_HOST", "http://localhost:8000"),
         "gateway_host": os.getenv("GATEWAY_HOST", "http://localhost:8001"),
-        "postgres_host": os.getenv("POSTGRES_HOST", "localhost"),
-        "postgres_port": int(os.getenv("POSTGRES_PORT", "5432")),
+        "postgres_host": os.getenv("DB_HOST", "localhost"),
+        "postgres_port": int(os.getenv("DB_PORT", "5432")),
         "llama_host": os.getenv("LLAMASERVER_HOST", "http://localhost:8080"),
     }
 
@@ -314,9 +314,9 @@ class TestDatabaseConnectivity:
             conn = await asyncpg.connect(
                 host=config["postgres_host"],
                 port=config["postgres_port"],
-                user=os.getenv("POSTGRES_USER", "assistant"),
-                password=os.getenv("POSTGRES_PASSWORD", "dev_password"),
-                database=os.getenv("POSTGRES_DATABASE", "assistant"),
+                user=os.getenv("DB_USER", "assistant"),
+                password=os.getenv("DB_PASSWORD", "dev_password"),
+                database=os.getenv("DB_NAME", "assistant"),
                 timeout=5,
             )
             result = await conn.fetchval("SELECT 1")

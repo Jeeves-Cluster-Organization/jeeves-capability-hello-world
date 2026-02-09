@@ -11,9 +11,9 @@ data:
   llm_provider: "llamaserver"
   
   # Database Configuration
-  postgres_host: "postgres"
-  postgres_port: "5432"
-  postgres_database: "assistant"
+  db_host: "postgres"
+  db_port: "5432"
+  db_name: "assistant"
   
   # Pipeline Configuration
   pipeline_mode: "full"

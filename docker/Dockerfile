@@ -261,9 +261,9 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
 EXPOSE 8000
 
 ENV GRADIO_PORT=8000
-ENV POSTGRES_HOST=postgres
-ENV POSTGRES_PORT=5432
-ENV POSTGRES_DATABASE=assistant
+ENV DB_HOST=postgres
+ENV DB_PORT=5432
+ENV DB_NAME=assistant
 ENV LLM_PROVIDER=llamaserver
 ENV LLAMASERVER_HOST=http://llama-server:8080
 ENV LOG_FORMAT=json

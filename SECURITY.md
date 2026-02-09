@@ -83,7 +83,7 @@ If using PostgreSQL for conversation history:
 - Don't run containers as root
 - Use read-only file systems where possible
 - Keep base images updated
-- Don't expose internal services (llama-server, postgres) publicly
+- Don't expose internal services (llama-server, database) publicly
 
 ## Dependencies
 

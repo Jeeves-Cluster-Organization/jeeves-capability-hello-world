@@ -128,7 +128,7 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
 
     for ($i = 1; $i -le $retries; $i++) {
         try {
-            docker exec jeeves-postgres pg_isready -U "${env:POSTGRES_USER}" 2>$null
+            docker exec jeeves-postgres pg_isready -U "${env:DB_USER}" 2>$null
             if ($LASTEXITCODE -eq 0) {
                 $ready = $true
                 Write-Host "[NOEMOJI] PostgreSQL is ready" -ForegroundColor Green
@@ -165,13 +165,13 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
             if (Test-Path "jeeves_capability_hello_world/database/schemas/002_hello_world_schema.sql") {
                 # Use bash if available (WSL or Git Bash)
                 if (Get-Command bash -ErrorAction SilentlyContinue) {
-                    bash -c "psql -h ${env:POSTGRES_HOST} -p ${env:POSTGRES_PORT} -U ${env:POSTGRES_USER} -d ${env:POSTGRES_DATABASE} -f jeeves_capability_hello_world/database/schemas/002_hello_world_schema.sql"
+                    bash -c "psql -h ${env:DB_HOST} -p ${env:DB_PORT} -U ${env:DB_USER} -d ${env:DB_NAME} -f jeeves_capability_hello_world/database/schemas/002_hello_world_schema.sql"
                     Write-Host "[NOEMOJI] Hello world schema initialized" -ForegroundColor Green
                 } else {
                     # Fallback: use psql directly if available
                     if (Get-Command psql -ErrorAction SilentlyContinue) {
-                        $env:PGPASSWORD = "${env:POSTGRES_PASSWORD}"
-                        psql -h "${env:POSTGRES_HOST}" -p "${env:POSTGRES_PORT}" -U "${env:POSTGRES_USER}" -d "${env:POSTGRES_DATABASE}" -f jeeves_capability_hello_world/database/schemas/002_hello_world_schema.sql
+                        $env:PGPASSWORD = "${env:DB_PASSWORD}"
+                        psql -h "${env:DB_HOST}" -p "${env:DB_PORT}" -U "${env:DB_USER}" -d "${env:DB_NAME}" -f jeeves_capability_hello_world/database/schemas/002_hello_world_schema.sql
                         Write-Host "[NOEMOJI] Hello world schema initialized" -ForegroundColor Green
                     } else {
                         Write-Host "[NOEMOJI]  bash/psql not available. Skipping hello world schema." -ForegroundColor Yellow

@@ -88,10 +88,10 @@ LLAMASERVER_HOST=http://llama-server:8080
 # LLM_PROVIDER=anthropic
 # ANTHROPIC_API_KEY=your_anthropic_key_here
 
-# Database (PostgreSQL)
-POSTGRES_DATABASE=chatbot
-POSTGRES_USER=user
-POSTGRES_PASSWORD=dev_password
+# Database
+DB_NAME=chatbot
+DB_USER=user
+DB_PASSWORD=dev_password
 
 # Web Search API (optional - choose one)
 # Google Custom Search

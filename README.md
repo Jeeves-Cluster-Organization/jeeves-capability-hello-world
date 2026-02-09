@@ -31,7 +31,7 @@ Jeeves Hello World is a **learning-focused chatbot** that demonstrates the core 
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │  jeeves-infra:                                          │    │
 │  │  - LLM providers (OpenAI, Anthropic, llama.cpp)        │    │
-│  │  - Database clients (PostgreSQL, pgvector)             │    │
+│  │  - Database clients                                    │    │
 │  │  - Protocols and type definitions                       │    │
 │  ├─────────────────────────────────────────────────────────┤    │
 │  │  mission_system:                                        │    │

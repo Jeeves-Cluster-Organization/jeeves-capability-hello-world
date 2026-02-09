@@ -108,12 +108,12 @@ Ensure nodes have:
 1. **Kubernetes cluster** with GPU support
 2. **Persistent volumes** for:
    - `llama-models-pvc`: LLM model storage
-   - `postgres-data`: Database storage
+   - `db-data`: Database storage
 3. **Secrets** for database credentials:
    ```bash
    kubectl create secret generic jeeves-secrets \
-     --from-literal=postgres_user=assistant \
-     --from-literal=postgres_password=<password>
+     --from-literal=db_user=assistant \
+     --from-literal=db_password=<password>
    ```
 
 ---

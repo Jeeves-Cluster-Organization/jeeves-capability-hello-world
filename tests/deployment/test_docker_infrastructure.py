@@ -352,11 +352,11 @@ class TestEnvironmentConfiguration:
         content = env_file.read_text()
 
         required_vars = [
-            "POSTGRES_HOST",
-            "POSTGRES_PORT",
-            "POSTGRES_DATABASE",
-            "POSTGRES_USER",
-            "POSTGRES_PASSWORD",
+            "DB_HOST",
+            "DB_PORT",
+            "DB_NAME",
+            "DB_USER",
+            "DB_PASSWORD",
         ]
 
         for var in required_vars:

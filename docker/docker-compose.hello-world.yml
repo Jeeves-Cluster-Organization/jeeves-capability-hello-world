@@ -36,7 +36,7 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: dev_password
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d chatbot"]
       interval: 10s
@@ -108,11 +108,11 @@ services:
       - PIPELINE_MODE=general_chatbot
 
       # Database
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DATABASE=chatbot
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=dev_password
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=chatbot
+      - DB_USER=user
+      - DB_PASSWORD=dev_password
 
       # REAL LLM configuration
       - LLAMASERVER_HOST=http://llama-server:8080
@@ -146,7 +146,7 @@ services:
       - chatbot-network
 
 volumes:
-  postgres-data:
+  db-data:
     driver: local
   llama-models:
     external: true  # Created by setup script with model downloaded

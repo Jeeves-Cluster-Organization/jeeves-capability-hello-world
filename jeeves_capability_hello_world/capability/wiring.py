@@ -221,6 +221,31 @@ def register_capability() -> None:
     for schema_file in sorted(schema_dir.glob("*.sql")):
         registry.register_schema(CAPABILITY_ID, str(schema_file))
 
+    # Register memory layer definitions (capability-owned)
+    registry.register_memory_layers(CAPABILITY_ID, [
+        {"layer_id": "L1", "name": "Canonical State Store",
+         "description": "Single source of truth - tasks, journal_entries, sessions, messages",
+         "backend": "relational", "tables": ["tasks", "journal_entries", "sessions", "messages", "kv_store"]},
+        {"layer_id": "L2", "name": "Event Log & Trace Store",
+         "description": "Immutable record of state changes and agent decisions",
+         "backend": "relational", "tables": ["domain_events", "agent_traces"]},
+        {"layer_id": "L3", "name": "Semantic Memory",
+         "description": "Semantic search with vector embeddings",
+         "backend": "vector", "tables": ["semantic_chunks"]},
+        {"layer_id": "L4", "name": "Working Memory",
+         "description": "Bounded context for conversations, open loops, flow interrupts",
+         "backend": "relational", "tables": ["session_state", "open_loops", "flow_interrupts"]},
+        {"layer_id": "L5", "name": "State Graph",
+         "description": "Entity relationships and dependencies",
+         "backend": "relational", "tables": ["graph_nodes", "graph_edges"]},
+        {"layer_id": "L6", "name": "Skills & Patterns",
+         "description": "Reusable workflow patterns (deferred to v3.x)",
+         "backend": "none", "tables": []},
+        {"layer_id": "L7", "name": "Meta-Memory & Governance",
+         "description": "System behavior tracking, tool metrics, prompt versions",
+         "backend": "relational", "tables": ["tool_metrics", "prompt_versions", "agent_evaluations"]},
+    ])
+
     # 1. Register capability mode
     registry.register_mode(
         CAPABILITY_ID,

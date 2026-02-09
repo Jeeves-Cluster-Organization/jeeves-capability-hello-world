@@ -98,11 +98,11 @@ services:
       # Database configuration
       - DATABASE_BACKEND=postgres
       - VECTOR_BACKEND=pgvector
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DATABASE=${POSTGRES_DATABASE:-assistant}
-      - POSTGRES_USER=${POSTGRES_USER:-assistant}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password_change_in_production}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-assistant}
+      - DB_USER=${DB_USER:-assistant}
+      - DB_PASSWORD=${DB_PASSWORD:-dev_password_change_in_production}
       # LLM configuration
       - LLAMASERVER_HOST=http://llama-server:8080
       - LLM_PROVIDER=${LLM_PROVIDER:-llamaserver}
@@ -152,16 +152,16 @@ services:
     image: pgvector/pgvector:pg16
 
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${DB_PORT:-5432}:5432"
 
     environment:
-      - POSTGRES_DB=${POSTGRES_DATABASE:-assistant}
-      - POSTGRES_USER=${POSTGRES_USER:-assistant}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password_change_in_production}
+      - POSTGRES_DB=${DB_NAME:-assistant}
+      - POSTGRES_USER=${DB_USER:-assistant}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-dev_password_change_in_production}
       - POSTGRES_INITDB_ARGS=-E UTF8 --locale=en_US.UTF-8
 
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
       - ../avionics/database/schemas:/docker-entrypoint-initdb.d:ro
 
     deploy:
@@ -176,7 +176,7 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-assistant} -d ${POSTGRES_DATABASE:-assistant}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-assistant} -d ${DB_NAME:-assistant}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -267,11 +267,11 @@ services:
     environment:
       - CONTAINER=1
       - DATABASE_BACKEND=postgres
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DATABASE=${POSTGRES_DATABASE:-assistant}
-      - POSTGRES_USER=${POSTGRES_USER:-assistant}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password_change_in_production}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-assistant}
+      - DB_USER=${DB_USER:-assistant}
+      - DB_PASSWORD=${DB_PASSWORD:-dev_password_change_in_production}
       - LLAMASERVER_HOST=http://llama-server:8080
       - LLM_PROVIDER=llamaserver
       - ORCHESTRATOR_HOST=orchestrator
@@ -315,7 +315,7 @@ volumes:
     labels:
       com.jeeves.volume: "models"
 
-  postgres-data:
+  db-data:
     driver: local
     labels:
       com.jeeves.volume: "database"

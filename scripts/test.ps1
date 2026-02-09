@@ -86,7 +86,7 @@ function Test-Mission {
     python -m pytest `
         jeeves-airframe/mission_system/tests/contract `
         jeeves-airframe/mission_system/tests/unit `
-        -m "not requires_llamaserver and not requires_postgres" `
+        -m "not requires_llamaserver and not requires_database" `
         -v
 
     if ($LASTEXITCODE -eq 0) {

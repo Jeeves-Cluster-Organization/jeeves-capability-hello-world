@@ -57,31 +57,31 @@ spec:
                 configMapKeyRef:
                   name: jeeves-config
                   key: llamaserver_host
-            - name: POSTGRES_HOST
+            - name: DB_HOST
               valueFrom:
                 configMapKeyRef:
                   name: jeeves-config
-                  key: postgres_host
-            - name: POSTGRES_PORT
+                  key: db_host
+            - name: DB_PORT
               valueFrom:
                 configMapKeyRef:
                   name: jeeves-config
-                  key: postgres_port
-            - name: POSTGRES_DATABASE
+                  key: db_port
+            - name: DB_NAME
               valueFrom:
                 configMapKeyRef:
                   name: jeeves-config
-                  key: postgres_database
-            - name: POSTGRES_USER
+                  key: db_name
+            - name: DB_USER
               valueFrom:
                 secretKeyRef:
                   name: jeeves-secrets
-                  key: postgres_user
-            - name: POSTGRES_PASSWORD
+                  key: db_user
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: jeeves-secrets
-                  key: postgres_password
+                  key: db_password
           readinessProbe:
             exec:
               command:

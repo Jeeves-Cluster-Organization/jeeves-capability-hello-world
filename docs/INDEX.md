@@ -81,7 +81,7 @@ The Rust micro-kernel (accessed via `KernelClient` gRPC bridge):
 
 Memory and event sourcing:
 - **Session state** - Working memory, focus state
-- **Semantic search** - pgvector integration
+- **Semantic search** - vector search
 - **Event sourcing** - Domain events with deduplication
 
 ### Layer 3: Infrastructure (jeeves_infra)
