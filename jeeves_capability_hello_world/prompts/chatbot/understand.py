@@ -6,7 +6,7 @@ This prompt helps the LLM analyze user messages and determine:
 2. Topic identification for targeted knowledge retrieval
 """
 
-from mission_system.prompts.core.registry import register_prompt
+from jeeves_capability_hello_world.prompts.registry import register_prompt
 
 
 @register_prompt(

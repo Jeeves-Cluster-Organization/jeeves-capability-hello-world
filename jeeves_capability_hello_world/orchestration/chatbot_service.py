@@ -79,7 +79,7 @@ class ChatbotService:
             use_mock: Use mock handlers for testing (default: False - use real LLM)
         """
         # Get the global prompt registry
-        from mission_system.prompts.core.registry import PromptRegistry
+        from jeeves_capability_hello_world.prompts.registry import PromptRegistry
         prompt_registry = PromptRegistry.get_instance()
 
         # PipelineRunner still used for agent construction and access

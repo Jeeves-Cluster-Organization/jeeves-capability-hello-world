@@ -204,6 +204,44 @@ def _create_orchestrator_service(
     )
 
 
+def _create_event_emitter(db: Any) -> Any:
+    """Factory for EventEmitter."""
+    from jeeves_capability_hello_world.memory.repositories.event_repository import EventRepository
+    from jeeves_capability_hello_world.memory.services.event_emitter import EventEmitter
+    return EventEmitter(EventRepository(db))
+
+
+def _create_session_state_service(db: Any) -> Any:
+    """Factory for SessionStateService."""
+    from jeeves_capability_hello_world.memory.services.session_state_service import SessionStateService
+    return SessionStateService(db=db)
+
+
+def _create_graph_storage() -> Any:
+    """Factory for InMemoryGraphStorage."""
+    from jeeves_capability_hello_world.memory.repositories.graph_stub import InMemoryGraphStorage
+    return InMemoryGraphStorage()
+
+
+def _create_chunk_service(db: Any) -> Any:
+    """Factory for ChunkService."""
+    from jeeves_capability_hello_world.memory.services.chunk_service import ChunkService
+    return ChunkService(db=db)
+
+
+def _create_trace_recorder(db: Any) -> Any:
+    """Factory for TraceRecorder."""
+    from jeeves_capability_hello_world.memory.repositories.trace_repository import TraceRepository
+    from jeeves_capability_hello_world.memory.services.trace_recorder import TraceRecorder
+    return TraceRecorder(TraceRepository(db))
+
+
+def _create_session_state_adapter(db: Any) -> Any:
+    """Factory for SessionStateAdapter."""
+    from jeeves_capability_hello_world.memory.services.session_state_adapter import SessionStateAdapter
+    return SessionStateAdapter(db=db)
+
+
 def register_capability() -> None:
     """Register hello-world capability with jeeves-core.
 
@@ -291,6 +329,40 @@ def register_capability() -> None:
             factory=_create_orchestrator_service,
         ),
     )
+
+    # 7. Register API router (chat endpoints)
+    from jeeves_capability_hello_world.api.chat_router import (
+        router as chat_router,
+        get_chat_service,
+        get_orchestrator,
+    )
+
+    def _create_chat_deps(db, event_manager, orchestrator, **kwargs):
+        """Create DI overrides for chat router."""
+        from jeeves_capability_hello_world.services.chat_service import ChatService
+        svc = ChatService(db, event_manager)
+        return {get_chat_service: lambda: svc, get_orchestrator: lambda: orchestrator}
+
+    registry.register_api_router(
+        CAPABILITY_ID,
+        chat_router,
+        deps_factory=_create_chat_deps,
+        feature_flag="chat_enabled",
+    )
+
+    # 8. Register memory service factories
+    registry.register_memory_service(CAPABILITY_ID, "event_emitter",
+        lambda db, **kw: _create_event_emitter(db))
+    registry.register_memory_service(CAPABILITY_ID, "session_state_service",
+        lambda db, **kw: _create_session_state_service(db))
+    registry.register_memory_service(CAPABILITY_ID, "graph_storage",
+        lambda db, **kw: _create_graph_storage())
+    registry.register_memory_service(CAPABILITY_ID, "chunk_service",
+        lambda db, **kw: _create_chunk_service(db))
+    registry.register_memory_service(CAPABILITY_ID, "trace_recorder",
+        lambda db, **kw: _create_trace_recorder(db))
+    registry.register_memory_service(CAPABILITY_ID, "session_state_adapter",
+        lambda db, **kw: _create_session_state_adapter(db))
 
     # 6. Register LLM configurations with capability registry
     try:

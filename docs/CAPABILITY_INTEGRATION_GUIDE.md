@@ -126,11 +126,9 @@ from mission_system.adapters import (
     create_database_client,
     create_llm_provider_factory,
     create_event_emitter,
-    create_graph_repository,
-    create_embedding_service,
-    create_code_indexer,
-    create_nli_service,
-    create_vector_adapter,
+    create_graph_storage,
+    create_tool_executor,
+    create_tool_health_service,
 )
 ```
 
@@ -149,7 +147,7 @@ from mission_system.orchestrator.agent_events import (
 ### prompts Module
 
 ```python
-from mission_system.prompts.core.registry import (
+from jeeves_capability_hello_world.prompts.registry import (
     register_prompt, PromptRegistry,
 )
 ```
@@ -158,7 +156,7 @@ from mission_system.prompts.core.registry import (
 
 ```python
 from mission_system.config.agent_profiles import (
-    LLMProfile, ThresholdProfile, AgentProfile,
+    AgentLLMConfig, ThresholdProfile, AgentProfile,
     get_agent_profile, get_llm_profile, get_thresholds, get_latency_budget,
 )
 
@@ -429,8 +427,8 @@ def test_mission_system_importable():
     from mission_system.adapters import get_logger
     assert tool_catalog is not None
 
-def test_avionics_importable():
-    """Verify avionics services are importable."""
+def test_jeeves_infra_importable():
+    """Verify jeeves_infra services are importable."""
     from jeeves_infra.logging import create_logger
     from jeeves_infra.capability_registry import get_capability_registry
     assert create_logger is not None

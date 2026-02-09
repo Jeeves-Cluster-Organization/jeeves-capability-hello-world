@@ -5,7 +5,7 @@ This prompt enables TEXT_STREAM mode with plain text output for real-time stream
 Uses intent-targeted knowledge for more relevant responses.
 """
 
-from mission_system.prompts.core.registry import register_prompt
+from jeeves_capability_hello_world.prompts.registry import register_prompt
 
 
 @register_prompt(

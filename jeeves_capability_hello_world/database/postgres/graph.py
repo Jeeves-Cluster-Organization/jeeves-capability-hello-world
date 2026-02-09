@@ -5,8 +5,8 @@ This is the production adapter for L5 graph storage.
 
 Constitutional Reference:
 - Memory Module CONSTITUTION: L5 Graph - Entity relationships
-- Avionics CONSTITUTION R4: Swappable Implementations
-- Architecture: PostgreSQL-specific code lives in avionics (L3)
+- jeeves_infra CONSTITUTION R4: Swappable Implementations
+- Architecture: PostgreSQL-specific code lives in jeeves_infra (L3)
 
 Schema Note:
     This adapter uses the rich schema defined in 001_postgres_schema.sql.
@@ -19,7 +19,7 @@ Schema Note:
     - Foreign key enforcement for referential integrity
 
 Usage:
-    from avionics.database.postgres_graph import PostgresGraphAdapter
+    from jeeves_capability_hello_world.database.postgres.graph import PostgresGraphAdapter
 
     adapter = PostgresGraphAdapter(db_client, logger)
     await adapter.ensure_tables()  # Verifies schema, creates indices
@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from jeeves_infra.protocols import DatabaseClientProtocol, GraphStorageProtocol, LoggerProtocol
-from jeeves_infra.utils.logging import get_component_logger
+from jeeves_capability_hello_world._logging import get_component_logger
 
 
 class PostgresGraphAdapter:

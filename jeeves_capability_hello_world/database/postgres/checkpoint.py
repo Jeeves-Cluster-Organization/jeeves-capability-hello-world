@@ -14,7 +14,7 @@ from jeeves_infra.protocols import (
     CheckpointRecord,
 )
 from jeeves_infra.protocols import LoggerProtocol
-from jeeves_infra.logging import get_current_logger
+from jeeves_capability_hello_world._logging import get_logger as get_current_logger
 
 
 class PostgresCheckpointAdapter:

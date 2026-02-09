@@ -18,8 +18,8 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy import text
 from sqlalchemy.pool import NullPool
 
-from jeeves_infra.logging import get_current_logger
-from jeeves_infra.utils.serialization import JSONEncoderWithUUID, to_json, from_json
+from jeeves_capability_hello_world._logging import get_logger as get_current_logger
+from jeeves_capability_hello_world._serialization import JSONEncoderWithUUID, to_json, from_json
 from jeeves_capability_hello_world.database.postgres.constants import UUID_COLUMNS, JSONB_COLUMNS, VECTOR_COLUMNS
 from jeeves_infra.protocols import LoggerProtocol
 
@@ -110,23 +110,17 @@ class PostgreSQLClient:
             return query, {}
 
         if isinstance(parameters, dict):
-            # Import uuid_str for UUID handling at ingestion layer
-            from jeeves_infra.utils.uuid_utils import uuid_str
-
             # Convert UUID values for known UUID columns (from centralized constants)
             converted = {}
             for k, v in parameters.items():
                 if k in UUID_COLUMNS and v is not None:
-                    converted[k] = uuid_str(v)
+                    converted[k] = str(v)
                 else:
                     converted[k] = v
 
             return query, converted
 
         if isinstance(parameters, (list, tuple)):
-            # Import uuid_str for UUID handling at ingestion layer
-            from jeeves_infra.utils.uuid_utils import uuid_str
-
             # Extract column names from query (UUID_COLUMNS imported from centralized constants)
             column_matches = []
 
@@ -161,7 +155,7 @@ class PostgreSQLClient:
             for idx, val in enumerate(parameters):
                 col_name = column_matches[idx] if idx < len(column_matches) else None
                 if col_name in UUID_COLUMNS and val is not None:
-                    params[f"p{idx}"] = uuid_str(val)
+                    params[f"p{idx}"] = str(val)
                 else:
                     params[f"p{idx}"] = val
 
@@ -604,17 +598,14 @@ class PostgreSQLClient:
         if not self._initialized:
             raise RuntimeError("Database not connected")
 
-        # Import uuid_str for UUID handling at ingestion layer
-        from jeeves_infra.utils.uuid_utils import uuid_str
-
-        # Column constants imported from avionics.database.constants
+        # Column constants from database.postgres.constants
         # Convert values for special column types
         converted_data = {}
         placeholder_parts = []
 
         for key, value in data.items():
             if key in UUID_COLUMNS and value is not None:
-                converted_data[key] = uuid_str(value)
+                converted_data[key] = str(value)
                 placeholder_parts.append(f":{key}")
             elif key in VECTOR_COLUMNS and value is not None:
                 # Convert list/numpy array to string for pgvector
@@ -656,15 +647,12 @@ class PostgreSQLClient:
         if not self._initialized:
             raise RuntimeError("Database not connected")
 
-        # Import uuid_str for UUID handling at ingestion layer
-        from jeeves_infra.utils.uuid_utils import uuid_str
-
-        # Column constants imported from avionics.database.constants
+        # Column constants from database.postgres.constants
         # Convert UUID values for known UUID columns
         converted_data = {}
         for key, value in data.items():
             if key in UUID_COLUMNS and value is not None:
-                converted_data[key] = uuid_str(value)
+                converted_data[key] = str(value)
             else:
                 converted_data[key] = value
 
@@ -846,5 +834,4 @@ class PostgreSQLClient:
 
         self._logger.info("vacuum_analyze_completed", table=table_name or "all")
 
-    # Note: Use to_json() and from_json() from jeeves_infra.utils.serialization
-    # for JSON serialization (imported at module level)
+    # Note: Use to_json() and from_json() from _serialization for JSON serialization

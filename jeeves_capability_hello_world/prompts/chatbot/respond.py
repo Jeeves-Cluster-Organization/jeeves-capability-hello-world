@@ -7,7 +7,7 @@ This prompt helps the LLM craft helpful responses about the Jeeves ecosystem by:
 3. Providing practical examples when relevant
 """
 
-from mission_system.prompts.core.registry import register_prompt
+from jeeves_capability_hello_world.prompts.registry import register_prompt
 
 
 @register_prompt(

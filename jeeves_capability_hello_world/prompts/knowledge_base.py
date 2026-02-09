@@ -95,7 +95,7 @@ The framework that makes building agents easy.
 
 **Key Modules:**
 - `mission_system.adapters` - Constitution R7 adapter factories
-- `mission_system.prompts.core.registry` - @register_prompt decorator
+- `jeeves_capability_hello_world.prompts.registry` - @register_prompt decorator
 - `mission_system.runner` - PipelineRunner class
 - `mission_system.contracts_core` - PipelineConfig, AgentConfig
 
@@ -234,7 +234,7 @@ tool_catalog.register(
 
 ```python
 # In prompts/chatbot/my_prompt.py
-from mission_system.prompts.core.registry import register_prompt
+from jeeves_capability_hello_world.prompts.registry import register_prompt
 
 @register_prompt(
     name="chatbot.my_agent",

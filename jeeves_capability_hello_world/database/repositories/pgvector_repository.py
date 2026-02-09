@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import text
 import numpy as np
 
-from jeeves_infra.utils.logging import get_component_logger
+from jeeves_capability_hello_world._logging import get_component_logger
 from jeeves_infra.protocols import LoggerProtocol
 
 

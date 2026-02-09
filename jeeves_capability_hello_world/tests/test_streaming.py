@@ -213,7 +213,7 @@ async def test_cancellation_propagates():
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
     # Mock the registry to avoid import issues
-    import mission_system.prompts.core.registry as registry_module
+    import jeeves_capability_hello_world.prompts.registry as registry_module
     original_registry = getattr(registry_module, 'PromptRegistry', None)
     registry_module.PromptRegistry = MockPromptRegistry
 
@@ -476,7 +476,7 @@ async def test_exactly_one_terminal_event():
 
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
-    import mission_system.prompts.core.registry as registry_module
+    import jeeves_capability_hello_world.prompts.registry as registry_module
     original_registry = getattr(registry_module, 'PromptRegistry', None)
     registry_module.PromptRegistry = MockPromptRegistry
 
