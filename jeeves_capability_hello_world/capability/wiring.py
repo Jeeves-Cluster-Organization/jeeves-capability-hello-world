@@ -212,6 +212,15 @@ def register_capability() -> None:
     """
     registry = get_capability_resource_registry()
 
+    # 0. Register database backend (BEFORE any DB operations)
+    from jeeves_capability_hello_world.database.postgres.config import register_postgres_backend
+    register_postgres_backend()
+
+    # Register schemas via capability registry
+    schema_dir = CAPABILITY_ROOT / "database" / "schemas"
+    for schema_file in sorted(schema_dir.glob("*.sql")):
+        registry.register_schema(CAPABILITY_ID, str(schema_file))
+
     # 1. Register capability mode
     registry.register_mode(
         CAPABILITY_ID,

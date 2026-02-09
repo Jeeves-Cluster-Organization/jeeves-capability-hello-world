@@ -29,7 +29,7 @@ a Rust core handles orchestration while Python provides the AI/ML capabilities.
 ### The Four Layers
 
 1. **jeeves-core** (Rust) - The micro-kernel that orchestrates everything
-2. **jeeves-infra** (Python) - Infrastructure: LLM providers, databases, protocols
+2. **jeeves-infra** (Python) - Infrastructure: LLM providers, database protocols, adapters
 3. **mission_system** (Python) - Orchestration framework: agents, prompts, adapters
 4. **Capabilities** (Python) - Your domain-specific code: prompts, tools, services
 
@@ -71,7 +71,7 @@ Shared infrastructure used by all Python components.
 
 **Responsibilities:**
 - LLM providers - unified interface to OpenAI, Anthropic, llama.cpp
-- Database clients - PostgreSQL, pgvector for embeddings
+- Database clients - Protocol-based registry (capabilities own concrete backends)
 - Protocols - type definitions shared across layers
 - Gateway - HTTP/WebSocket/gRPC translation layer
 - kernel_client - Python interface to jeeves-core

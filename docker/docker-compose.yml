@@ -156,8 +156,7 @@ services:
     # Volume mounts
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ../jeeves-airframe/jeeves_infra/postgres/schemas:/docker-entrypoint-initdb.d/001:ro
-      - ../jeeves_capability_hello_world/database/schemas:/docker-entrypoint-initdb.d/002:ro
+      - ../jeeves_capability_hello_world/database/schemas:/docker-entrypoint-initdb.d/001:ro
 
     # Resource limits
     deploy:

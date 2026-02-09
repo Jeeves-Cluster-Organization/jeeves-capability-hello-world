@@ -88,7 +88,7 @@ Memory and event sourcing:
 
 Infrastructure implementations:
 - **LLM providers** - OpenAI, Anthropic, llama.cpp adapters
-- **Database clients** - PostgreSQL, pgvector
+- **Database clients** - Protocol-based, backend-agnostic (registry pattern)
 - **KernelClient** - gRPC bridge to Rust kernel
 - **Gateway** - HTTP/WebSocket translation
 
