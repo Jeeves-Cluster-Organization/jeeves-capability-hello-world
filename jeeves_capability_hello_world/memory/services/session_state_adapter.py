@@ -1,14 +1,13 @@
-"""Session State Adapter - Bridge Avionics to Core Protocol.
+"""Session State Adapter - Bridge Stored State to Protocol Types.
 
-This adapter implements Core's SessionStateProtocol using the existing
-avionics SessionStateService as the backend. It provides the translation
-layer between:
-- Core's WorkingMemory (domain-agnostic)
-- Avionics' SessionState (infrastructure-specific)
+This adapter implements the SessionStateProtocol using the capability-layer
+SessionStateService as the backend. It provides the translation layer between:
+- Protocol-level WorkingMemory (domain-agnostic)
+- Capability-layer SessionState (storage-specific)
 
 Architectural Pattern:
-- Core defines the protocol (what)
-- Avionics provides the implementation (how)
+- Protocols define the contract (what)
+- Capability layer provides the implementation (how)
 - This adapter bridges them (translation)
 """
 
@@ -33,10 +32,10 @@ from jeeves_infra.protocols import DatabaseClientProtocol
 
 
 class SessionStateAdapter:
-    """Adapter implementing Core's SessionStateProtocol.
+    """Adapter implementing the SessionStateProtocol.
 
-    This bridges the gap between Core's domain-agnostic WorkingMemory
-    and Avionics' infrastructure-specific SessionState.
+    This bridges the gap between protocol-level domain-agnostic WorkingMemory
+    and the capability-layer's storage-specific SessionState.
 
     Usage:
         adapter = SessionStateAdapter(db, service)
@@ -154,7 +153,7 @@ class SessionStateAdapter:
         """
         result = await self._service.update_focus(
             session_id=session_id,
-            focus_type=self._core_focus_to_avionics(focus.focus_type),
+            focus_type=self._protocol_focus_to_stored(focus.focus_type),
             focus_id=focus.focus_id,
             focus_context=focus.focus_context
         )
@@ -280,17 +279,17 @@ class SessionStateAdapter:
     # ════════════════════════════════════════════════════════════════════════
 
     def _session_state_to_working_memory(self, state: SessionState) -> WorkingMemory:
-        """Convert Avionics SessionState to Core WorkingMemory.
+        """Convert stored SessionState to protocol WorkingMemory.
 
         Args:
-            state: Avionics SessionState
+            state: Stored SessionState
 
         Returns:
-            Core WorkingMemory
+            Protocol WorkingMemory
         """
         # Convert focus
         focus = FocusState(
-            focus_type=self._avionics_focus_to_core(state.focus_type),
+            focus_type=self._stored_focus_to_protocol(state.focus_type),
             focus_id=state.focus_id,
             focus_label=state.focus_context.get("label") if state.focus_context else None,
             focus_context=state.focus_context or {},
@@ -319,13 +318,13 @@ class SessionStateAdapter:
         )
 
     def _working_memory_to_session_state(self, memory: WorkingMemory) -> SessionState:
-        """Convert Core WorkingMemory to Avionics SessionState.
+        """Convert protocol WorkingMemory to stored SessionState.
 
         Args:
-            memory: Core WorkingMemory
+            memory: Protocol WorkingMemory
 
         Returns:
-            Avionics SessionState
+            Stored SessionState
         """
         # Convert entity references
         referenced_entities = []
@@ -346,7 +345,7 @@ class SessionStateAdapter:
         return SessionState(
             session_id=memory.session_id,
             user_id=memory.user_id,
-            focus_type=self._core_focus_to_avionics(memory.focus.focus_type),
+            focus_type=self._protocol_focus_to_stored(memory.focus.focus_type),
             focus_id=memory.focus.focus_id,
             focus_context=focus_context,
             turn_count=memory.turn_count,
@@ -356,14 +355,14 @@ class SessionStateAdapter:
             updated_at=memory.last_updated,
         )
 
-    def _avionics_focus_to_core(self, focus_type: Optional[str]) -> FocusType:
-        """Convert Avionics focus type string to Core FocusType enum.
+    def _stored_focus_to_protocol(self, focus_type: Optional[str]) -> FocusType:
+        """Convert stored focus type string to protocol FocusType enum.
 
         Args:
-            focus_type: Avionics focus type string
+            focus_type: Stored focus type string
 
         Returns:
-            Core FocusType enum
+            Protocol FocusType enum
         """
         if not focus_type or focus_type == "general":
             return FocusType.GENERAL
@@ -378,14 +377,14 @@ class SessionStateAdapter:
         # Default to general for unknown types
         return FocusType.GENERAL
 
-    def _core_focus_to_avionics(self, focus_type: FocusType) -> str:
-        """Convert Core FocusType enum to Avionics focus type string.
+    def _protocol_focus_to_stored(self, focus_type: FocusType) -> str:
+        """Convert protocol FocusType enum to stored focus type string.
 
         Args:
-            focus_type: Core FocusType enum
+            focus_type: Protocol FocusType enum
 
         Returns:
-            Avionics focus type string
+            Stored focus type string
         """
         mapping = {
             FocusType.GENERAL: "general",

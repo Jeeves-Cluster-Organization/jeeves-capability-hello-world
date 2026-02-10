@@ -7,7 +7,7 @@
 #
 # Architecture:
 #   jeeves-core    = Rust micro-kernel (gRPC server, not used in Docker build)
-#   jeeves-airframe = Python infrastructure (jeeves_infra + mission_system)
+#   jeeves-airframe = Python infrastructure (jeeves_infra)
 #   capability     = Application code (jeeves_capability_hello_world)
 #
 # Stages:
@@ -133,9 +133,8 @@ ARG CODE_VERSION=dev
 RUN echo "Code version: ${CODE_VERSION}" > /app/.code_version
 
 # Copy Python infrastructure from jeeves-airframe submodule
-# Dependency hierarchy: jeeves_infra.protocols → jeeves_infra → mission_system → capability
+# Dependency hierarchy: jeeves_infra.protocols → jeeves_infra → capability
 COPY --chown=1000:1000 jeeves-airframe/jeeves_infra/ ./jeeves_infra/
-COPY --chown=1000:1000 jeeves-airframe/mission_system/ ./mission_system/
 
 # Copy hello-world capability as Python package
 # This enables: from jeeves_capability_hello_world import register_capability
@@ -190,7 +189,6 @@ RUN echo "Code version: ${CODE_VERSION}" > /app/.code_version
 
 # Copy gateway-related code from jeeves-airframe submodule
 COPY --chown=jeeves:jeeves jeeves-airframe/jeeves_infra/ ./jeeves_infra/
-COPY --chown=jeeves:jeeves jeeves-airframe/mission_system/ ./mission_system/
 
 # Create directories
 RUN mkdir -p /app/data && chown -R jeeves:jeeves /app/data /home/jeeves
@@ -210,7 +208,7 @@ ENV ORCHESTRATOR_PORT=50051
 ENV LOG_FORMAT=json
 ENV LOG_LEVEL=INFO
 
-CMD ["python", "-m", "uvicorn", "mission_system.app_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "jeeves_infra.gateway.app:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # =============================================================================
 # Orchestrator Stage - gRPC service (agents, tools, database)
@@ -237,9 +235,8 @@ ARG CODE_VERSION=dev
 RUN echo "Code version: ${CODE_VERSION}" > /app/.code_version
 
 # Copy Python infrastructure from jeeves-airframe submodule
-# Dependency hierarchy: jeeves_infra.protocols → jeeves_infra → mission_system → capability
+# Dependency hierarchy: jeeves_infra.protocols → jeeves_infra → capability
 COPY --chown=jeeves:jeeves jeeves-airframe/jeeves_infra/ ./jeeves_infra/
-COPY --chown=jeeves:jeeves jeeves-airframe/mission_system/ ./mission_system/
 
 # Copy hello-world capability as Python package
 # This enables: from jeeves_capability_hello_world import register_capability

@@ -193,7 +193,7 @@ class EventEmitter:
     during retries within the same session.
 
     Constitutional Reference:
-        - Memory Module: FORBIDDEN memory_module → avionics.*
+        - Memory Module: FORBIDDEN capability.memory → jeeves_infra.* (except protocols)
         - Use protocol injection instead of direct imports
     """
 

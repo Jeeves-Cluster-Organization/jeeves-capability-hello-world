@@ -42,9 +42,6 @@ services:
       - LOG_FORMAT=json
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
 
-    volumes:
-      - ../mission_system/static:/app/static:ro
-
     deploy:
       resources:
         limits:
@@ -162,7 +159,7 @@ services:
 
     volumes:
       - db-data:/var/lib/postgresql/data
-      - ../avionics/database/schemas:/docker-entrypoint-initdb.d:ro
+      - ../jeeves_capability_hello_world/database/schemas:/docker-entrypoint-initdb.d:ro
 
     deploy:
       resources:

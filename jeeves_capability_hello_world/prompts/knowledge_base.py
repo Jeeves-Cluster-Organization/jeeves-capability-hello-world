@@ -165,7 +165,7 @@ llm_factory = app_context.llm_provider_factory
 
 **WRONG:**
 ```python
-from avionics.llm import LLMProvider  # Violates R7!
+from jeeves_infra.llm import LLMProvider  # Violates R7!
 ```
 
 **Why?** This ensures capabilities remain portable and the infrastructure

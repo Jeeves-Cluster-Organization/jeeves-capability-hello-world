@@ -11,9 +11,6 @@ This script enforces the Jeeves layer architecture invariants:
 Note: L1 is implemented in Rust (jeeves-core/src/). Python code
 accesses it via jeeves_infra.kernel_client (gRPC bridge), which is part of L3.
 
-NOTE: This script needs a rewrite - mission_system has been merged into jeeves_infra.
-The layer boundaries have changed. Update LAYERS, LAYER_MAPPING, and LAYER_RULES accordingly.
-
 Run as part of CI to prevent layer violations.
 
 Usage:
@@ -338,11 +335,6 @@ Import Rules:
   - Same-layer imports are allowed
   - L1 is Rust code, accessed via KernelClient (gRPC bridge in L3)
 
-Legacy naming (deprecated):
-  - avionics      -> jeeves_infra
-  - control_tower -> Rust kernel (jeeves-core/src/)
-  - memory_module -> jeeves_infra.memory
-  - mission_system -> merged into jeeves_infra
 """)
 
 

@@ -14,9 +14,7 @@ capability → jeeves_infra → jeeves_infra.protocols
            jeeves_infra.memory (L2)
 ```
 
-> **Note:** `avionics` was the legacy name for `jeeves_infra`. The kernel is now Go code accessed via `KernelClient`.
-
-**Important:** Capabilities MUST NOT import directly from `coreengine/` (Go package).
+**Important:** Capabilities MUST NOT import directly from `coreengine/` (Rust kernel).
 
 ---
 
@@ -201,8 +199,6 @@ See [PIPELINE_PATTERNS.md](PIPELINE_PATTERNS.md) for complete examples.
 ---
 
 ## 3. jeeves_infra Exports
-
-> **Legacy note:** `avionics` was renamed to `jeeves_infra`. Update imports accordingly.
 
 ### logging Module
 

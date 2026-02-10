@@ -27,7 +27,7 @@ class TraceRecorder:
     Per Memory Contract L2: Agent decisions have a traceable cause chain.
 
     Constitutional Reference:
-        - Memory Module: FORBIDDEN memory_module → avionics.*
+        - Memory Module: FORBIDDEN capability.memory → jeeves_infra.* (except protocols)
         - Use protocol injection instead of direct imports
     """
 

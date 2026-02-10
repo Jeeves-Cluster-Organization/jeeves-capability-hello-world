@@ -104,8 +104,7 @@ def get_capability_tool_catalog() -> "CapabilityToolCatalog":
     """
     Get the CapabilityToolCatalog for hello-world.
 
-    This follows the minisweagent pattern of using CapabilityToolCatalog
-    from jeeves_infra.protocols for tool registration.
+    Returns the CapabilityToolCatalog for hello-world with all tools registered.
 
     Returns:
         CapabilityToolCatalog instance with all tools registered

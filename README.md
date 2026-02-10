@@ -264,8 +264,6 @@ from jeeves_infra.wiring import create_llm_provider_factory
 
 # INCORRECT - Don't import jeeves_infra directly
 from jeeves_infra.llm import LLMProvider  # DON'T DO THIS
-
-# Note: "avionics" was the legacy name for jeeves_infra
 ```
 
 ## Docker Deployment

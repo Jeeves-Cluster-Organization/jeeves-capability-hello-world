@@ -42,7 +42,7 @@ class TestKnowledgeBase:
         assert "LLM providers" in LAYER_DETAILS
         assert "Database clients" in LAYER_DETAILS
 
-        # jeeves-infra now includes orchestration (formerly mission_system)
+        # jeeves-infra includes orchestration
         assert "Agent profiles" in LAYER_DETAILS
         assert "PipelineRunner" in LAYER_DETAILS
 

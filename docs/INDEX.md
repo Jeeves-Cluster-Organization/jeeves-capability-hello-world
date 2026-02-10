@@ -111,8 +111,6 @@ from jeeves_infra.wiring import create_llm_provider_factory
 from jeeves_infra.llm import LLMProvider  # DON'T DO THIS
 ```
 
-> **Note:** `avionics` was the legacy name for `jeeves_infra`.
-
 ### Agent Configuration
 
 ```python

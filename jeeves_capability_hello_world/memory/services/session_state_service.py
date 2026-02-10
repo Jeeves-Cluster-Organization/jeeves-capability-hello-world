@@ -313,21 +313,3 @@ class SessionStateService:
         # Summarize every N turns
         return state.turn_count > 0 and state.turn_count % summarize_every_n_turns == 0
 
-"""
-REMOVED: Clarification and Critic Decision Methods
-
-These methods have been removed as part of the Unified Interrupt System (v4.0):
-- save_clarification()
-- get_clarification()
-- clear_clarification()
-- is_clarification_expired()
-- get_clarification_context_for_prompt()
-- save_critic_decision()
-- get_critic_decisions()
-
-All interrupt-related functionality is now handled by:
-    control_tower.services.InterruptService
-
-Migration: Use InterruptService.create_clarification() and InterruptService.respond()
-instead of the old methods.
-"""
