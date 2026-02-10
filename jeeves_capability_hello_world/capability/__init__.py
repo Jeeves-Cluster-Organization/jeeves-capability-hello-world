@@ -1,7 +1,7 @@
 """Hello World Capability for Jeeves-Core.
 
 Thin capability layer that registers hello-world chatbot with jeeves-core.
-Uses framework components (mission_system, jeeves_infra) for orchestration,
+Uses framework components (jeeves_infra) for orchestration,
 memory, and infrastructure - keeping capability code minimal.
 
 Constitutional Reference:
@@ -12,8 +12,8 @@ Constitutional Reference:
 Components:
 - wiring.py: Capability registration and ChatbotService factory
 
-Usage (RECOMMENDED - using mission_system.bootstrap):
-    from mission_system.bootstrap import create_app_context
+Usage (RECOMMENDED - using jeeves_infra.bootstrap):
+    from jeeves_infra.bootstrap import create_app_context
     from jeeves_capability_hello_world.capability import (
         register_capability,
         create_hello_world_from_app_context,
@@ -28,7 +28,7 @@ Usage (RECOMMENDED - using mission_system.bootstrap):
 
 Note:
     For event streaming and session memory, use framework components:
-    - mission_system.orchestrator.EventOrchestrator for events
+    - jeeves_infra.orchestrator.EventOrchestrator for events
     - jeeves_infra.memory.services.SessionStateService for sessions
 """
 

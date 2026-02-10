@@ -10,7 +10,7 @@
 Jeeves Hello World is a **learning-focused chatbot** that demonstrates the core patterns of the Jeeves multi-agent orchestration system. It serves two purposes:
 
 1. **A working chatbot** - Real LLM inference with a 3-agent pipeline
-2. **An onboarding guide** - Understand how jeeves-core, jeeves-infra, and mission_system work together
+2. **An onboarding guide** - Understand how jeeves-core and jeeves-infra work together
 
 ## The Jeeves Ecosystem
 
@@ -27,17 +27,17 @@ Jeeves Hello World is a **learning-focused chatbot** that demonstrates the core 
                               │
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  jeeves-infra + mission_system (Infrastructure Layer)           │
+│  jeeves-infra (Infrastructure + Orchestration Layer)            │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │  jeeves-infra:                                          │    │
+│  │  Infrastructure:                                        │    │
 │  │  - LLM providers (OpenAI, Anthropic, llama.cpp)        │    │
-│  │  - Database clients                                    │    │
+│  │  - Database clients, memory subsystems                  │    │
 │  │  - Protocols and type definitions                       │    │
 │  ├─────────────────────────────────────────────────────────┤    │
-│  │  mission_system:                                        │    │
-│  │  - Orchestration framework                              │    │
+│  │  Orchestration:                                         │    │
 │  │  - Agent profiles and configuration                     │    │
-│  │  - Adapters for capabilities                            │    │
+│  │  - Event handling and state management                  │    │
+│  │  - Factory functions for capabilities                   │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                               │ gRPC
@@ -59,7 +59,6 @@ Jeeves Hello World is a **learning-focused chatbot** that demonstrates the core 
 |-------|----------|--------------|
 | **jeeves-core** | Go | Micro-kernel: pipeline execution, state management, resource limits |
 | **jeeves-infra** | Python | Infrastructure: LLM providers, database, protocols |
-| **mission_system** | Python | Framework: orchestration, agent profiles, adapters |
 | **Capabilities** | Python | Your code: prompts, tools, domain logic |
 
 ## The 3-Agent Pipeline
@@ -195,7 +194,6 @@ jeeves-capability-hello-world/
 ├── jeeves-core/                     # Rust micro-kernel (submodule)
 ├── jeeves-airframe/                 # Python infrastructure (submodule)
 │   ├── jeeves_infra/                # Infrastructure implementations
-│   └── mission_system/              # Orchestration framework
 │
 ├── docker/                          # Docker deployment
 ├── docs/                            # Documentation
@@ -262,7 +260,7 @@ Capabilities must follow import boundaries:
 
 ```python
 # CORRECT - Use adapters
-from mission_system.adapters import create_llm_provider_factory
+from jeeves_infra.wiring import create_llm_provider_factory
 
 # INCORRECT - Don't import jeeves_infra directly
 from jeeves_infra.llm import LLMProvider  # DON'T DO THIS

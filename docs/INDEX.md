@@ -37,8 +37,8 @@
 | Document | Description |
 |----------|-------------|
 | [jeeves-airframe README](../jeeves-airframe/README.md) | Infrastructure layer overview |
-| [mission_system CONSTITUTION](../jeeves-airframe/mission_system/CONSTITUTION.md) | Orchestration framework rules |
-| [mission_system INDEX](../jeeves-airframe/mission_system/INDEX.md) | Mission system documentation |
+| [jeeves_infra orchestration docs](../jeeves-airframe/jeeves_infra/orchestrator/) | Orchestration framework |
+| [jeeves_infra README](../jeeves-airframe/jeeves_infra/README.md) | Infrastructure documentation |
 
 ---
 
@@ -77,7 +77,7 @@ The Rust micro-kernel (accessed via `KernelClient` gRPC bridge):
 - **Resource quotas** - Limits on iterations, LLM calls, agent hops
 - **Pipeline orchestration** - Multi-stage agent execution
 
-### Layer 2: Memory (mission_system.memory)
+### Layer 2: Infrastructure and Orchestration (jeeves_infra)
 
 Memory and event sourcing:
 - **Session state** - Working memory, focus state
@@ -95,7 +95,6 @@ Infrastructure implementations:
 ### Layer 4: Mission System & Capabilities
 
 Orchestration + domain logic:
-- **mission_system** - Adapters, agent profiles, prompt registry
 - **Capabilities** - Prompts, tools, pipeline config
 
 ---
@@ -106,7 +105,7 @@ Orchestration + domain logic:
 
 ```python
 # CORRECT - Capabilities use adapters
-from mission_system.adapters import create_llm_provider_factory
+from jeeves_infra.wiring import create_llm_provider_factory
 
 # INCORRECT - Don't bypass the adapter layer
 from jeeves_infra.llm import LLMProvider  # DON'T DO THIS

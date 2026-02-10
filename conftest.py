@@ -139,37 +139,27 @@ if "torch" not in sys.modules:
 
 import pytest
 
-# Ensure httpx compat patch is applied before any TestClient usage.
-# This is optional - only needed for mission_system tests
 try:
-    from mission_system.common import httpx_compat  # noqa: F401
-except ImportError:
-    # httpx not installed - skip for lightweight testing
-    pass
-
-try:
-    # Constitutional compliance: Use adapters instead of direct avionics imports
-    from mission_system.adapters import get_settings
+    from jeeves_infra.settings import get_settings
     test_settings = get_settings()
     # Tests expect confirmation prompts to be opt-in per scenario.
     test_settings.enable_confirmations = False
 except ImportError:
-    # mission_system not fully installed - skip for core-only testing
+    # jeeves_infra not fully installed - skip for core-only testing
     pass
 
 @pytest.fixture(scope="session", autouse=True)
 def _disable_confirmations_session_override():
     """Ensure confirmations stay disabled unless a test explicitly enables them."""
     try:
-        # Constitutional compliance: Use adapters instead of direct avionics imports
-        from mission_system.adapters import get_settings
+        from jeeves_infra.settings import get_settings
         test_settings = get_settings()
         original = test_settings.enable_confirmations
         test_settings.enable_confirmations = False
         yield
         test_settings.enable_confirmations = original
     except (ImportError, NameError):
-        # mission_system not installed - skip for lightweight testing
+        # jeeves_infra not installed - skip for lightweight testing
         yield
 
 # Ensure project root is in Python path
@@ -178,7 +168,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 # Add jeeves-core submodule to Python path for core packages
-# (protocols, avionics, mission_system, etc.)
+# (protocols, jeeves_infra, etc.)
 jeeves_core_path = project_root / "jeeves-core"
 if jeeves_core_path.exists() and str(jeeves_core_path) not in sys.path:
     sys.path.insert(0, str(jeeves_core_path))

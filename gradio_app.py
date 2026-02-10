@@ -85,9 +85,9 @@ def get_or_create_service() -> ChatbotService:
     if _service is None:
         logger.info("initializing_chatbot_service", use_mock=False)
 
-        # Constitution R7: Use mission_system.bootstrap for unified initialization
-        from mission_system.bootstrap import create_app_context
-        from mission_system.adapters import (
+        # Constitution R7: Use jeeves_infra.bootstrap for unified initialization
+        from jeeves_infra.bootstrap import create_app_context
+        from jeeves_infra.wiring import (
             create_llm_provider_factory,
             create_tool_executor,
         )

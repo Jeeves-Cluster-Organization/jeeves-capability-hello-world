@@ -18,7 +18,7 @@ from uuid import uuid4
 from dataclasses import dataclass
 import asyncio
 
-from mission_system.contracts_core import (
+from jeeves_infra.protocols import (
     PipelineRunner,
     create_pipeline_runner,
     create_envelope,

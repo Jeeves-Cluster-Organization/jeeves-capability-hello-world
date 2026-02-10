@@ -7,7 +7,7 @@ Provides:
 - Storage in code_index table with pgvector
 - Simple content-based indexing (no AST chunking)
 
-Moved from airframe (mission_system.memory.services.code_indexer) to capability
+Moved from airframe (jeeves_infra.memory.services.code_indexer) to capability
 layer because it is a concrete database service tied to the code_index table
 schema owned by this capability.
 """

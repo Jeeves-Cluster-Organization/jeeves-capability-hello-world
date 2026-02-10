@@ -14,8 +14,8 @@ Key components:
 - tools/: Minimal general-purpose tools (web_search, get_time, list_tools)
 - orchestration/: ChatbotService wrapper over PipelineRunner
 
-Usage (RECOMMENDED - using mission_system bootstrap):
-    from mission_system.bootstrap import create_app_context
+Usage (RECOMMENDED - using jeeves_infra bootstrap):
+    from jeeves_infra.bootstrap import create_app_context
     from jeeves_capability_hello_world import register_capability, create_hello_world_from_app_context
 
     # Register capability at startup
@@ -60,7 +60,7 @@ __all__ = [
     "AGENT_LLM_CONFIGS",
     "AGENT_DEFINITIONS",
     "get_agent_config",
-    # Service factory (use mission_system.bootstrap for AppContext)
+    # Service factory (use jeeves_infra.bootstrap for AppContext)
     "create_hello_world_from_app_context",
     # Metadata
     "__version__",

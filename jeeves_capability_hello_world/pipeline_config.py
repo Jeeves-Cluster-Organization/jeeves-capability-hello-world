@@ -12,7 +12,7 @@ Use case: Learning template, ecosystem onboarding
 """
 
 from typing import Any, Dict
-from mission_system.contracts_core import (
+from jeeves_infra.protocols import (
     PipelineConfig,
     AgentConfig,
     ToolAccess,

@@ -28,7 +28,6 @@ from typing import List, Set, Tuple
 # Directories to check
 CHECK_DIRS = [
     "jeeves-airframe/jeeves_infra",
-    "jeeves-airframe/mission_system",
     "jeeves_capability_hello_world",
 ]
 

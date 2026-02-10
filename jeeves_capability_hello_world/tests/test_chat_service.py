@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from jeeves_capability_hello_world.services.chat_service import ChatService
 
 # Import shared test_db fixture
-from mission_system.tests.fixtures.database import test_db  # noqa: F401
+from tests.fixtures.database import test_db  # noqa: F401
 
 
 class TestChatService:

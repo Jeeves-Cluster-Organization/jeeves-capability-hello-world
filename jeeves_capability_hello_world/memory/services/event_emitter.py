@@ -384,7 +384,7 @@ class EventEmitter:
             return
 
         try:
-            from mission_system.memory.messages import MemoryStored
+            from jeeves_infra.memory.messages import MemoryStored
 
             # Create typed CommBus event
             commbus_event = MemoryStored(

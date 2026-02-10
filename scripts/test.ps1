@@ -25,8 +25,8 @@ function Show-Help {
     Write-Host "  tier3          - Integration with real LLM" -ForegroundColor White
     Write-Host "  tier4          - E2E tests (full stack)" -ForegroundColor White
     Write-Host "  full           - Run ALL tiers (complete flow)" -ForegroundColor White
-    Write-Host "  mission        - Mission system (lightweight)" -ForegroundColor White
-    Write-Host "  mission-full   - Mission system (with services)" -ForegroundColor White
+    Write-Host "  mission        - Infra tests (lightweight)" -ForegroundColor White
+    Write-Host "  mission-full   - Infra tests (with services)" -ForegroundColor White
     Write-Host ""
     Write-Host "Utility:" -ForegroundColor Green
     Write-Host "  light          - All lightweight tests" -ForegroundColor White
@@ -36,7 +36,7 @@ function Show-Help {
     Write-Host "Examples:" -ForegroundColor Yellow
     Write-Host "  .\test.ps1 ci              # Run CI tests (fastest)" -ForegroundColor Gray
     Write-Host "  .\test.ps1 full            # Run complete test flow (all tiers)" -ForegroundColor Gray
-    Write-Host "  .\test.ps1 mission         # Test mission system (lightweight)" -ForegroundColor Gray
+    Write-Host "  .\test.ps1 mission         # Test infra (lightweight)" -ForegroundColor Gray
     Write-Host ""
 }
 
@@ -67,7 +67,7 @@ function Test-Contract {
     Write-Host "   - Layer boundary enforcement" -ForegroundColor Gray
     Write-Host "   - Evidence chain integrity (P1)" -ForegroundColor Gray
 
-    python -m pytest jeeves-airframe/mission_system/tests/contract -v
+    python -m pytest jeeves-airframe/jeeves_infra/tests/contract -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
@@ -81,38 +81,38 @@ function Test-Contract {
 
 function Test-Mission {
     Write-Host ""
-    Write-Host "🎯 Testing mission system (contract + unit tests)" -ForegroundColor Cyan
+    Write-Host "🎯 Testing infra (contract + unit tests)" -ForegroundColor Cyan
 
     python -m pytest `
-        jeeves-airframe/mission_system/tests/contract `
-        jeeves-airframe/mission_system/tests/unit `
+        jeeves-airframe/jeeves_infra/tests/contract `
+        jeeves-airframe/jeeves_infra/tests/unit `
         -m "not requires_llamaserver and not requires_database" `
         -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ Mission system tests complete (lightweight)" -ForegroundColor Green
+        Write-Host "✅ Infra tests complete (lightweight)" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ Mission system tests failed" -ForegroundColor Red
+        Write-Host "❌ Infra tests failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
 function Test-MissionFull {
     Write-Host ""
-    Write-Host "🎯 Testing mission system (full - requires Docker services)" -ForegroundColor Cyan
+    Write-Host "🎯 Testing infra (full - requires Docker services)" -ForegroundColor Cyan
     Write-Host "Prerequisites: docker compose up -d postgres llama-server" -ForegroundColor Yellow
     Write-Host ""
 
-    python -m pytest jeeves-airframe/mission_system/tests -m "not e2e and not heavy" -v
+    python -m pytest jeeves-airframe/jeeves_infra/tests -m "not e2e and not heavy" -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ Mission system tests complete (full)" -ForegroundColor Green
+        Write-Host "✅ Infra tests complete (full)" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ Mission system tests failed" -ForegroundColor Red
+        Write-Host "❌ Infra tests failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
@@ -121,14 +121,12 @@ function Test-Tier2 {
     Write-Host ""
     Write-Host "🐳 Running Tier 2: Integration tests (requires Docker)" -ForegroundColor Cyan
     Write-Host "   - Infra: Unit tests" -ForegroundColor Gray
-    Write-Host "   - Mission System: Unit tests without LLM" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Prerequisites: docker compose up -d postgres" -ForegroundColor Yellow
     Write-Host ""
 
     python -m pytest `
         jeeves-airframe/jeeves_infra/tests/unit `
-        jeeves-airframe/mission_system/tests/unit `
         -m "not requires_llamaserver and not requires_ml" `
         -v
 
@@ -145,14 +143,14 @@ function Test-Tier2 {
 function Test-Tier3 {
     Write-Host ""
     Write-Host "🧠 Running Tier 3: Integration tests with real LLM" -ForegroundColor Cyan
-    Write-Host "   - Mission System: Integration tests" -ForegroundColor Gray
-    Write-Host "   - Mission System: API endpoint tests" -ForegroundColor Gray
+    Write-Host "   - Infra: Integration tests" -ForegroundColor Gray
+    Write-Host "   - Infra: API endpoint tests" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Prerequisites: docker compose up -d postgres llama-server" -ForegroundColor Yellow
     Write-Host ""
 
     python -m pytest `
-        jeeves-airframe/mission_system/tests/integration `
+        jeeves-airframe/jeeves_infra/tests/integration `
         -m "not e2e and not heavy" `
         -v
 
@@ -169,13 +167,13 @@ function Test-Tier3 {
 function Test-Tier4 {
     Write-Host ""
     Write-Host "🎯 Running Tier 4: End-to-end tests (full stack)" -ForegroundColor Cyan
-    Write-Host "   - Mission System: E2E tests with real LLM" -ForegroundColor Gray
+    Write-Host "   - Infra: E2E tests with real LLM" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Prerequisites: docker compose up -d (all services)" -ForegroundColor Yellow
     Write-Host ""
 
     python -m pytest `
-        jeeves-airframe/mission_system/tests `
+        jeeves-airframe/jeeves_infra/tests `
         -m e2e `
         -v
 

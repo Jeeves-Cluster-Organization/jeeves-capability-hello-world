@@ -34,9 +34,9 @@ Successfully implemented comprehensive unit tests for **5 critical modules** in 
 
 All tests located in `jeeves-core/`:
 
-1. `mission_system/tests/unit/orchestrator/test_flow_service.py`
-2. `mission_system/tests/unit/orchestrator/test_governance_service.py`
-3. `jeeves-airframe/mission_system/memory/repositories/test_vector_repository.py`
+1. `jeeves_infra/orchestrator/tests/unit/test_flow_service.py`
+2. `jeeves_infra/orchestrator/tests/unit/test_governance_service.py`
+3. `jeeves-airframe/jeeves_infra/memory/repositories/test_vector_repository.py`
 
 ---
 
@@ -46,15 +46,15 @@ All tests located in `jeeves-core/`:
 cd jeeves-core
 
 # Run Phase 2 tests (42 tests)
-pytest mission_system/tests/unit/orchestrator/ -v
+pytest jeeves_infra/orchestrator/tests/unit/ -v
 
 # Run Phase 3 tests (28 tests)
-pytest jeeves-airframe/mission_system/memory/repositories/test_vector_repository.py \
+pytest jeeves-airframe/jeeves_infra/memory/repositories/test_vector_repository.py \
   -v --no-cov -p no:hypothesispytest
 
 # Run all new tests (70 tests)
-pytest mission_system/tests/unit/orchestrator/ \
-       jeeves-airframe/mission_system/memory/repositories/test_vector_repository.py \
+pytest jeeves_infra/orchestrator/tests/unit/ \
+       jeeves-airframe/jeeves_infra/memory/repositories/test_vector_repository.py \
        -v --no-cov -p no:hypothesispytest
 ```
 

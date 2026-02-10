@@ -75,7 +75,7 @@ class TestAgentPipelineFlow:
             ("How do I run this?", "getting_started"),
             ("How do I add a tool?", "getting_started"),
             ("What does jeeves-core do?", "component"),
-            ("What is mission_system?", "component"),
+            ("What is jeeves-infra?", "component"),
             ("Hello!", "general"),
         ]
 

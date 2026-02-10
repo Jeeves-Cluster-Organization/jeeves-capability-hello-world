@@ -13,7 +13,7 @@ Architecture:
 
 See Also:
     - capability/wiring.py: Full capability registration with jeeves_infra protocols
-    - mission_system.capability_wiring: Standard capability registration entry point
+    - jeeves_infra.capability_wiring: Standard capability registration entry point
 """
 
 from typing import Any, Callable, Optional, TYPE_CHECKING
@@ -64,11 +64,11 @@ def create_hello_world_service(
         Configured ChatbotService instance
 
     Example:
-        from mission_system.adapters import (
+        from jeeves_infra.wiring import (
             create_llm_provider_factory,
             create_tool_executor,
-            get_settings,
         )
+        from jeeves_infra.settings import get_settings
         from jeeves_infra.kernel_client import get_kernel_client
         from jeeves_capability_hello_world.orchestration.wiring import (
             create_hello_world_service,
@@ -180,7 +180,7 @@ def create_wiring(
     and returns them as a dict ready for service creation.
 
     Args:
-        settings: Settings instance (from mission_system.adapters.get_settings)
+        settings: Settings instance (from jeeves_infra.settings.get_settings)
         logger: Optional logger instance
 
     Returns:
@@ -191,7 +191,7 @@ def create_wiring(
         - logger: Logger instance
 
     Example:
-        from mission_system.adapters import get_settings
+        from jeeves_infra.settings import get_settings
         from jeeves_capability_hello_world.orchestration.wiring import (
             create_wiring,
             create_hello_world_service,
@@ -204,8 +204,8 @@ def create_wiring(
     if logger is None:
         logger = get_logger()
 
-    # Import adapters (Constitution R7: use adapters, not direct avionics)
-    from mission_system.adapters import (
+    # Import wiring (Constitution R7: use infrastructure factories)
+    from jeeves_infra.wiring import (
         create_llm_provider_factory,
         create_tool_executor,
     )

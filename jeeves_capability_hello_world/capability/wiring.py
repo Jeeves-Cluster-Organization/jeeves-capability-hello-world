@@ -3,8 +3,8 @@
 This module registers hello-world as a capability with jeeves-infra.
 All capability resources (tools, agents, services) are registered here.
 
-Uses mission_system.bootstrap for unified initialization (ADR-001).
-Uses mission_system.adapters for infrastructure access.
+Uses jeeves_infra.bootstrap for unified initialization (ADR-001).
+Uses jeeves_infra.wiring for infrastructure access.
 
 Constitutional Reference:
 - CONTRACT.md: Capabilities MUST implement a registration function
@@ -16,8 +16,8 @@ Usage:
     # At application startup (before using runtime services)
     register_capability()
 
-    # Create app context via mission_system bootstrap (RECOMMENDED)
-    from mission_system.bootstrap import create_app_context
+    # Create app context via jeeves_infra bootstrap (RECOMMENDED)
+    from jeeves_infra.bootstrap import create_app_context
     app_context = create_app_context()
 """
 
@@ -186,7 +186,7 @@ def _create_orchestrator_service(
 
     Note:
         For session memory and event streaming, use framework components:
-        - mission_system.orchestrator.EventOrchestrator for events
+        - jeeves_infra.orchestrator.EventOrchestrator for events
         - jeeves_infra.memory.services.SessionStateService for sessions
     """
     from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
@@ -408,30 +408,30 @@ def get_agent_config(agent_name: str) -> AgentLLMConfig:
 
 
 # =============================================================================
-# APP CONTEXT HELPERS (using mission_system.bootstrap)
+# APP CONTEXT HELPERS (using jeeves_infra.bootstrap)
 # =============================================================================
 
 
 def create_hello_world_from_app_context(
     app_context: "AppContext",
 ) -> Any:
-    """Create ChatbotService from mission_system AppContext.
+    """Create ChatbotService from jeeves_infra AppContext.
 
     This is the RECOMMENDED way to create the service.
-    Uses mission_system.bootstrap for unified configuration.
+    Uses jeeves_infra.bootstrap for unified configuration.
 
     Args:
-        app_context: AppContext from mission_system.bootstrap.create_app_context()
+        app_context: AppContext from jeeves_infra.bootstrap.create_app_context()
 
     Returns:
         Configured ChatbotService
 
     Note:
         For event handling, use framework's EventOrchestrator at API layer:
-            from mission_system.orchestrator import EventOrchestrator, create_event_context
+            from jeeves_infra.orchestrator import EventOrchestrator, create_event_context
 
     Example:
-        from mission_system.bootstrap import create_app_context
+        from jeeves_infra.bootstrap import create_app_context
         from jeeves_capability_hello_world.capability.wiring import (
             register_capability,
             create_hello_world_from_app_context,
@@ -447,10 +447,10 @@ def create_hello_world_from_app_context(
         service = create_hello_world_from_app_context(app_context)
 
         # Use with framework's event orchestrator at API layer
-        from mission_system.orchestrator import create_event_context
+        from jeeves_infra.orchestrator import create_event_context
         event_context = create_event_context(request_context)
     """
-    from mission_system.adapters import (
+    from jeeves_infra.wiring import (
         create_llm_provider_factory,
         create_tool_executor,
     )
@@ -462,7 +462,7 @@ def create_hello_world_from_app_context(
     tools_config = registry.get_tools(CAPABILITY_ID)
     tool_catalog = tools_config.get_catalog() if tools_config else _create_tool_catalog()
 
-    # Create adapters using mission_system factories
+    # Create adapters using jeeves_infra factories
     llm_factory = create_llm_provider_factory(app_context.settings)
 
     # Create tool executor adapter

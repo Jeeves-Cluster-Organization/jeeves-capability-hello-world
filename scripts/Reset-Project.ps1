@@ -215,7 +215,7 @@ Write-Host "[NOEMOJI] Step 7: Running verification tests..." -ForegroundColor Ye
 # Run fast tier 1 tests to verify setup
 python -m pytest -c pytest-light.ini `
     jeeves_capability_hello_world/tests `
-    jeeves-airframe/mission_system/tests/contract `
+    jeeves-airframe/jeeves_infra/tests/contract `
     -v
 
 Write-Host ""

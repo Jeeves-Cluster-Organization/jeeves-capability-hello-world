@@ -17,13 +17,13 @@ This document defines the architectural rules and ownership boundaries for the `
 
 ```
 User Message
-    ↓
-UNDERSTAND (LLM)     ← Intent classification
-    ↓
-THINK (Tools)        ← Tool execution (optional)
-    ↓
-RESPOND (LLM)        ← Response synthesis
-    ↓
+    |
+UNDERSTAND (LLM)     <- Intent classification
+    |
+THINK (Tools)        <- Tool execution (optional)
+    |
+RESPOND (LLM)        <- Response synthesis
+    |
 Response to User
 ```
 
@@ -35,21 +35,23 @@ Response to User
 | Think | No | Execution | Execute tools based on intent |
 | Respond | Yes | Synthesis | Generate final response |
 
-> **Note:** This linear pipeline is for simplicity. See [PIPELINE_PATTERNS.md](../docs/PIPELINE_PATTERNS.md) for branching and DAG examples.
-
 ## Import Boundaries (R7)
 
 ### Allowed Imports
 
 Capability code MAY import from:
-- `protocols` - Type definitions and protocols
-- `mission_system.adapters` - Infrastructure access
-- `mission_system.contracts_core` - Pipeline configuration types
+- `jeeves_infra.protocols` - Type definitions, protocols, pipeline types
+- `jeeves_infra.wiring` - Factory functions (create_llm_provider_factory, create_tool_executor)
+- `jeeves_infra.settings` - Settings management
+- `jeeves_infra.bootstrap` - AppContext creation
+- `jeeves_infra.kernel_client` - Rust kernel communication
+- `jeeves_infra.orchestrator` - Event orchestration
 
 ### Forbidden Imports
 
 Capability code MUST NOT import from:
-- `jeeves_infra.*` directly - Use mission_system.adapters instead
+- `jeeves_infra.llm.*` directly - Use `jeeves_infra.wiring` factories instead
+- `jeeves_infra.gateway.*` - Internal server infrastructure
 - `coreengine.*` - Rust kernel accessed via KernelClient only
 
 ### Correct Pattern
@@ -59,20 +61,13 @@ Capability code MUST NOT import from:
 from jeeves_capability_hello_world import register_capability
 register_capability()
 
-# Then use adapters for infrastructure
-from mission_system.adapters import (
+# Then use jeeves_infra for infrastructure
+from jeeves_infra.wiring import (
     create_llm_provider_factory,
     create_tool_executor,
-    get_settings,
 )
-```
-
-### Incorrect Pattern (FORBIDDEN)
-
-```python
-# WRONG: Direct jeeves_infra import (bypass adapters)
-from jeeves_infra.llm.factory import LLMFactory
-from jeeves_infra.wiring import ToolExecutor
+from jeeves_infra.settings import get_settings
+from jeeves_infra.bootstrap import create_app_context
 ```
 
 ## Tool Suite
@@ -115,36 +110,31 @@ from jeeves_infra.wiring import ToolExecutor
    - Wiring and dependency injection
    - Domain types
 
-### Infrastructure Owns (via adapters)
+5. **Database** (`database/`)
+   - Concrete database backends (SQLite, Postgres)
+   - Schema definitions
+   - Domain-specific services (code indexer, etc.)
+
+### Infrastructure Owns (jeeves_infra)
 
 - LLM provider factory
-- Tool executor
+- Tool executor framework
 - Settings management
-- Logging
+- Logging infrastructure
+- Pipeline runner
+- Event orchestration
+- Bootstrap / AppContext
 
 ## Registration Contract
 
 ### Startup Sequence
 
 1. Call `register_capability()` at module/startup level
-2. Import infrastructure via `mission_system.adapters`
+2. Import infrastructure via `jeeves_infra.wiring`
 3. Initialize tools via `initialize_all_tools()`
 4. Create service via `create_hello_world_service()`
 
-### What register_capability() Returns
-
-```python
-{
-    "capability_id": "hello_world",
-    "capability_version": "0.1.0",
-    "service_factory": Callable,  # Creates ChatbotService
-    "tools_initializer": Callable,  # Initializes tools
-    "prompts": Dict[str, Any],  # Prompt metadata
-    "agents": List[Dict],  # Agent definitions
-}
-```
-
-## Principles (from P1)
+## Principles
 
 ### P1: NLP-First
 
@@ -152,7 +142,7 @@ from jeeves_infra.wiring import ToolExecutor
 - LLM generates natural language responses
 - Tool results are synthesized into human-readable text
 
-### P2: Accuracy First (Simplified)
+### P2: Accuracy First
 
 - No hallucination of tool results
 - Citations included when web search used

@@ -26,12 +26,11 @@ Jeeves is a multi-layered AI agent orchestration system designed for building
 production-grade AI applications. It follows a micro-kernel architecture where
 a Rust core handles orchestration while Python provides the AI/ML capabilities.
 
-### The Four Layers
+### The Three Layers
 
 1. **jeeves-core** (Rust) - The micro-kernel that orchestrates everything
-2. **jeeves-infra** (Python) - Infrastructure: LLM providers, database protocols, adapters
-3. **mission_system** (Python) - Orchestration framework: agents, prompts, adapters
-4. **Capabilities** (Python) - Your domain-specific code: prompts, tools, services
+2. **jeeves-infra** (Python) - Infrastructure & orchestration framework: LLM providers, database protocols, adapters, pipeline runner, config
+3. **Capabilities** (Python) - Your domain-specific code: prompts, tools, services
 
 ### Data Flow
 
@@ -75,31 +74,25 @@ Shared infrastructure used by all Python components.
 - Protocols - type definitions shared across layers
 - Gateway - HTTP/WebSocket/gRPC translation layer
 - kernel_client - Python interface to jeeves-core
+- Agent profiles - declarative agent configuration
+- Adapters - Constitution R7 compliant wrappers (create_llm_provider_factory)
+- PipelineRunner - executes agent pipelines
+- Event handling - streaming events to clients
+- Orchestrator - event context, governance, flow, vertical service
+- Memory handlers - CommBus handler registration, message types
+- Bootstrap - AppContext creation, composition root
 
 **Key Modules:**
 - `jeeves_infra.llm` - LLM provider implementations
-- `jeeves_infra.protocols` - Envelope, AgentConfig, PipelineEvent
+- `jeeves_infra.protocols` - Envelope, AgentConfig, PipelineConfig, PipelineEvent
 - `jeeves_infra.gateway` - API translation layer
 - `jeeves_infra.kernel_client` - gRPC client to jeeves-core
+- `jeeves_infra.wiring` - Factory functions (create_llm_provider_factory, create_tool_executor)
+- `jeeves_infra.orchestrator` - Event orchestration and governance
+- `jeeves_infra.config` - Agent profiles, registry, constants
+- `jeeves_infra.bootstrap` - AppContext composition root
 
-### Layer 3: mission_system (Python Orchestration Framework)
-
-The framework that makes building agents easy.
-
-**Responsibilities:**
-- Agent profiles - declarative agent configuration
-- Adapters - Constitution R7 compliant wrappers (create_llm_provider_factory)
-- Prompt registry - centralized prompt management
-- PipelineRunner - executes agent pipelines
-- Event handling - streaming events to clients
-
-**Key Modules:**
-- `mission_system.adapters` - Constitution R7 adapter factories
-- `jeeves_capability_hello_world.prompts.registry` - @register_prompt decorator
-- `mission_system.runner` - PipelineRunner class
-- `mission_system.contracts_core` - PipelineConfig, AgentConfig
-
-### Layer 4: Capabilities (Python User Space)
+### Layer 3: Capabilities (Python User Space)
 
 Your domain-specific implementations.
 
@@ -165,7 +158,7 @@ A strict rule: Capabilities MUST NOT import infrastructure directly.
 
 **CORRECT:**
 ```python
-from mission_system.adapters import create_llm_provider_factory
+from jeeves_infra.wiring import create_llm_provider_factory
 ```
 
 **WRONG:**
@@ -259,7 +252,7 @@ Respond helpfully.
 
 ```python
 # In pipeline_config.py
-from mission_system.contracts_core import AgentConfig
+from jeeves_infra.protocols import AgentConfig
 
 AgentConfig(
     name="my_agent",
@@ -290,11 +283,11 @@ async def my_post_process(envelope, output, agent=None):
     return envelope
 ```
 
-### Using Adapters (Constitution R7)
+### Using Factories (Constitution R7)
 
 ```python
 # CORRECT way to get LLM provider
-from mission_system.adapters import create_llm_provider_factory
+from jeeves_infra.wiring import create_llm_provider_factory
 
 llm_factory = create_llm_provider_factory(settings)
 llm = llm_factory(role="planner")

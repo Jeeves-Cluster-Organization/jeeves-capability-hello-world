@@ -38,7 +38,7 @@ Classify the user's question into one of these categories:
 | **architecture** | System design, layers, data flow | "layers", "architecture", "how does X connect", "data flow" |
 | **concept** | Core concepts: Envelope, AgentConfig, Constitution R7, Pipeline | "what is", "explain", "Envelope", "AgentConfig", "R7" |
 | **getting_started** | Setup, running, adding tools, creating agents | "how do I", "add a tool", "create", "run", "start" |
-| **component** | Specific components: jeeves-core, jeeves-infra, mission_system | "jeeves-core", "jeeves-infra", "mission_system", "kernel" |
+| **component** | Specific components: jeeves-core, jeeves-infra | "jeeves-core", "jeeves-infra", "kernel", "orchestrator" |
 | **general** | Greetings, thanks, off-topic, unclear | "hello", "thanks", "weather", non-technical |
 
 ## Output Format (JSON only)

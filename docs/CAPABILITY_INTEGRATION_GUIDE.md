@@ -9,9 +9,9 @@ This document describes how capability layer repositories (e.g., `jeeves-capabil
 Capability layers follow this import boundary pattern:
 
 ```
-capability → mission_system → jeeves_infra → jeeves_infra.protocols
-                                   ↓
-                            jeeves_infra.memory (L2)
+capability → jeeves_infra → jeeves_infra.protocols
+                  ↓
+           jeeves_infra.memory (L2)
 ```
 
 > **Note:** `avionics` was the legacy name for `jeeves_infra`. The kernel is now Go code accessed via `KernelClient`.
@@ -77,12 +77,12 @@ from protocols import (
 
 ---
 
-## 2. mission_system Exports
+## 2. jeeves_infra Exports
 
-### contracts Module
+### protocols Module
 
 ```python
-from mission_system.contracts import (
+from jeeves_infra.protocols import (
     # Re-exported from protocols
     LoggerProtocol, ContextBounds, WorkingMemory, RiskLevel,
     PersistenceProtocol, ToolCategory,
@@ -98,10 +98,10 @@ from mission_system.contracts import (
 )
 ```
 
-### contracts_core Module
+### protocols Module (Core Types)
 
 ```python
-from mission_system.contracts_core import (
+from jeeves_infra.protocols import (
     # Re-exported from protocols
     AgentConfig, PipelineConfig, GenericEnvelope, UnifiedRuntime,
     ContextBounds, WorkingMemory, RiskLevel, ToolCategory,
@@ -109,18 +109,15 @@ from mission_system.contracts_core import (
 )
 ```
 
-### adapters Module
+### wiring Module
 
 ```python
-from mission_system.adapters import (
+from jeeves_infra.wiring import (
     # Logging facade
-    get_logger,
+    get_current_logger,
 
     # Settings facade
     get_settings, get_feature_flags,
-
-    # Adapter class
-    MissionSystemAdapters,
 
     # Factory functions
     create_database_client,
@@ -135,11 +132,11 @@ from mission_system.adapters import (
 ### orchestrator Module
 
 ```python
-from mission_system.orchestrator.state import (
+from jeeves_infra.orchestrator.state import (
     JeevesState, create_initial_state,
 )
 
-from mission_system.orchestrator.agent_events import (
+from jeeves_infra.orchestrator.agent_events import (
     AgentEvent, AgentEventType, AgentEventEmitter,
 )
 ```
@@ -155,16 +152,18 @@ from jeeves_capability_hello_world.prompts.registry import (
 ### config Module
 
 ```python
-from mission_system.config.agent_profiles import (
+from jeeves_infra.config.agent_profiles import (
     AgentLLMConfig, ThresholdProfile, AgentProfile,
     get_agent_profile, get_llm_profile, get_thresholds, get_latency_budget,
 )
 
-from mission_system.config.registry import (
+from jeeves_infra.config.registry import (
     ConfigRegistry, ConfigKeys,
     get_config_registry, set_config_registry, reset_config_registry,
 )
 ```
+
+---
 
 ---
 
@@ -361,7 +360,7 @@ def register_capability():
     )
 
     # 3. Register tools (via tool catalog)
-    from mission_system.contracts import tool_catalog, ToolId
+    from jeeves_infra.protocols import tool_catalog, ToolId
     from protocols import ToolCategory, RiskLevel
 
     @tool_catalog.register(
@@ -385,18 +384,16 @@ Per the capability layer CONSTITUTION:
 | Requirement | Status | Notes |
 |-------------|--------|-------|
 | Capability can import from `protocols` | ✅ | All types available |
-| Capability can import from `mission_system` | ✅ | All adapters available |
-| Capability can import from `jeeves_infra` | ⚠️ | Should prefer adapters |
+| Capability can import from `jeeves_infra` | ✅ | Infrastructure and orchestration |
 | Capability MUST NOT import from `coreengine/` | ✅ | Rust kernel isolation |
-| Import boundary: capability → mission_system → jeeves_infra | ✅ | Enforced via adapters |
+| Import boundary: capability → jeeves_infra → protocols | ✅ | Clean layer separation |
 
 ### Layer Rules
 
 1. **L0 (jeeves_infra.protocols, jeeves_infra.utils)**: No dependencies on other Jeeves packages
 2. **L1 (Rust kernel)**: Accessed via KernelClient (gRPC), not directly importable
-3. **L2 (mission_system.memory)**: Can import from L0
-4. **L3 (jeeves_infra)**: Can import from L0 and L2
-5. **L4 (mission_system, capabilities)**: Can import from L0, L2, L3
+3. **L2 (jeeves_infra)**: Infrastructure + orchestration, can import from L0 and L1
+4. **L3 (Capabilities)**: Can import from L0 and L2
 
 ---
 
@@ -419,12 +416,12 @@ def test_protocols_importable():
     assert AgentConfig is not None
     assert get_capability_resource_registry() is not None
 
-def test_mission_system_importable():
-    """Verify mission system contracts are importable."""
-    from mission_system.contracts import (
+def test_jeeves_infra_contracts_importable():
+    """Verify jeeves_infra contracts are importable."""
+    from jeeves_infra.protocols import (
         LoggerProtocol, ContextBounds, tool_catalog
     )
-    from mission_system.adapters import get_logger
+    from jeeves_infra.logging import get_current_logger
     assert tool_catalog is not None
 
 def test_jeeves_infra_importable():

@@ -1,6 +1,6 @@
 # Envelope State Exchange JSON Schema
 
-**Purpose**: Define the boundary contract for envelope state exchange between Python `mission_system` and Go `coreengine` (or vice versa) via stdin/stdout or HTTP.
+**Purpose**: Define the boundary contract for envelope state exchange between Python `jeeves_infra` and Go `coreengine` (or vice versa) via stdin/stdout or HTTP.
 
 ---
 

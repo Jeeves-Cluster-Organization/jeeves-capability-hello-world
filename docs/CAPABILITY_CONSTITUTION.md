@@ -41,70 +41,55 @@ This constitution defines the contract between capabilities and the platform lay
 |  |  agents/ prompts/ tools/ config/ orchestration/     |    |
 |  +------------------------+----------------------------+    |
 |                           |                                  |
-|         +-----------------+----------------+                 |
-|         |                                  |                 |
-|         v                                  v                 |
-|  +-------------+    +-------------------------------+        |
-|  | LLM Factory |    |       Mission System API      |        |
-|  | (adapters)  |    |  (adapters, contracts, api)   |        |
-|  +------+------+    +---------------+---------------+        |
+|                           v                                  |
+|  +------------------------------------------------------+   |
+|  |              jeeves_infra (Infrastructure +          |   |
+|  |               Orchestration Framework)               |   |
+|  |  - LLM providers (LiteLLM, OpenAI, Anthropic)       |   |
+|  |  - Database clients, tool executor                   |   |
+|  |  - Orchestration: agent profiles, events, state     |   |
+|  +------------------------------------------------------+   |
 +---------+---------------------------+------------------------+
-          |                           |
-          v                           v
-   +-------------+    +-------------------------------+
-   |   LiteLLM   |    |       Mission System          |
-   | (100+ APIs) |    |      (orchestration)          |
-   +-------------+    +---------------+---------------+
-                                      |
-                                      v
-                           +-------------------+
-                           |   jeeves_infra    |
-                           | (infra/tools/llm) |
-                           +---------+---------+
-                                     |
-                                     v
-                           +-------------------+
-                           |    jeeves-core    |
-                           |   (contracts)     |
-                           +-------------------+
+          |
+          v
+   +-------------------+
+   |   jeeves-core     |
+   |  (Rust Kernel)    |
+   +-------------------+
 ```
 
 ### Import Rules
 
 ```python
 # Capability CAN import from:
-from mission_system.adapters import (
+from jeeves_infra.wiring import (
     create_llm_provider_factory,
     create_tool_executor,
-    get_settings,
     create_database_client,
 )
-from mission_system.contracts import PersistenceProtocol
-from mission_system.contracts_core import ContextBounds
+from jeeves_infra.settings import get_settings
+from jeeves_infra.protocols import PersistenceProtocol, ContextBounds
 
 # Capability MUST NOT import from:
-# - jeeves_infra directly (go through mission_system.adapters)
-# - jeeves_core (go through mission_system.contracts)
+# - jeeves-core Rust code directly (use Python bindings via jeeves_infra)
 
 # Capability MUST NOT be imported by:
-# - mission_system (no capability imports)
+# - jeeves_infra (no capability imports)
 # - jeeves-core (no capability imports)
 # - other capabilities (no cross-capability imports)
 ```
 
-### Why No Direct jeeves_infra Imports?
+### Infrastructure and Orchestration
 
-Mission System provides **adapters** that wrap jeeves_infra functionality:
-- `mission_system.adapters.create_database_client` -> wraps jeeves_infra DB
-- `mission_system.adapters.create_tool_executor` -> wraps jeeves_infra tools
-- `mission_system.adapters.create_llm_provider_factory` -> wraps jeeves_infra LLM
+jeeves_infra provides both infrastructure implementations and orchestration framework:
+- **Infrastructure**: LLM providers, database clients, tool execution
+- **Orchestration**: Agent profiles, event handling, state management
+- **Protocols**: Type definitions and contracts
 
 This ensures:
-1. Mission System can swap implementations without breaking capabilities
-2. Capabilities don't couple to jeeves_infra internals
-3. Testing is easier (mock at mission_system boundary)
-
-> **Note:** `avionics` was the legacy name for `jeeves_infra`.
+1. Clean separation between infrastructure and user-space capabilities
+2. Capabilities access infrastructure through well-defined interfaces
+3. Testing is easier (mock at jeeves_infra boundary)
 
 ## 3) LLM Integration Contract
 
@@ -115,8 +100,9 @@ This ensures:
 from jeeves_capability_hello_world import register_capability
 register_capability()  # Must be called BEFORE infrastructure imports
 
-# 2. Get LLM provider factory via adapters
-from mission_system.adapters import create_llm_provider_factory, get_settings
+# 2. Get LLM provider factory via wiring
+from jeeves_infra.wiring import create_llm_provider_factory
+from jeeves_infra.settings import get_settings
 
 settings = get_settings()
 llm_factory = create_llm_provider_factory(settings)
@@ -148,11 +134,11 @@ async for chunk in provider.generate_stream(model, prompt, options):
 
 ## 4) LLM Provider Factory Pattern
 
-Capabilities receive an LLM factory from mission_system adapters:
+Capabilities receive an LLM factory from jeeves_infra wiring:
 
 ```python
 # Factory pattern (infrastructure-provided, capability-consumed)
-from mission_system.adapters import create_llm_provider_factory
+from jeeves_infra.wiring import create_llm_provider_factory
 
 def create_service(settings: Settings) -> ChatbotService:
     """Create service with injected LLM factory."""
@@ -168,7 +154,7 @@ def create_service(settings: Settings) -> ChatbotService:
 
 ```python
 class LLMProvider(Protocol):
-    """Interface that avionics implements, capabilities consume."""
+    """Interface that jeeves_infra implements, capabilities consume."""
 
     async def generate(
         self,
@@ -310,7 +296,7 @@ Capabilities depend on jeeves-core (which includes LiteLLM providers):
 
 A capability change is acceptable only if:
 
-- [ ] No jeeves_infra internals accessed (only mission_system.adapters)
+- [ ] Infrastructure accessed through jeeves_infra public APIs
 - [ ] LLM configuration policy is capability-owned
 - [ ] Error handling is capability-owned
 - [ ] No provider-specific payload formatting

@@ -154,7 +154,7 @@ The kernel evaluates routing rules; capabilities define them declaratively.
    - `CapabilityResourceRegistry`, `CapabilityModeConfig`
    - Protocol definitions
 
-2. **From mission_system** (required)
+2. **From jeeves_infra** (infrastructure and orchestration)
    - `contracts` - Tool catalog, logging, persistence
    - `adapters` - Logger, database
 

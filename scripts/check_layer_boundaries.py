@@ -4,12 +4,15 @@
 This script enforces the Jeeves layer architecture invariants:
 - L0 (jeeves_infra.protocols): Zero dependencies, type definitions
 - L1 (Rust kernel): Process lifecycle, resources - accessed via KernelClient (gRPC)
-- L2 (mission_system.memory): Event sourcing, semantic memory - imports L0 only
+- L2 (jeeves_infra.memory): Event sourcing, semantic memory - imports L0 only
 - L3 (jeeves_infra): Infrastructure - LLM, DB, Gateway - imports L0, L2
-- L4 (mission_system): API layer - orchestration, services - imports L0, L2, L3
+- L4 (jeeves_infra.api): API layer - orchestration, services - imports L0, L2, L3
 
 Note: L1 is implemented in Rust (jeeves-core/src/). Python code
 accesses it via jeeves_infra.kernel_client (gRPC bridge), which is part of L3.
+
+NOTE: This script needs a rewrite - mission_system has been merged into jeeves_infra.
+The layer boundaries have changed. Update LAYERS, LAYER_MAPPING, and LAYER_RULES accordingly.
 
 Run as part of CI to prevent layer violations.
 
@@ -48,13 +51,13 @@ LAYERS: Dict[str, int] = {
     "jeeves_infra.utils": 0,
 
     # L2: Memory module (L1 is Rust kernel, not Python)
-    "mission_system.memory": 2,
+    "jeeves_infra.memory": 2,
 
     # L3: Infrastructure layer
     "jeeves_infra": 3,
 
-    # L4: API/Mission layer
-    "mission_system": 4,
+    # L4: API layer
+    "jeeves_infra.api": 4,
 }
 
 # Mapping from import prefixes to their layer
@@ -62,9 +65,9 @@ LAYERS: Dict[str, int] = {
 LAYER_MAPPING: Dict[str, int] = {
     "jeeves_infra.protocols": 0,
     "jeeves_infra.utils": 0,
-    "mission_system.memory": 2,
+    "jeeves_infra.memory": 2,
     "jeeves_infra": 3,  # Catch-all for other jeeves_infra imports
-    "mission_system": 4,
+    "jeeves_infra.api": 4,
 }
 
 # Allowed imports per layer
@@ -74,7 +77,7 @@ LAYER_RULES: Dict[str, List[str]] = {
     "jeeves_infra.utils": ["jeeves_infra.protocols"],
 
     # L2: Can import from L0
-    "mission_system.memory": [
+    "jeeves_infra.memory": [
         "jeeves_infra.protocols",
         "jeeves_infra.utils",
     ],
@@ -83,14 +86,14 @@ LAYER_RULES: Dict[str, List[str]] = {
     "jeeves_infra": [
         "jeeves_infra.protocols",
         "jeeves_infra.utils",
-        "mission_system.memory",
+        "jeeves_infra.memory",
     ],
 
     # L4: Can import from L0, L2, L3
-    "mission_system": [
+    "jeeves_infra.api": [
         "jeeves_infra.protocols",
         "jeeves_infra.utils",
-        "mission_system.memory",
+        "jeeves_infra.memory",
         "jeeves_infra",
     ],
 }
@@ -164,11 +167,11 @@ def get_layer_for_file(filepath: Path) -> Optional[str]:
                 return "jeeves_infra.protocols"
             elif parts[1] == "utils":
                 return "jeeves_infra.utils"
+            elif parts[1] == "memory":
+                return "jeeves_infra.memory"
+            elif parts[1] == "api":
+                return "jeeves_infra.api"
         return "jeeves_infra"
-    elif parts[0] == "mission_system":
-        if len(parts) > 1 and parts[1] == "memory":
-            return "mission_system.memory"
-        return "mission_system"
 
     return None
 
@@ -205,9 +208,8 @@ class LayerBoundaryChecker:
 
     def _check_import(self, module_name: str, lineno: int) -> None:
         """Check if an import violates layer boundaries."""
-        # Only check jeeves_infra and mission_system imports
-        if not (module_name.startswith("jeeves_infra") or
-                module_name.startswith("mission_system")):
+        # Only check jeeves_infra imports
+        if not module_name.startswith("jeeves_infra"):
             return
 
         # Determine the layer of the imported module
@@ -283,15 +285,6 @@ def get_files_to_check() -> List[tuple]:
                 if layer:
                     files.append((filepath, layer))
 
-    # Check mission_system
-    mission_system_dir = JEEVES_AIRFRAME_DIR / "mission_system"
-    if mission_system_dir.exists():
-        for filepath in mission_system_dir.rglob("*.py"):
-            if should_check_file(filepath, EXCLUDE_PATTERNS):
-                layer = get_layer_for_file(filepath)
-                if layer:
-                    files.append((filepath, layer))
-
     return sorted(files, key=lambda x: (x[1], x[0]))
 
 
@@ -322,13 +315,13 @@ def print_layer_diagram() -> None:
 Jeeves Layer Architecture:
 
 ┌─────────────────────────────────────────────────────────────────┐
-│ L4: mission_system (jeeves-airframe/mission_system/)            │
+│ L4: jeeves_infra.api (jeeves-airframe/jeeves_infra/api/)        │
 │     API layer - orchestration, services, capabilities           │
 ├─────────────────────────────────────────────────────────────────┤
 │ L3: jeeves_infra (jeeves-airframe/jeeves_infra/)                │
 │     Infrastructure - LLM, DB, Gateway, Tools, KernelClient      │
 ├─────────────────────────────────────────────────────────────────┤
-│ L2: mission_system.memory (jeeves-airframe/mission_system/memory/) │
+│ L2: jeeves_infra.memory (jeeves-airframe/jeeves_infra/memory/)  │
 │     Event sourcing, semantic search, session state              │
 ├─────────────────────────────────────────────────────────────────┤
 │ L1: Rust Kernel (jeeves-core/src/) [NOT PYTHON]                 │
@@ -348,7 +341,8 @@ Import Rules:
 Legacy naming (deprecated):
   - avionics      -> jeeves_infra
   - control_tower -> Rust kernel (jeeves-core/src/)
-  - memory_module -> mission_system.memory
+  - memory_module -> jeeves_infra.memory
+  - mission_system -> merged into jeeves_infra
 """)
 
 
