@@ -41,33 +41,35 @@ Response to User
 
 Capability code MAY import from:
 - `jeeves_infra.protocols` - Type definitions, protocols, pipeline types
-- `jeeves_infra.wiring` - Factory functions (create_llm_provider_factory, create_tool_executor)
+- `jeeves_infra.bootstrap` - `create_app_context()` (eagerly provisions kernel, LLM, config)
+- `jeeves_infra.wiring` - `create_tool_executor` (tool executor framework)
 - `jeeves_infra.settings` - Settings management
-- `jeeves_infra.bootstrap` - AppContext creation
-- `jeeves_infra.kernel_client` - Rust kernel communication
+- `jeeves_infra.kernel_client` - `KernelClient` class (instance via AppContext)
 - `jeeves_infra.orchestrator` - Event orchestration
 
 ### Forbidden Imports
 
 Capability code MUST NOT import from:
-- `jeeves_infra.llm.*` directly - Use `jeeves_infra.wiring` factories instead
+- `jeeves_infra.llm.*` directly - LLM factory provided via `AppContext.llm_provider_factory`
 - `jeeves_infra.gateway.*` - Internal server infrastructure
 - `coreengine.*` - Rust kernel accessed via KernelClient only
 
-### Correct Pattern
+**Apps MUST NOT** import from `jeeves_infra` directly (except `bootstrap`). Apps use the capability layer entry point.
+
+### Correct Pattern (App)
 
 ```python
 # Constitution R7: Register capability FIRST
 from jeeves_capability_hello_world import register_capability
 register_capability()
 
-# Then use jeeves_infra for infrastructure
-from jeeves_infra.wiring import (
-    create_llm_provider_factory,
-    create_tool_executor,
-)
-from jeeves_infra.settings import get_settings
+# Bootstrap provisions everything (K8s-style eager provisioning)
 from jeeves_infra.bootstrap import create_app_context
+app_context = create_app_context()
+
+# Capability creates fully-wired service from AppContext
+from jeeves_capability_hello_world.capability.wiring import create_hello_world_from_app_context
+service = create_hello_world_from_app_context(app_context)
 ```
 
 ## Tool Suite
@@ -76,14 +78,13 @@ from jeeves_infra.bootstrap import create_app_context
 
 | Tool ID | Category | Risk Level | Description |
 |---------|----------|------------|-------------|
-| `web_search` | Search | External | Search the web for information |
 | `get_time` | Utility | Read-only | Get current date/time |
 | `list_tools` | Introspection | Read-only | List available tools |
 
 ### Tool Access Control
 
-- All tools are READ-ONLY or EXTERNAL (no state modification)
-- Tools are registered at startup via `initialize_all_tools()`
+- All tools are READ-ONLY (no state modification)
+- Tools are registered via `CapabilityToolCatalog` in `capability/wiring.py`
 - Tool catalog provides metadata for access control
 
 ## Ownership Rules
@@ -130,9 +131,8 @@ from jeeves_infra.bootstrap import create_app_context
 ### Startup Sequence
 
 1. Call `register_capability()` at module/startup level
-2. Import infrastructure via `jeeves_infra.wiring`
-3. Initialize tools via `initialize_all_tools()`
-4. Create service via `create_hello_world_service()`
+2. Call `create_app_context()` for bootstrap (provisions kernel, LLM, config)
+3. Call `create_hello_world_from_app_context(app_context)` for fully-wired service
 
 ## Principles
 

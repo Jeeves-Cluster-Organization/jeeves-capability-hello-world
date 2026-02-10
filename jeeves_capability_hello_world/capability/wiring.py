@@ -119,6 +119,27 @@ AGENT_DEFINITIONS = [
 
 
 # =============================================================================
+# TOOL REGISTRY ADAPTER
+# =============================================================================
+
+class ToolRegistryAdapter:
+    """Adapter from CapabilityToolCatalog to ToolRegistryProtocol.
+
+    Canonical home for the adapter. Used by create_hello_world_from_app_context
+    and the framework orchestrator factory.
+    """
+
+    def __init__(self, catalog: "CapabilityToolCatalog"):
+        self._catalog = catalog
+
+    def has_tool(self, name: str) -> bool:
+        return self._catalog.has_tool(name)
+
+    def get_tool(self, name: str):
+        return self._catalog.get_tool(name)
+
+
+# =============================================================================
 # REGISTRATION FUNCTIONS
 # =============================================================================
 
@@ -450,10 +471,7 @@ def create_hello_world_from_app_context(
         from jeeves_infra.orchestrator import create_event_context
         event_context = create_event_context(request_context)
     """
-    from jeeves_infra.wiring import (
-        create_llm_provider_factory,
-        create_tool_executor,
-    )
+    from jeeves_infra.wiring import create_tool_executor
     from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
@@ -462,32 +480,15 @@ def create_hello_world_from_app_context(
     tools_config = registry.get_tools(CAPABILITY_ID)
     tool_catalog = tools_config.get_catalog() if tools_config else _create_tool_catalog()
 
-    # Create adapters using jeeves_infra factories
-    llm_factory = create_llm_provider_factory(app_context.settings)
-
-    # Create tool executor adapter
-    class ToolRegistryAdapter:
-        def __init__(self, catalog):
-            self._catalog = catalog
-
-        def has_tool(self, name: str) -> bool:
-            return self._catalog.has_tool(name)
-
-        def get_tool(self, name: str):
-            return self._catalog.get_tool(name)
-
+    # Create tool executor via adapter
     tool_executor = create_tool_executor(ToolRegistryAdapter(tool_catalog))
 
-    # Get kernel_client from context for resource tracking
-    kernel_client = getattr(app_context, 'kernel_client', None)
-
-    # Return ChatbotService directly - proper adapter over PipelineRunner
     return ChatbotService(
-        llm_provider_factory=llm_factory,
+        llm_provider_factory=app_context.llm_provider_factory,
         tool_executor=tool_executor,
         logger=app_context.logger,
         pipeline_config=ONBOARDING_CHATBOT_PIPELINE,
-        kernel_client=kernel_client,
+        kernel_client=app_context.kernel_client,
         use_mock=False,
     )
 
@@ -502,8 +503,9 @@ __all__ = [
     "CAPABILITY_ROOT",
     "AGENT_LLM_CONFIGS",
     "AGENT_DEFINITIONS",
-    # Tool catalog
+    # Tool catalog and adapter
     "_create_tool_catalog",
+    "ToolRegistryAdapter",
     # Service factory (returns ChatbotService, use framework EventOrchestrator for events)
     "create_hello_world_from_app_context",
 ]

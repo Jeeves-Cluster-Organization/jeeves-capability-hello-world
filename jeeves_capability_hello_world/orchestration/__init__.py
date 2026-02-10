@@ -8,33 +8,32 @@ capability using the Understand → Think → Respond pattern.
 
 Includes KernelClient integration for resource tracking and quota enforcement.
 
-Usage:
+Usage (recommended - via capability layer):
+    from jeeves_capability_hello_world.capability.wiring import (
+        register_capability,
+        create_hello_world_from_app_context,
+    )
+    from jeeves_infra.bootstrap import create_app_context
+
+    register_capability()
+    app_context = create_app_context()
+    service = create_hello_world_from_app_context(app_context)
+
+Usage (explicit params - tests, framework path):
     from jeeves_capability_hello_world.orchestration import (
         create_hello_world_service,
         ChatbotService,
     )
-    from jeeves_infra.kernel_client import get_kernel_client
 
-    # Use factory function (recommended)
-    kernel_client = await get_kernel_client()
     service = create_hello_world_service(
         llm_provider_factory=llm_factory,
         tool_executor=tool_executor,
         kernel_client=kernel_client,
     )
-
-    # Or use complete wiring
-    from jeeves_capability_hello_world.orchestration import create_wiring
-    wiring = create_wiring(settings)
-    service = create_hello_world_service(**wiring)
 """
 
 from .chatbot_service import ChatbotService, ChatbotResult
-from .wiring import (
-    create_hello_world_service,
-    create_tool_registry_adapter,
-    create_wiring,
-)
+from .wiring import create_hello_world_service
 from .types import (
     MessageRole,
     Confidence,
@@ -50,8 +49,6 @@ __all__ = [
     "ChatbotResult",
     # Wiring (Constitution R7)
     "create_hello_world_service",
-    "create_tool_registry_adapter",
-    "create_wiring",
     # Types
     "MessageRole",
     "Confidence",

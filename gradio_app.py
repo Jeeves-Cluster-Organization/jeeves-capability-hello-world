@@ -53,18 +53,9 @@ os.environ.setdefault("JEEVES_LLM_RESPOND_MODEL", DEFAULT_OLLAMA_MODEL)
 from jeeves_capability_hello_world import register_capability
 register_capability()
 
-# Register LLM provider factory (required before using create_llm_provider_factory)
-from jeeves_infra.wiring import set_llm_provider_factory
-from jeeves_infra.llm.factory import create_llm_provider
-set_llm_provider_factory(create_llm_provider)
-
-# Now safe to import infrastructure via adapters
-from jeeves_capability_hello_world.orchestration import (
-    ChatbotService,
-    create_hello_world_service,
-    create_tool_registry_adapter,
-)
-from jeeves_capability_hello_world.tools import initialize_all_tools
+# Capability layer imports only — apps never import from jeeves_infra directly
+from jeeves_capability_hello_world.orchestration import ChatbotService
+from jeeves_capability_hello_world.capability.wiring import create_hello_world_from_app_context
 
 # Import prompts to register them (the @register_prompt decorators run on import)
 import jeeves_capability_hello_world.prompts.chatbot.understand  # noqa
@@ -79,54 +70,23 @@ _service: ChatbotService = None
 
 
 def get_or_create_service() -> ChatbotService:
-    """Get or create the chatbot service (with REAL LLM and KernelClient)."""
+    """Get or create the chatbot service via capability layer."""
     global _service
 
     if _service is None:
-        logger.info("initializing_chatbot_service", use_mock=False)
+        logger.info("initializing_chatbot_service")
 
-        # Constitution R7: Use jeeves_infra.bootstrap for unified initialization
+        # Bootstrap provisions kernel_client, llm_provider_factory, config_registry
         from jeeves_infra.bootstrap import create_app_context
-        from jeeves_infra.wiring import (
-            create_llm_provider_factory,
-            create_tool_executor,
-        )
-        from jeeves_infra.kernel_client import get_kernel_client
-
-        # Create app context (composition root)
         app_context = create_app_context()
 
-        # Initialize tools with the catalog
-        initialize_all_tools(logger=logger)
-
-        # Create tool registry adapter from catalog
-        tool_registry = create_tool_registry_adapter()
-
-        # Create LLM provider factory from app context settings
-        llm_provider_factory = create_llm_provider_factory(app_context.settings)
-
-        # Create tool executor via adapter
-        tool_executor = create_tool_executor(tool_registry)
-
-        # Get kernel_client for resource tracking
-        # Note: kernel_client connection is async, but we defer until first use
-        kernel_client = app_context.kernel_client
-        logger.info("kernel_client_status", available=kernel_client is not None)
-
-        # Create service using factory function
-        _service = create_hello_world_service(
-            llm_provider_factory=llm_provider_factory,
-            tool_executor=tool_executor,
-            kernel_client=kernel_client,
-            logger=logger,
-            use_mock=False,
-        )
+        # Capability layer creates fully-wired service from AppContext
+        _service = create_hello_world_from_app_context(app_context)
 
         logger.info("chatbot_service_ready",
                     pipeline="onboarding_chatbot",
                     agents=3,
-                    use_real_llm=True,
-                    has_kernel_client=kernel_client is not None)
+                    has_kernel_client=app_context.kernel_client is not None)
 
     return _service
 

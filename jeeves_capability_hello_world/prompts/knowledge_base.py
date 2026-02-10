@@ -158,7 +158,9 @@ A strict rule: Capabilities MUST NOT import infrastructure directly.
 
 **CORRECT:**
 ```python
-from jeeves_infra.wiring import create_llm_provider_factory
+from jeeves_infra.bootstrap import create_app_context
+app_context = create_app_context()
+llm_factory = app_context.llm_provider_factory
 ```
 
 **WRONG:**
@@ -286,11 +288,11 @@ async def my_post_process(envelope, output, agent=None):
 ### Using Factories (Constitution R7)
 
 ```python
-# CORRECT way to get LLM provider
-from jeeves_infra.wiring import create_llm_provider_factory
+# CORRECT way to get LLM provider (via AppContext, K8s-style bootstrap)
+from jeeves_infra.bootstrap import create_app_context
 
-llm_factory = create_llm_provider_factory(settings)
-llm = llm_factory(role="planner")
+app_context = create_app_context()
+llm = app_context.llm_provider_factory(role="planner")
 response = await llm.generate(model, prompt, options)
 ```
 """
