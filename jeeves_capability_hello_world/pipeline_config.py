@@ -52,10 +52,16 @@ async def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
     conversation_history = envelope.metadata.get("conversation_history", [])
     formatted_history = _format_conversation_history(conversation_history)
 
+    # Inject session context from in-dialogue memory
+    session_context = envelope.metadata.get("session_context", {})
+    conversation_summary = session_context.get("conversation_summary", "")
+
     # Build context for prompt template
     context = {
         "user_message": user_message,
         "conversation_history": formatted_history,
+        "conversation_summary": conversation_summary,
+        "turn_count": session_context.get("turn_count", 0),
         "system_identity": "Jeeves Onboarding Assistant",
         "capabilities": "ecosystem explanation, concept clarification, getting started help",
     }
@@ -156,11 +162,17 @@ async def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
     # Get targeted knowledge from Think agent
     targeted_knowledge = envelope.metadata.get("targeted_knowledge", "")
 
+    # Inject session context from in-dialogue memory
+    session_context = envelope.metadata.get("session_context", {})
+    conversation_summary = session_context.get("conversation_summary", "")
+
     context = {
         "user_message": user_message,
         "intent": intent,
         "topic": topic,
         "conversation_history": formatted_history,
+        "conversation_summary": conversation_summary,
+        "turn_count": session_context.get("turn_count", 0),
         "targeted_knowledge": targeted_knowledge,
         "task": "Craft a helpful, accurate response about the Jeeves ecosystem"
     }

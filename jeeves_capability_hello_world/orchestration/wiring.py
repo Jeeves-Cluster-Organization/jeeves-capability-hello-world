@@ -82,6 +82,8 @@ def create_hello_world_service(
         has_kernel_client=kernel_client is not None,
     )
 
+    from jeeves_capability_hello_world.database.sqlite_client import SQLiteClient
+
     service = ChatbotService(
         llm_provider_factory=llm_provider_factory,
         tool_executor=tool_executor,
@@ -89,6 +91,7 @@ def create_hello_world_service(
         pipeline_config=ONBOARDING_CHATBOT_PIPELINE,
         kernel_client=kernel_client,
         use_mock=use_mock,
+        db=SQLiteClient(),
     )
 
     logger.info(

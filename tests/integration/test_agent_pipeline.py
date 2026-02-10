@@ -1,20 +1,15 @@
 """
-Integration Tests for 7-Agent Pipeline.
+Integration Tests for Agent Pipeline.
 
-Tests the complete agent pipeline flow from query to response.
-Requires PostgreSQL and LLM services to be running.
+Tests the agent pipeline flow from query to response.
 
 Test Markers:
     @pytest.mark.integration - Integration tests
-    @pytest.mark.requires_postgres - Requires PostgreSQL
     @pytest.mark.requires_llamaserver - Requires LLM server
     @pytest.mark.e2e - End-to-end tests
 """
 
-import asyncio
-import os
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -261,88 +256,6 @@ class TestPipelineErrorHandling:
 
         assert error_response["error_code"] == "LLM_UNAVAILABLE"
         assert "retry_after_seconds" in error_response
-
-
-class TestPipelineIntegration:
-    """End-to-end integration tests requiring full stack."""
-
-    @pytest.fixture
-    def database_url(self):
-        """Get database URL from environment."""
-        return (
-            f"postgresql://{os.getenv('DB_USER', 'assistant')}:"
-            f"{os.getenv('DB_PASSWORD', 'dev_password')}@"
-            f"{os.getenv('DB_HOST', 'localhost')}:"
-            f"{os.getenv('DB_PORT', '5432')}/"
-            f"{os.getenv('DB_NAME', 'assistant')}"
-        )
-
-    @pytest.mark.requires_postgres
-    @pytest.mark.requires_llamaserver
-    @pytest.mark.e2e
-    async def test_full_pipeline_execution(self, database_url):
-        """Test full pipeline execution with real services.
-
-        This test requires:
-        - PostgreSQL running with schema initialized
-        - llama-server running and healthy
-        - All environment variables configured
-        """
-        # Skip if services not available
-        if not os.getenv("DB_HOST"):
-            pytest.skip("PostgreSQL not configured")
-        if not os.getenv("LLAMASERVER_HOST"):
-            pytest.skip("LLM server not configured")
-
-        # This would execute the full pipeline
-        # Implementation depends on actual service availability
-        query = "What does the main function do?"
-
-        # Placeholder for actual service call
-        result = {
-            "response": "The main function initializes the application...",
-            "citations": ["main.py:1"],
-            "status": "success",
-        }
-
-        assert result["status"] == "success"
-        assert len(result["citations"]) > 0
-
-    @pytest.mark.requires_postgres
-    async def test_session_persistence(self, database_url):
-        """Test that session data persists across requests."""
-        # Skip if database not available
-        if not os.getenv("DB_HOST"):
-            pytest.skip("PostgreSQL not configured")
-
-        session_id = "test-session-123"
-
-        # Mock session operations
-        session_data = {
-            "session_id": session_id,
-            "queries": ["query1", "query2"],
-            "context": {"repo_path": "/workspace"},
-        }
-
-        assert session_data["session_id"] == session_id
-        assert len(session_data["queries"]) == 2
-
-    @pytest.mark.requires_postgres
-    async def test_tool_execution_tracking(self, database_url):
-        """Test that tool executions are tracked."""
-        if not os.getenv("DB_HOST"):
-            pytest.skip("PostgreSQL not configured")
-
-        # Mock tool execution tracking
-        execution_record = {
-            "tool_name": "read_code",
-            "duration_ms": 45,
-            "success": True,
-            "result_size_bytes": 1024,
-        }
-
-        assert execution_record["success"] is True
-        assert execution_record["duration_ms"] < 1000
 
 
 class TestAgentCommunication:

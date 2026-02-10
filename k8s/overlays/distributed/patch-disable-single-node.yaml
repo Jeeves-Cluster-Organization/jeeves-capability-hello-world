@@ -1,7 +1,0 @@
-# Disable single-node orchestrator in distributed mode
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: jeeves-orchestrator
-spec:
-  replicas: 0

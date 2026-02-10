@@ -1,51 +1,15 @@
 # ============================================================================
-# Test Requirements - Testing dependencies
+# Test Requirements
 # ============================================================================
-# Only installed in test stage, not in production images
 
-# Include full orchestrator dependencies for testing
--r orchestrator.txt
+-r base.txt
+
+# SQLite (async)
+aiosqlite>=0.19.0
 
 # Testing framework
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
 pytest-timeout>=2.0.0
-pytest-xdist>=3.5.0  # Parallel test execution
-pytest-random-order>=1.1.0  # Randomize test order to detect hidden dependencies
-pytest-repeat>=0.9.0  # Repeat tests for flakiness detection
-
-# Test containers
-testcontainers[postgres]>=3.7.0
-
-# HTTP/WebSocket clients for integration tests
-websockets>=12.0
-httpx==0.27.2  # Modern HTTP client for async testing
-aiofiles>=23.2.0  # Async file operations
-
-# Mocking and fixtures
-pytest-mock>=3.12.0  # Enhanced mocking capabilities
-freezegun>=1.2.0  # Time travel for tests
-faker>=22.0.0  # Generate fake test data
-factory-boy>=3.3.0  # Test fixtures factory
-
-# Response mocking for HTTP clients
-responses>=0.24.0  # Mock requests library
-respx>=0.20.0  # Mock httpx library
-
-# Test reporting
-pytest-html>=4.1.0  # HTML test reports
-pytest-json-report>=1.5.0  # JSON test reports
-
-# Deployment testing
-docker>=7.0.0  # Docker SDK for Python
-asyncpg>=0.29.0  # Async PostgreSQL driver for direct DB testing
-
-# UI/UX and API testing
-pytest-benchmark>=4.0.0  # Performance benchmarking
-pytest-snapshot>=0.9.0  # Snapshot testing for response formats
-aiohttp>=3.9.0  # Async HTTP client for WebSocket testing
-
-# Contract testing
-hypothesis>=6.92.0  # Property-based testing
-schemathesis>=3.21.0  # API schema testing
+pytest-mock>=3.12.0

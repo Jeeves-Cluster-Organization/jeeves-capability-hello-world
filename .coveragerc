@@ -1,53 +1,29 @@
 [run]
-# Run configuration
-source = agents, api, database, llm, tools, memory
+source = jeeves_capability_hello_world
 omit =
     */tests/*
     */test_*.py
     */__pycache__/*
-    */venv/*
-    */env/*
-    setup.py
 
 [report]
-# Reporting configuration
 exclude_lines =
-    # Exclude standard pragma
     pragma: no cover
-
-    # Exclude defensive programming
     def __repr__
     raise AssertionError
     raise NotImplementedError
-
-    # Exclude abstract methods
     @abstractmethod
     @abc.abstractmethod
-
-    # Exclude debug/development code
     if __name__ == .__main__.:
     if TYPE_CHECKING:
-    if typing.TYPE_CHECKING:
-
-    # Exclude pass statements
     pass
-
-    # Exclude ellipsis
     \.\.\.
 
-# Report precision
 precision = 2
-
-# Show missing lines
 show_missing = True
-
-# Fail under this coverage percentage (80%)
 fail_under = 80
 
 [html]
-# HTML report directory
 directory = htmlcov
 
 [xml]
-# XML report output
 output = coverage.xml

@@ -102,7 +102,7 @@ function Test-Mission {
 function Test-MissionFull {
     Write-Host ""
     Write-Host "🎯 Testing infra (full - requires Docker services)" -ForegroundColor Cyan
-    Write-Host "Prerequisites: docker compose up -d postgres llama-server" -ForegroundColor Yellow
+    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d llama-server" -ForegroundColor Yellow
     Write-Host ""
 
     python -m pytest jeeves-airframe/jeeves_infra/tests -m "not e2e and not heavy" -v
@@ -122,7 +122,7 @@ function Test-Tier2 {
     Write-Host "🐳 Running Tier 2: Integration tests (requires Docker)" -ForegroundColor Cyan
     Write-Host "   - Infra: Unit tests" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "Prerequisites: docker compose up -d postgres" -ForegroundColor Yellow
+    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d" -ForegroundColor Yellow
     Write-Host ""
 
     python -m pytest `
@@ -146,7 +146,7 @@ function Test-Tier3 {
     Write-Host "   - Infra: Integration tests" -ForegroundColor Gray
     Write-Host "   - Infra: API endpoint tests" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "Prerequisites: docker compose up -d postgres llama-server" -ForegroundColor Yellow
+    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d llama-server" -ForegroundColor Yellow
     Write-Host ""
 
     python -m pytest `
@@ -169,7 +169,7 @@ function Test-Tier4 {
     Write-Host "🎯 Running Tier 4: End-to-end tests (full stack)" -ForegroundColor Cyan
     Write-Host "   - Infra: E2E tests with real LLM" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "Prerequisites: docker compose up -d (all services)" -ForegroundColor Yellow
+    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d" -ForegroundColor Yellow
     Write-Host ""
 
     python -m pytest `
@@ -206,7 +206,7 @@ function Test-Light {
 function Test-Full {
     Write-Host ""
     Write-Host "🚀 Running FULL test flow (all tiers)" -ForegroundColor Cyan
-    Write-Host "Prerequisites: docker compose up -d (all services)" -ForegroundColor Yellow
+    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d" -ForegroundColor Yellow
     Write-Host ""
 
     # Tier 1: Fast tests
@@ -244,37 +244,28 @@ function Test-Full {
 
 function Check-Services {
     Write-Host ""
-    Write-Host "🔍 Checking required services..." -ForegroundColor Cyan
-    Write-Host ""
-
-    Write-Host "PostgreSQL:" -ForegroundColor Yellow
-    $pgStatus = docker compose ps postgres 2>$null
-    if ($pgStatus) {
-        Write-Host "  ✅ Running" -ForegroundColor Green
-    } else {
-        Write-Host "  ❌ Not running (docker compose up -d postgres)" -ForegroundColor Red
-    }
+    Write-Host "Checking required services..." -ForegroundColor Cyan
     Write-Host ""
 
     Write-Host "llama-server:" -ForegroundColor Yellow
-    $llamaStatus = docker compose ps llama-server 2>$null
+    $llamaStatus = docker compose -f docker/docker-compose.hello-world.yml ps llama-server 2>$null
     if ($llamaStatus) {
-        Write-Host "  ✅ Running" -ForegroundColor Green
+        Write-Host "  Running" -ForegroundColor Green
     } else {
-        Write-Host "  ❌ Not running (docker compose up -d llama-server)" -ForegroundColor Red
+        Write-Host "  Not running (docker compose -f docker/docker-compose.hello-world.yml up -d llama-server)" -ForegroundColor Red
     }
     Write-Host ""
 
-    Write-Host "llamaserver health:" -ForegroundColor Yellow
+    Write-Host "llama-server health:" -ForegroundColor Yellow
     try {
         $response = Invoke-WebRequest -Uri "http://localhost:8080/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
         if ($response.StatusCode -eq 200) {
-            Write-Host "  ✅ Healthy" -ForegroundColor Green
+            Write-Host "  Healthy" -ForegroundColor Green
         } else {
-            Write-Host "  ❌ Not reachable" -ForegroundColor Red
+            Write-Host "  Not reachable" -ForegroundColor Red
         }
     } catch {
-        Write-Host "  ❌ Not reachable" -ForegroundColor Red
+        Write-Host "  Not reachable" -ForegroundColor Red
     }
     Write-Host ""
 }

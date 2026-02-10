@@ -120,7 +120,7 @@ class SessionStateRepository:
     # The authoritative schema is in the capability schema files
     CREATE_TABLE_SQL = """
         CREATE TABLE IF NOT EXISTS session_state (
-            session_id UUID PRIMARY KEY,
+            session_id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
             focus_type TEXT,
             focus_id TEXT,
@@ -128,8 +128,8 @@ class SessionStateRepository:
             referenced_entities TEXT,
             short_term_memory TEXT,
             turn_count INTEGER DEFAULT 0,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """
 
