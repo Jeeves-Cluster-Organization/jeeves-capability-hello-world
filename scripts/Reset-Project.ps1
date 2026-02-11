@@ -69,52 +69,22 @@ Write-Host "Python artifacts cleaned" -ForegroundColor Green
 Write-Host ""
 
 # =============================================================================
-# 3. DOCKER CLEANUP (optional — only llama-server needed)
+# 3. FRESH INSTALL DEPENDENCIES (uv)
 # =============================================================================
-Write-Host "Step 3: Docker cleanup..." -ForegroundColor Yellow
+Write-Host "Step 3: Installing fresh dependencies via uv..." -ForegroundColor Yellow
 
-if (Get-Command docker -ErrorAction SilentlyContinue) {
-    Write-Host "Stopping Docker containers..."
-    docker compose -f docker/docker-compose.hello-world.yml down -v 2>$null
-
-    Write-Host "Removing dangling images..."
-    docker image prune -f
-
-    Write-Host "Docker cleanup complete" -ForegroundColor Green
-} else {
-    Write-Host "Docker not available in this environment" -ForegroundColor Yellow
-    Write-Host "   Run manually if Docker is installed:"
-    Write-Host "   - docker compose -f docker/docker-compose.hello-world.yml down -v"
-}
-Write-Host ""
-
-# =============================================================================
-# 4. FRESH INSTALL DEPENDENCIES
-# =============================================================================
-Write-Host "Step 4: Installing fresh dependencies..." -ForegroundColor Yellow
-
-# Update pip
-python -m pip install --upgrade pip
-
-# Install Python dependencies
-if (Test-Path "requirements/all.txt") {
-    pip install -r requirements/all.txt
-} elseif (Test-Path "requirements.txt") {
-    pip install -r requirements.txt
-}
+uv sync
 
 Write-Host "Dependencies installed" -ForegroundColor Green
 Write-Host ""
 
 # =============================================================================
-# 5. VERIFICATION
+# 4. VERIFICATION
 # =============================================================================
-Write-Host "Step 5: Running verification tests..." -ForegroundColor Yellow
+Write-Host "Step 4: Running verification tests..." -ForegroundColor Yellow
 
 # Run fast tier 1 tests to verify setup
-python -m pytest -c pytest-light.ini `
-    jeeves_capability_hello_world/tests `
-    -v
+uv run pytest jeeves_capability_hello_world/tests -v
 
 Write-Host ""
 Write-Host "Project reset complete!" -ForegroundColor Green
@@ -123,12 +93,12 @@ Write-Host "Summary:" -ForegroundColor Cyan
 Write-Host "  - Git: Reset to origin/main"
 Write-Host "  - Python: All cache and artifacts cleaned"
 Write-Host "  - SQLite: Database files removed (recreated on first run)"
-Write-Host "  - Docker: Containers stopped"
 Write-Host "  - Dependencies: Freshly installed"
 Write-Host "  - Tests: Tier 1 passing"
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "  1. Start llama-server: docker compose -f docker/docker-compose.hello-world.yml up -d llama-server"
-Write-Host "  2. Run chatbot: python gradio_app.py"
-Write-Host "  3. Run tests: .\scripts\test.ps1 ci"
+Write-Host "  1. Ensure Ollama is running: ollama serve"
+Write-Host "  2. Pull a model: ollama pull llama3.2"
+Write-Host "  3. Run chatbot: uv run python gradio_app.py"
+Write-Host "  4. Run tests: .\scripts\test.ps1 ci"
 Write-Host ""

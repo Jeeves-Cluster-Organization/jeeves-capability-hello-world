@@ -316,8 +316,14 @@ class ChatbotService:
             session_id=session_id,
         )
 
-        # Track initial agent hop via kernel_client
+        # Register process with kernel before tracking usage
         if self._kernel_client:
+            await self._kernel_client.create_process(
+                pid=pid,
+                request_id=request_id,
+                user_id=user_id,
+                session_id=session_id,
+            )
             await self._kernel_client.record_usage(pid=pid, agent_hops=1)
             quota_result = await self._kernel_client.check_quota(pid)
             if not quota_result.within_bounds:

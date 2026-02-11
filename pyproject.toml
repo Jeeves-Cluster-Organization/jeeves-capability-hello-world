@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jeeves-capability-hello-world"
+version = "1.0.0"
+description = "Jeeves Hello World - 3-agent Gradio chatbot capability"
+requires-python = ">=3.11"
+dependencies = [
+    # Infrastructure layer (resolved from local jeeves-airframe/ via [tool.uv.sources])
+    "jeeves-infra",
+    # Core
+    "pydantic>=2.5.0,<3.0.0",
+    "pydantic-settings>=2.0.0",
+    "structlog==23.2.0",
+    "httpx==0.27.2",
+    "msgpack>=1.0.0",
+    # UI
+    "gradio>=5.0.0",
+    # SQLite (async)
+    "aiosqlite>=0.19.0",
+    # Python 3.13 compat (audioop removed from stdlib, pydub needs it)
+    "audioop-lts>=0.2.1; python_version>='3.13'",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.0.0",
+    "pytest-mock>=3.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "jeeves-capability-hello-world[test]",
+]
+
+[tool.uv.sources]
+jeeves-infra = { path = "jeeves-airframe", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["jeeves_capability_hello_world"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "jeeves-airframe"]
+asyncio_mode = "auto"
+testpaths = [
+    "jeeves_capability_hello_world/tests",
+    "tests",
+    "jeeves-airframe/tests",
+]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short -m \"not e2e and not heavy and not requires_llamaserver and not requires_ml and not requires_docker\""
+markers = [
+    "unit: Unit tests (fast, no external dependencies)",
+    "integration: Integration tests (may require external services)",
+    "contract: Constitutional contract compliance tests",
+    "e2e: End-to-end tests requiring full stack",
+    "heavy: Resource-intensive tests",
+    "requires_llamaserver: Tests requiring real LLM server",
+    "requires_ml: Tests requiring ML/AI dependencies",
+    "requires_docker: Tests requiring Docker containers",
+    "slow: Slow-running tests (skip for quick runs)",
+    "full_flow: Full conversation flow (excluded by default)",
+    "snapshot: Snapshot/baseline comparison tests",
+    "regression: Regression tests",
+]

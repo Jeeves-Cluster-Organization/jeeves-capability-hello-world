@@ -20,17 +20,17 @@ function Show-Help {
     Write-Host "  fast           - Same as ci (Tier 1 tests)" -ForegroundColor White
     Write-Host "  contract       - Constitutional contract tests - < 5s" -ForegroundColor White
     Write-Host ""
-    Write-Host "Integration Tests (Requires Docker):" -ForegroundColor Green
-    Write-Host "  tier2          - Database integration tests" -ForegroundColor White
+    Write-Host "Integration Tests (Requires Ollama):" -ForegroundColor Green
+    Write-Host "  tier2          - Infra unit tests" -ForegroundColor White
     Write-Host "  tier3          - Integration with real LLM" -ForegroundColor White
     Write-Host "  tier4          - E2E tests (full stack)" -ForegroundColor White
     Write-Host "  full           - Run ALL tiers (complete flow)" -ForegroundColor White
     Write-Host "  mission        - Infra tests (lightweight)" -ForegroundColor White
-    Write-Host "  mission-full   - Infra tests (with services)" -ForegroundColor White
+    Write-Host "  mission-full   - Infra tests (with Ollama)" -ForegroundColor White
     Write-Host ""
     Write-Host "Utility:" -ForegroundColor Green
     Write-Host "  light          - All lightweight tests" -ForegroundColor White
-    Write-Host "  services       - Check if services are running" -ForegroundColor White
+    Write-Host "  services       - Check if Ollama is running" -ForegroundColor White
     Write-Host "  help           - Show this help message" -ForegroundColor White
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor Yellow
@@ -42,48 +42,48 @@ function Show-Help {
 
 function Test-CI {
     Write-Host ""
-    Write-Host "🤖 Running CI test suite (fast, no external dependencies)" -ForegroundColor Cyan
+    Write-Host "Running CI test suite (fast, no external dependencies)" -ForegroundColor Cyan
     Write-Host "   - Capability tests" -ForegroundColor Gray
     Write-Host ""
 
-    python -m pytest -c pytest-light.ini `
+    uv run pytest `
         jeeves_capability_hello_world/tests `
         -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ CI test suite complete" -ForegroundColor Green
+        Write-Host "CI test suite complete" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ CI test suite failed" -ForegroundColor Red
+        Write-Host "CI test suite failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
 function Test-Contract {
     Write-Host ""
-    Write-Host "📜 Running constitutional contract tests" -ForegroundColor Cyan
+    Write-Host "Running constitutional contract tests" -ForegroundColor Cyan
     Write-Host "   - Import boundary validation" -ForegroundColor Gray
     Write-Host "   - Layer boundary enforcement" -ForegroundColor Gray
     Write-Host "   - Evidence chain integrity (P1)" -ForegroundColor Gray
 
-    python -m pytest jeeves-airframe/jeeves_infra/tests/contract -v
+    uv run pytest jeeves-airframe/jeeves_infra/tests/contract -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ Contract tests complete" -ForegroundColor Green
+        Write-Host "Contract tests complete" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ Contract tests failed" -ForegroundColor Red
+        Write-Host "Contract tests failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
 function Test-Mission {
     Write-Host ""
-    Write-Host "🎯 Testing infra (contract + unit tests)" -ForegroundColor Cyan
+    Write-Host "Testing infra (contract + unit tests)" -ForegroundColor Cyan
 
-    python -m pytest `
+    uv run pytest `
         jeeves-airframe/jeeves_infra/tests/contract `
         jeeves-airframe/jeeves_infra/tests/unit `
         -m "not requires_llamaserver and not requires_database" `
@@ -91,122 +91,118 @@ function Test-Mission {
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ Infra tests complete (lightweight)" -ForegroundColor Green
+        Write-Host "Infra tests complete (lightweight)" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ Infra tests failed" -ForegroundColor Red
+        Write-Host "Infra tests failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
 function Test-MissionFull {
     Write-Host ""
-    Write-Host "🎯 Testing infra (full - requires Docker services)" -ForegroundColor Cyan
-    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d llama-server" -ForegroundColor Yellow
+    Write-Host "Testing infra (full - requires Ollama)" -ForegroundColor Cyan
+    Write-Host "Prerequisites: ollama serve" -ForegroundColor Yellow
     Write-Host ""
 
-    python -m pytest jeeves-airframe/jeeves_infra/tests -m "not e2e and not heavy" -v
+    uv run pytest jeeves-airframe/jeeves_infra/tests -m "not e2e and not heavy" -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ Infra tests complete (full)" -ForegroundColor Green
+        Write-Host "Infra tests complete (full)" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ Infra tests failed" -ForegroundColor Red
+        Write-Host "Infra tests failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
 function Test-Tier2 {
     Write-Host ""
-    Write-Host "🐳 Running Tier 2: Integration tests (requires Docker)" -ForegroundColor Cyan
-    Write-Host "   - Infra: Unit tests" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d" -ForegroundColor Yellow
+    Write-Host "Running Tier 2: Infra unit tests" -ForegroundColor Cyan
     Write-Host ""
 
-    python -m pytest `
+    uv run pytest `
         jeeves-airframe/jeeves_infra/tests/unit `
         -m "not requires_llamaserver and not requires_ml" `
         -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ Tier 2 complete (expected: 10-30 seconds)" -ForegroundColor Green
+        Write-Host "Tier 2 complete (expected: 10-30 seconds)" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ Tier 2 failed" -ForegroundColor Red
+        Write-Host "Tier 2 failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
 function Test-Tier3 {
     Write-Host ""
-    Write-Host "🧠 Running Tier 3: Integration tests with real LLM" -ForegroundColor Cyan
+    Write-Host "Running Tier 3: Integration tests with real LLM" -ForegroundColor Cyan
     Write-Host "   - Infra: Integration tests" -ForegroundColor Gray
-    Write-Host "   - Infra: API endpoint tests" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d llama-server" -ForegroundColor Yellow
+    Write-Host "Prerequisites: ollama serve && ollama pull llama3.2" -ForegroundColor Yellow
     Write-Host ""
 
-    python -m pytest `
+    uv run pytest `
         jeeves-airframe/jeeves_infra/tests/integration `
         -m "not e2e and not heavy" `
         -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ Tier 3 complete (expected: 30-60 seconds)" -ForegroundColor Green
+        Write-Host "Tier 3 complete (expected: 30-60 seconds)" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ Tier 3 failed" -ForegroundColor Red
+        Write-Host "Tier 3 failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
 function Test-Tier4 {
     Write-Host ""
-    Write-Host "🎯 Running Tier 4: End-to-end tests (full stack)" -ForegroundColor Cyan
+    Write-Host "Running Tier 4: End-to-end tests (full stack)" -ForegroundColor Cyan
     Write-Host "   - Infra: E2E tests with real LLM" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d" -ForegroundColor Yellow
+    Write-Host "Prerequisites: ollama serve && ollama pull llama3.2" -ForegroundColor Yellow
     Write-Host ""
 
-    python -m pytest `
+    uv run pytest `
         jeeves-airframe/jeeves_infra/tests `
         -m e2e `
         -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ Tier 4 complete (expected: 60+ seconds)" -ForegroundColor Green
+        Write-Host "Tier 4 complete (expected: 60+ seconds)" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ Tier 4 failed" -ForegroundColor Red
+        Write-Host "Tier 4 failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
 function Test-Light {
     Write-Host ""
-    Write-Host "🪶 Running lightweight tests (no ML models, no Docker)" -ForegroundColor Cyan
+    Write-Host "Running lightweight tests (no LLM required)" -ForegroundColor Cyan
 
-    python -m pytest -c pytest-light.ini -v
+    uv run pytest -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✅ Lightweight tests complete" -ForegroundColor Green
+        Write-Host "Lightweight tests complete" -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "❌ Lightweight tests failed" -ForegroundColor Red
+        Write-Host "Lightweight tests failed" -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
 function Test-Full {
     Write-Host ""
-    Write-Host "🚀 Running FULL test flow (all tiers)" -ForegroundColor Cyan
-    Write-Host "Prerequisites: docker compose -f docker/docker-compose.hello-world.yml up -d" -ForegroundColor Yellow
+    Write-Host "Running FULL test flow (all tiers)" -ForegroundColor Cyan
+    Write-Host "Prerequisites: ollama serve && ollama pull llama3.2" -ForegroundColor Yellow
     Write-Host ""
 
     # Tier 1: Fast tests
@@ -215,10 +211,10 @@ function Test-Full {
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
     Test-CI
 
-    # Tier 2: Database integration
+    # Tier 2: Unit tests
     Write-Host ""
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
-    Write-Host "TIER 2: Database Integration" -ForegroundColor Yellow
+    Write-Host "TIER 2: Infra Unit Tests" -ForegroundColor Yellow
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
     Test-Tier2
 
@@ -238,7 +234,7 @@ function Test-Full {
 
     Write-Host ""
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
-    Write-Host "✅ FULL TEST FLOW COMPLETE" -ForegroundColor Green
+    Write-Host "FULL TEST FLOW COMPLETE" -ForegroundColor Green
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
 }
 
@@ -247,25 +243,22 @@ function Check-Services {
     Write-Host "Checking required services..." -ForegroundColor Cyan
     Write-Host ""
 
-    Write-Host "llama-server:" -ForegroundColor Yellow
-    $llamaStatus = docker compose -f docker/docker-compose.hello-world.yml ps llama-server 2>$null
-    if ($llamaStatus) {
-        Write-Host "  Running" -ForegroundColor Green
-    } else {
-        Write-Host "  Not running (docker compose -f docker/docker-compose.hello-world.yml up -d llama-server)" -ForegroundColor Red
-    }
-    Write-Host ""
-
-    Write-Host "llama-server health:" -ForegroundColor Yellow
+    Write-Host "Ollama:" -ForegroundColor Yellow
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:8080/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+        $response = Invoke-WebRequest -Uri "http://localhost:11434/api/tags" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
         if ($response.StatusCode -eq 200) {
-            Write-Host "  Healthy" -ForegroundColor Green
+            Write-Host "  Running" -ForegroundColor Green
+            $models = ($response.Content | ConvertFrom-Json).models
+            if ($models) {
+                Write-Host "  Models: $($models.name -join ', ')" -ForegroundColor Gray
+            } else {
+                Write-Host "  No models pulled. Run: ollama pull llama3.2" -ForegroundColor Yellow
+            }
         } else {
             Write-Host "  Not reachable" -ForegroundColor Red
         }
     } catch {
-        Write-Host "  Not reachable" -ForegroundColor Red
+        Write-Host "  Not running. Start with: ollama serve" -ForegroundColor Red
     }
     Write-Host ""
 }

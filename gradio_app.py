@@ -17,8 +17,8 @@ Usage:
     # With Ollama (default)
     python gradio_app.py
 
-    # With custom endpoint
-    JEEVES_LLM_BASE_URL=http://localhost:8080/v1 python gradio_app.py
+    # With custom endpoint (e.g., llama-server)
+    JEEVES_LLM_BASE_URL=http://localhost:8080/v1 JEEVES_LLM_MODEL=qwen2.5 python gradio_app.py
 
     # With OpenAI
     JEEVES_LLM_API_KEY=sk-xxx JEEVES_LLM_BASE_URL=https://api.openai.com/v1 python gradio_app.py

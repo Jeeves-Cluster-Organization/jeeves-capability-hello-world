@@ -190,6 +190,17 @@ async def test_cancellation_propagates():
         """Mock resources tracker."""
     class MockKernelClient:
         """Mock KernelClient for testing."""
+        async def create_process(self, *args, **kwargs):
+            from jeeves_infra.kernel_client import ProcessInfo
+            return ProcessInfo(
+                pid=kwargs.get("pid", "mock-pid"),
+                request_id="mock-req",
+                user_id=kwargs.get("user_id", "test"),
+                session_id=kwargs.get("session_id", "test"),
+                state="NEW",
+                priority="NORMAL",
+            )
+
         async def record_usage(self, *args, **kwargs):
             from jeeves_infra.kernel_client import QuotaCheckResult
             return QuotaCheckResult(within_bounds=True)
@@ -455,6 +466,17 @@ async def test_exactly_one_terminal_event():
 
     class MockKernelClient:
         """Mock KernelClient for testing."""
+        async def create_process(self, *args, **kwargs):
+            from jeeves_infra.kernel_client import ProcessInfo
+            return ProcessInfo(
+                pid=kwargs.get("pid", "mock-pid"),
+                request_id="mock-req",
+                user_id=kwargs.get("user_id", "test"),
+                session_id=kwargs.get("session_id", "test"),
+                state="NEW",
+                priority="NORMAL",
+            )
+
         async def record_usage(self, *args, **kwargs):
             from jeeves_infra.kernel_client import QuotaCheckResult
             return QuotaCheckResult(within_bounds=True)
