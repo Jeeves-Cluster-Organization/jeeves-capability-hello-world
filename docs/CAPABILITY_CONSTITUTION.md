@@ -65,10 +65,9 @@ This constitution defines the contract between capabilities and the platform lay
 from jeeves_infra.wiring import (
     create_llm_provider_factory,
     create_tool_executor,
-    create_database_client,
 )
 from jeeves_infra.settings import get_settings
-from jeeves_infra.protocols import PersistenceProtocol, ContextBounds
+from jeeves_infra.protocols import DatabaseClientProtocol, ContextBounds
 
 # Capability MUST NOT import from:
 # - jeeves-core Rust code directly (use Python bindings via jeeves_infra)

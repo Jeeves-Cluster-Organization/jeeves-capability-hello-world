@@ -77,7 +77,7 @@ Shared infrastructure used by all Python components.
 - Adapters - Constitution R7 compliant wrappers (create_llm_provider_factory)
 - PipelineRunner - executes agent pipelines
 - Event handling - streaming events to clients
-- Orchestrator - event context, governance, flow, vertical service
+- Orchestrator - event context, governance, flow
 - Memory handlers - CommBus handler registration, message types
 - Bootstrap - AppContext creation, composition root
 

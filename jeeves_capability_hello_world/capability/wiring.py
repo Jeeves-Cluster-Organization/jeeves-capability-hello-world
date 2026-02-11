@@ -44,6 +44,9 @@ CAPABILITY_ID = "hello_world"
 CAPABILITY_VERSION = "0.3.0"
 CAPABILITY_ROOT = Path(__file__).resolve().parent.parent
 
+# Capability-owned database client — created in register_capability()
+_capability_db = None
+
 
 # =============================================================================
 # AGENT LLM CONFIGURATIONS
@@ -171,7 +174,10 @@ def _create_orchestrator_service(
     """Factory to create ChatbotService for framework dispatch."""
     from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
-    from jeeves_capability_hello_world.database.sqlite_client import SQLiteClient
+
+    db = persistence or _capability_db
+    if db is None:
+        raise RuntimeError("No database client available. Call register_capability() first.")
 
     return ChatbotService(
         llm_provider_factory=llm_factory,
@@ -179,7 +185,7 @@ def _create_orchestrator_service(
         logger=log,
         pipeline_config=ONBOARDING_CHATBOT_PIPELINE,
         kernel_client=kernel_client,
-        db=SQLiteClient(),
+        db=db,
     )
 
 
@@ -191,7 +197,12 @@ def register_capability() -> None:
     """Register hello-world capability with jeeves-core.
 
     Must be called at startup before using runtime services.
+    Creates the capability-owned SQLiteClient for in-dialogue memory.
     """
+    global _capability_db
+    from jeeves_capability_hello_world.database.sqlite_client import SQLiteClient
+    _capability_db = SQLiteClient()
+
     registry = get_capability_resource_registry()
 
     # 1. Register capability mode
@@ -279,13 +290,18 @@ def get_agent_config(agent_name: str) -> AgentLLMConfig:
 def create_hello_world_from_app_context(app_context: "AppContext") -> Any:
     """Create ChatbotService from jeeves_infra AppContext.
 
-    Creates the service with SQLite-backed in-dialogue memory.
-    Memory initializes lazily on first request (fail-forward).
+    Wires app_context.db from capability-owned SQLiteClient if not already set.
+    Requires register_capability() to have been called first.
     """
     from jeeves_infra.wiring import create_tool_executor
     from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
-    from jeeves_capability_hello_world.database.sqlite_client import SQLiteClient
+
+    # Wire db from capability registration if not already on AppContext
+    if app_context.db is None:
+        if _capability_db is None:
+            raise RuntimeError("No database client available. Call register_capability() first.")
+        app_context.db = _capability_db
 
     # Get tool registry from capability registration
     registry = get_capability_resource_registry()
@@ -300,13 +316,22 @@ def create_hello_world_from_app_context(app_context: "AppContext") -> Any:
         logger=app_context.logger,
         pipeline_config=ONBOARDING_CHATBOT_PIPELINE,
         kernel_client=app_context.kernel_client,
-        db=SQLiteClient(),
+        db=app_context.db,
     )
+
+
+def get_capability_db():
+    """Get the capability-owned database client.
+
+    Returns None if register_capability() hasn't been called yet.
+    """
+    return _capability_db
 
 
 __all__ = [
     "register_capability",
     "get_agent_config",
+    "get_capability_db",
     "CAPABILITY_ID",
     "CAPABILITY_VERSION",
     "AGENT_LLM_CONFIGS",

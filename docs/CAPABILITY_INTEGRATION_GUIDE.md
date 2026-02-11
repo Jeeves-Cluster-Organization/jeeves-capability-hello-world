@@ -41,7 +41,7 @@ from protocols import (
     LLMProviderFactory, PreProcessHook, PostProcessHook,
 
     # Protocols
-    LoggerProtocol, PersistenceProtocol, DatabaseClientProtocol,
+    LoggerProtocol, DatabaseClientProtocol,
     LLMProviderProtocol, ToolRegistryProtocol, ToolExecutorProtocol,
     SettingsProtocol, FeatureFlagsProtocol, AppContextProtocol,
     NodeProfile, NodeProfilesProtocol, AgentLLMConfig,
@@ -83,7 +83,7 @@ from protocols import (
 from jeeves_infra.protocols import (
     # Re-exported from protocols
     LoggerProtocol, ContextBounds, WorkingMemory, RiskLevel,
-    PersistenceProtocol, ToolCategory,
+    ToolCategory,
 
     # Tool catalog
     tool_catalog, ToolId,
@@ -118,7 +118,6 @@ from jeeves_infra.wiring import (
     get_settings, get_feature_flags,
 
     # Factory functions
-    create_database_client,
     create_llm_provider_factory,
     create_event_emitter,
     create_graph_storage,
@@ -261,7 +260,7 @@ from jeeves_infra.llm.providers import (
 
 ```python
 from jeeves_infra.database.client import (
-    DatabaseClientProtocol, create_database_client,
+    DatabaseClientProtocol,
 )
 ```
 

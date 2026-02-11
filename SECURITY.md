@@ -78,12 +78,11 @@ If using PostgreSQL for conversation history:
 - Don't store sensitive user data in conversation logs
 - Implement proper access controls
 
-### Docker Deployment
+### Deployment
 
-- Don't run containers as root
-- Use read-only file systems where possible
-- Keep base images updated
 - Don't expose internal services (llama-server, database) publicly
+- Use read-only file systems where possible
+- Keep dependencies updated via `uv sync`
 
 ## Dependencies
 

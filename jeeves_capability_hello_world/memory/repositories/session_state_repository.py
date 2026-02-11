@@ -116,27 +116,6 @@ class SessionStateRepository:
     Uses upsert semantics for state updates.
     """
 
-    # Note: This SQL should match the schema file
-    # The authoritative schema is in the capability schema files
-    CREATE_TABLE_SQL = """
-        CREATE TABLE IF NOT EXISTS session_state (
-            session_id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            focus_type TEXT,
-            focus_id TEXT,
-            focus_context TEXT,
-            referenced_entities TEXT,
-            short_term_memory TEXT,
-            turn_count INTEGER DEFAULT 0,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-    """
-
-    CREATE_INDEX_SQL = """
-        CREATE INDEX IF NOT EXISTS idx_session_state_user ON session_state(user_id)
-    """
-
     def __init__(self, db: DatabaseClientProtocol, logger: Optional[LoggerProtocol] = None):
         """
         Initialize repository.
@@ -147,11 +126,6 @@ class SessionStateRepository:
         """
         self._logger = get_component_logger("SessionStateRepository", logger)
         self.db = db
-
-    async def ensure_table(self) -> None:
-        """Ensure the session_state table exists."""
-        await self.db.execute(self.CREATE_TABLE_SQL)
-        await self.db.execute(self.CREATE_INDEX_SQL)
 
     async def get(self, session_id: str) -> Optional[SessionState]:
         """
@@ -189,37 +163,20 @@ class SessionStateRepository:
         """
         state.updated_at = datetime.now(timezone.utc)
 
-        query = """
-            INSERT INTO session_state
-            (session_id, user_id, focus_type, focus_id, focus_context,
-             referenced_entities, short_term_memory, turn_count,
-             created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (session_id) DO UPDATE SET
-                user_id = EXCLUDED.user_id,
-                focus_type = EXCLUDED.focus_type,
-                focus_id = EXCLUDED.focus_id,
-                focus_context = EXCLUDED.focus_context,
-                referenced_entities = EXCLUDED.referenced_entities,
-                short_term_memory = EXCLUDED.short_term_memory,
-                turn_count = EXCLUDED.turn_count,
-                updated_at = EXCLUDED.updated_at
-        """
+        data = {
+            "session_id": state.session_id,
+            "user_id": state.user_id,
+            "focus_type": state.focus_type,
+            "focus_id": state.focus_id,
+            "focus_context": json.dumps(state.focus_context) if state.focus_context else None,
+            "referenced_entities": json.dumps(state.referenced_entities) if state.referenced_entities else None,
+            "short_term_memory": state.short_term_memory,
+            "turn_count": state.turn_count,
+            "created_at": state.created_at.isoformat() if state.created_at else None,
+            "updated_at": state.updated_at.isoformat() if state.updated_at else None,
+        }
 
-        params = (
-            state.session_id,
-            state.user_id,
-            state.focus_type,
-            state.focus_id,
-            json.dumps(state.focus_context) if state.focus_context else None,
-            json.dumps(state.referenced_entities) if state.referenced_entities else None,
-            state.short_term_memory,
-            state.turn_count,
-            state.created_at,
-            state.updated_at
-        )
-
-        await self.db.execute(query, params)
+        await self.db.upsert("session_state", data, key_columns=["session_id"])
 
         self._logger.debug(
             "session_state_upserted",

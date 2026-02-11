@@ -62,16 +62,28 @@ class ChatbotService:
         kernel_client: "KernelClient",
         use_mock: bool = False,
         db=None,
+        persistence=None,
+        enable_persistence: bool = True,
     ):
         from jeeves_capability_hello_world.prompts.registry import PromptRegistry
         prompt_registry = PromptRegistry.get_instance()
+
+        # Resolve persistence: explicit override > default adapter > None
+        if persistence is not None:
+            self._persistence = persistence
+        elif enable_persistence and db is not None:
+            import json
+            from jeeves_infra.runtime.persistence import DatabasePersistence
+            self._persistence = DatabasePersistence(db, encode=json.dumps, decode=json.loads)
+        else:
+            self._persistence = None
 
         self._runtime = create_pipeline_runner(
             config=pipeline_config,
             llm_provider_factory=llm_provider_factory,
             tool_executor=tool_executor,
             logger=logger,
-            persistence=None,
+            persistence=self._persistence,
             prompt_registry=prompt_registry,
             use_mock=use_mock,
         )
@@ -88,7 +100,7 @@ class ChatbotService:
             kernel_client=kernel_client,
             agents=self._runtime.agents,
             logger=logger,
-            persistence=None,
+            persistence=self._persistence,
         )
 
     async def _ensure_memory(self):

@@ -180,14 +180,15 @@ mypy jeeves_capability_hello_world/
 ### Running the Application
 
 ```bash
-# Option 1: With Docker (recommended)
-bash docker/setup_hello_world.sh --build
-docker compose -f docker/docker-compose.hello-world.yml up -d
+# Install dependencies with uv
+uv sync
 
-# Option 2: Local development
+# Set environment variables
 export LLM_PROVIDER=openai
 export OPENAI_API_KEY=your_key
-python gradio_app.py
+
+# Run the application
+uv run python gradio_app.py
 ```
 
 ## Code Style

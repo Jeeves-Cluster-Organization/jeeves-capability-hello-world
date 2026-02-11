@@ -57,7 +57,6 @@
 | Document | Description |
 |----------|-------------|
 | [k8s/README.md](../k8s/README.md) | Kubernetes deployment |
-| [docker/](../docker/) | Docker Compose files |
 
 ---
 
