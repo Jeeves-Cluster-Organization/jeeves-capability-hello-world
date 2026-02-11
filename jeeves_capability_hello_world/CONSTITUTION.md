@@ -153,7 +153,7 @@ service = create_hello_world_from_app_context(app_context)
 ### Amendment I: Minimal Scope
 
 This capability intentionally omits:
-- gRPC servicer (Gradio-only deployment)
+- Rust kernel IPC servicer (Gradio-only deployment)
 - Control Tower integration (no event tracking)
 - Persistence layer (stateless)
 - Complex tool suites (3 tools only)

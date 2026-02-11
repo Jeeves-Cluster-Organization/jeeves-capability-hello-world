@@ -43,7 +43,7 @@ def create_hello_world_service(
     *,
     llm_provider_factory: Callable,
     tool_executor: Any,
-    kernel_client: Optional["KernelClient"] = None,
+    kernel_client: "KernelClient",
     logger: Optional[Any] = None,
     use_mock: bool = False,
 ) -> ChatbotService:
@@ -56,8 +56,7 @@ def create_hello_world_service(
     Args:
         llm_provider_factory: Factory function to create LLM providers
         tool_executor: Tool executor instance
-        kernel_client: Optional KernelClient for resource tracking via Rust kernel
-                      (None for standalone operation without resource tracking)
+        kernel_client: KernelClient for resource tracking via Rust kernel (TCP+msgpack)
         logger: Optional logger (creates one if None)
         use_mock: Whether to use mock LLM (for testing)
 
@@ -79,7 +78,7 @@ def create_hello_world_service(
     logger.info(
         "creating_hello_world_service",
         use_mock=use_mock,
-        has_kernel_client=kernel_client is not None,
+        kernel_address=str(kernel_client),
     )
 
     from jeeves_capability_hello_world.database.sqlite_client import SQLiteClient

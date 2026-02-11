@@ -81,8 +81,7 @@ def get_or_create_service() -> ChatbotService:
 
         logger.info("chatbot_service_ready",
                     pipeline="onboarding_chatbot",
-                    agents=3,
-                    has_kernel_client=app_context.kernel_client is not None)
+                    agents=3)
 
     return _service
 

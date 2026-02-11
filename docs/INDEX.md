@@ -72,7 +72,7 @@ Zero-dependency type definitions:
 
 ### Layer 1: Rust Kernel (jeeves-core/src)
 
-The Rust micro-kernel (accessed via `KernelClient` gRPC bridge):
+The Rust micro-kernel (accessed via `KernelClient` TCP+msgpack IPC):
 - **Process lifecycle** - NEW → READY → RUNNING → TERMINATED
 - **Resource quotas** - Limits on iterations, LLM calls, agent hops
 - **Pipeline orchestration** - Multi-stage agent execution
@@ -89,7 +89,7 @@ Memory and event sourcing:
 Infrastructure implementations:
 - **LLM providers** - OpenAI, Anthropic, llama.cpp adapters
 - **Database clients** - Protocol-based, backend-agnostic (registry pattern)
-- **KernelClient** - gRPC bridge to Rust kernel
+- **KernelClient** - IPC bridge to Rust kernel (TCP+msgpack)
 - **Gateway** - HTTP/WebSocket translation
 
 ### Layer 4: Mission System & Capabilities

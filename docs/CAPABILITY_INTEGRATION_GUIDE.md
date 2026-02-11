@@ -387,7 +387,7 @@ Per the capability layer CONSTITUTION:
 ### Layer Rules
 
 1. **L0 (jeeves_infra.protocols, jeeves_infra.utils)**: No dependencies on other Jeeves packages
-2. **L1 (Rust kernel)**: Accessed via KernelClient (gRPC), not directly importable
+2. **L1 (Rust kernel)**: Accessed via KernelClient (TCP+msgpack IPC), not directly importable
 3. **L2 (jeeves_infra)**: Infrastructure + orchestration, can import from L0 and L1
 4. **L3 (Capabilities)**: Can import from L0 and L2
 

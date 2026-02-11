@@ -30,7 +30,7 @@ This constitution defines the contract between capabilities and the platform lay
 | Mission orchestration (checkpointing, recovery) | Mission System |
 | Tool execution framework | jeeves_infra |
 | Database schemas (sessions, memory) | jeeves_infra |
-| gRPC service scaffolding | Mission System |
+| IPC service scaffolding | Mission System |
 
 ## 2) Layer Dependencies
 

@@ -59,7 +59,7 @@ class ChatbotService:
         tool_executor: ToolExecutorProtocol,
         logger: LoggerProtocol,
         pipeline_config: PipelineConfig,
-        kernel_client: Optional["KernelClient"] = None,
+        kernel_client: "KernelClient",
         use_mock: bool = False,
         db=None,
     ):
@@ -84,15 +84,12 @@ class ChatbotService:
         self._session_state = None
         self._memory_ready = False
 
-        if kernel_client:
-            self._worker = PipelineWorker(
-                kernel_client=kernel_client,
-                agents=self._runtime.agents,
-                logger=logger,
-                persistence=None,
-            )
-        else:
-            self._worker = None
+        self._worker = PipelineWorker(
+            kernel_client=kernel_client,
+            agents=self._runtime.agents,
+            logger=logger,
+            persistence=None,
+        )
 
     async def _ensure_memory(self):
         """Lazily initialize SQLite memory. Fail-forward: errors are logged, not raised."""
@@ -116,7 +113,7 @@ class ChatbotService:
             self._session_state = SessionStateService(db=self._db)
             self._logger.info("memory_initialized", backend="sqlite")
         except Exception as e:
-            self._logger.warning("memory_init_failed", error=str(e))
+            self._logger.error("memory_init_failed", error=str(e))
             self._db = None
 
     async def _load_session_context(self, session_id: str, user_id: str, message: str) -> Dict[str, Any]:
@@ -152,8 +149,8 @@ class ChatbotService:
                     "content": assistant_response,
                     "created_at": now,
                 })
-        except Exception:
-            pass  # fail forward
+        except Exception as e:
+            self._logger.error("message_persist_failed", session_id=session_id, error=str(e))
 
     async def _run_with_resource_tracking(
         self,
@@ -163,66 +160,58 @@ class ChatbotService:
         """Run pipeline with kernel-driven orchestration."""
         pid = envelope.envelope_id
 
-        if self._worker and self._kernel_client:
-            pipeline_config_dict = {
-                "name": self._pipeline_config.name,
-                "max_iterations": self._pipeline_config.max_iterations,
-                "max_llm_calls": self._pipeline_config.max_llm_calls,
-                "max_agent_hops": self._pipeline_config.max_agent_hops,
-                "agents": [
-                    {
-                        "name": agent.name,
-                        "stage_order": agent.stage_order,
-                        "default_next": agent.default_next,
-                        "error_next": agent.error_next,
-                        "output_key": agent.output_key,
-                        "routing_rules": [
-                            {
-                                "condition": rule.condition,
-                                "value": rule.value,
-                                "target": rule.target,
-                            }
-                            for rule in agent.routing_rules
-                        ] if agent.routing_rules else [],
-                    }
-                    for agent in self._pipeline_config.agents
-                ],
-                "edge_limits": dict(self._pipeline_config.edge_limits) if self._pipeline_config.edge_limits else {},
-            }
-
-            result = await self._worker.execute(
-                process_id=pid,
-                pipeline_config=pipeline_config_dict,
-                envelope=envelope,
-                thread_id=thread_id,
-            )
-
-            result_envelope = result.envelope
-
-            if result.terminated:
-                reason_map = {
-                    "TERMINAL_REASON_COMPLETED": TerminalReason.COMPLETED,
-                    "TERMINAL_REASON_MAX_ITERATIONS_EXCEEDED": TerminalReason.MAX_ITERATIONS_EXCEEDED,
-                    "TERMINAL_REASON_MAX_LLM_CALLS_EXCEEDED": TerminalReason.MAX_LLM_CALLS_EXCEEDED,
-                    "TERMINAL_REASON_MAX_AGENT_HOPS_EXCEEDED": TerminalReason.MAX_AGENT_HOPS_EXCEEDED,
-                    "TERMINAL_REASON_MAX_LOOP_EXCEEDED": TerminalReason.MAX_LOOP_EXCEEDED,
-                    "TERMINAL_REASON_TOOL_FAILED_FATALLY": TerminalReason.TOOL_FAILED_FATALLY,
+        pipeline_config_dict = {
+            "name": self._pipeline_config.name,
+            "max_iterations": self._pipeline_config.max_iterations,
+            "max_llm_calls": self._pipeline_config.max_llm_calls,
+            "max_agent_hops": self._pipeline_config.max_agent_hops,
+            "agents": [
+                {
+                    "name": agent.name,
+                    "stage_order": agent.stage_order,
+                    "default_next": agent.default_next,
+                    "error_next": agent.error_next,
+                    "output_key": agent.output_key,
+                    "routing_rules": [
+                        {
+                            "condition": rule.condition,
+                            "value": rule.value,
+                            "target": rule.target,
+                        }
+                        for rule in agent.routing_rules
+                    ] if agent.routing_rules else [],
                 }
-                result_envelope.terminal_reason = reason_map.get(
-                    result.terminal_reason,
-                    TerminalReason.COMPLETED if result.terminal_reason == "" else TerminalReason.TOOL_FAILED_FATALLY
-                )
-                result_envelope.terminated = True
-                result_envelope.termination_reason = result.terminal_reason
+                for agent in self._pipeline_config.agents
+            ],
+            "edge_limits": dict(self._pipeline_config.edge_limits) if self._pipeline_config.edge_limits else {},
+        }
 
-            return result_envelope
+        result = await self._worker.execute(
+            process_id=pid,
+            pipeline_config=pipeline_config_dict,
+            envelope=envelope,
+            thread_id=thread_id,
+        )
 
-        # Fallback: No kernel client
-        self._logger.error("no_kernel_client", envelope_id=pid)
-        envelope.terminated = True
-        envelope.termination_reason = "KernelClient required for orchestration"
-        envelope.terminal_reason = TerminalReason.TOOL_FAILED_FATALLY
-        return envelope
+        result_envelope = result.envelope
+
+        if result.terminated:
+            reason_map = {
+                "TERMINAL_REASON_COMPLETED": TerminalReason.COMPLETED,
+                "TERMINAL_REASON_MAX_ITERATIONS_EXCEEDED": TerminalReason.MAX_ITERATIONS_EXCEEDED,
+                "TERMINAL_REASON_MAX_LLM_CALLS_EXCEEDED": TerminalReason.MAX_LLM_CALLS_EXCEEDED,
+                "TERMINAL_REASON_MAX_AGENT_HOPS_EXCEEDED": TerminalReason.MAX_AGENT_HOPS_EXCEEDED,
+                "TERMINAL_REASON_MAX_LOOP_EXCEEDED": TerminalReason.MAX_LOOP_EXCEEDED,
+                "TERMINAL_REASON_TOOL_FAILED_FATALLY": TerminalReason.TOOL_FAILED_FATALLY,
+            }
+            result_envelope.terminal_reason = reason_map.get(
+                result.terminal_reason,
+                TerminalReason.COMPLETED if result.terminal_reason == "" else TerminalReason.TOOL_FAILED_FATALLY
+            )
+            result_envelope.terminated = True
+            result_envelope.termination_reason = result.terminal_reason
+
+        return result_envelope
 
     async def process_message(
         self,
@@ -317,21 +306,20 @@ class ChatbotService:
         )
 
         # Register process with kernel before tracking usage
-        if self._kernel_client:
-            await self._kernel_client.create_process(
-                pid=pid,
-                request_id=request_id,
-                user_id=user_id,
-                session_id=session_id,
+        await self._kernel_client.create_process(
+            pid=pid,
+            request_id=request_id,
+            user_id=user_id,
+            session_id=session_id,
+        )
+        await self._kernel_client.record_usage(pid=pid, agent_hops=1)
+        quota_result = await self._kernel_client.check_quota(pid)
+        if not quota_result.within_bounds:
+            yield PipelineEvent(
+                "error", "__end__",
+                {"error": f"Quota exceeded: {quota_result.exceeded_reason}", "request_id": request_id}
             )
-            await self._kernel_client.record_usage(pid=pid, agent_hops=1)
-            quota_result = await self._kernel_client.check_quota(pid)
-            if not quota_result.within_bounds:
-                yield PipelineEvent(
-                    "error", "__end__",
-                    {"error": f"Quota exceeded: {quota_result.exceeded_reason}", "request_id": request_id}
-                )
-                return
+            return
 
         try:
             # Stage 1: Understand (buffered)
@@ -371,20 +359,19 @@ class ChatbotService:
                 yield PipelineEvent("stage", "respond", {"status": "completed"})
 
             # Record resource usage
-            if self._kernel_client:
-                runtime_hops = envelope.metadata.get("agent_hops", 0)
-                runtime_llm_calls = envelope.metadata.get("llm_call_count", 0)
-                runtime_tool_calls = envelope.metadata.get("tool_call_count", 0)
-                tokens_in = envelope.metadata.get("total_tokens_in", 0)
-                tokens_out = envelope.metadata.get("total_tokens_out", 0)
-                await self._kernel_client.record_usage(
-                    pid=pid,
-                    agent_hops=max(0, runtime_hops - 1),
-                    llm_calls=runtime_llm_calls,
-                    tool_calls=runtime_tool_calls,
-                    tokens_in=tokens_in,
-                    tokens_out=tokens_out,
-                )
+            runtime_hops = envelope.metadata.get("agent_hops", 0)
+            runtime_llm_calls = envelope.metadata.get("llm_call_count", 0)
+            runtime_tool_calls = envelope.metadata.get("tool_call_count", 0)
+            tokens_in = envelope.metadata.get("total_tokens_in", 0)
+            tokens_out = envelope.metadata.get("total_tokens_out", 0)
+            await self._kernel_client.record_usage(
+                pid=pid,
+                agent_hops=max(0, runtime_hops - 1),
+                llm_calls=runtime_llm_calls,
+                tool_calls=runtime_tool_calls,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+            )
 
             # Persist messages (fail-forward)
             response_text = envelope.outputs.get("final_response", {}).get("response", "")

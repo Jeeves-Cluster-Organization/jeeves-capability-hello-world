@@ -57,11 +57,10 @@ The foundation of Jeeves, written in Rust for performance and reliability.
 - Envelope state management - immutable state transitions with full history
 - Resource quotas - limits on iterations, LLM calls, agent hops
 - Circuit breakers - fault tolerance for external service failures
-- gRPC services - communication bridge to Python layer
+- IPC services (TCP+msgpack) - communication bridge to Python layer
 
 **Key Files:**
 - `src/` - Core orchestration logic
-- `proto/` - gRPC protocol definitions
 - `tests/` - Integration tests
 
 ### Layer 2: jeeves-infra (Python Infrastructure)
@@ -72,7 +71,7 @@ Shared infrastructure used by all Python components.
 - LLM providers - unified interface to OpenAI, Anthropic, llama.cpp
 - Database clients - Protocol-based registry (capabilities own concrete backends)
 - Protocols - type definitions shared across layers
-- Gateway - HTTP/WebSocket/gRPC translation layer
+- Gateway - HTTP/WebSocket translation layer
 - kernel_client - Python interface to jeeves-core
 - Agent profiles - declarative agent configuration
 - Adapters - Constitution R7 compliant wrappers (create_llm_provider_factory)
@@ -86,7 +85,7 @@ Shared infrastructure used by all Python components.
 - `jeeves_infra.llm` - LLM provider implementations
 - `jeeves_infra.protocols` - Envelope, AgentConfig, PipelineConfig, PipelineEvent
 - `jeeves_infra.gateway` - API translation layer
-- `jeeves_infra.kernel_client` - gRPC client to jeeves-core
+- `jeeves_infra.kernel_client` - IPC client to jeeves-core (TCP+msgpack)
 - `jeeves_infra.wiring` - Factory functions (create_llm_provider_factory, create_tool_executor)
 - `jeeves_infra.orchestrator` - Event orchestration and governance
 - `jeeves_infra.config` - Agent profiles, registry, constants

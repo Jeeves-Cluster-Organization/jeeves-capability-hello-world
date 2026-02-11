@@ -25,10 +25,10 @@ Jeeves Hello World is part of a layered architecture:
 │  jeeves-infra (Infrastructure + Orchestration Layer)            │
 │  LLM providers, database clients, orchestration framework      │
 └─────────────────────────────────────────────────────────────────┘
-                              │ gRPC
+                              │ IPC (TCP+msgpack)
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  jeeves-core (Micro-Kernel - Go)                                │
+│  jeeves-core (Micro-Kernel - Rust)                              │
 │  Pipeline orchestration, envelope state, resource quotas        │
 └─────────────────────────────────────────────────────────────────┘
 ```

@@ -40,10 +40,10 @@ Jeeves Hello World is a **learning-focused chatbot** that demonstrates the core 
 │  │  - Factory functions for capabilities                   │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
-                              │ gRPC
+                              │ IPC (TCP+msgpack)
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  jeeves-core (Micro-Kernel - Go)                                │
+│  jeeves-core (Micro-Kernel - Rust)                              │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │  - Pipeline orchestration engine                        │    │
 │  │  - Envelope state management                            │    │

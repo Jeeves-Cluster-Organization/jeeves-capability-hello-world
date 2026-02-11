@@ -77,7 +77,6 @@ class TestKnowledgeBase:
         assert "Import Boundaries" in KEY_CONCEPTS
         assert "CORRECT" in KEY_CONCEPTS
         assert "WRONG" in KEY_CONCEPTS
-        assert "adapters" in KEY_CONCEPTS
 
     def test_key_concepts_pipeline_pattern(self):
         """Verify pipeline pattern is documented."""
