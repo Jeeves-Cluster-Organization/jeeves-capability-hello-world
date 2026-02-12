@@ -1,7 +1,7 @@
 """SQLite database client for hello-world capability.
 
 Implements DatabaseClientProtocol using aiosqlite.
-Promoted from jeeves-airframe/tests/fixtures/sqlite_client.py with production hardening.
+Promoted from ../jeeves-infra/tests/fixtures/sqlite_client.py with production hardening.
 """
 
 import os

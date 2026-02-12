@@ -95,8 +95,8 @@ LAYER_RULES: Dict[str, List[str]] = {
     ],
 }
 
-# Base directory for Python packages (jeeves-airframe submodule)
-JEEVES_AIRFRAME_DIR = Path("jeeves-airframe")
+# Base directory for Python packages (jeeves-infra submodule)
+JEEVES_AIRFRAME_DIR = Path("..") / "jeeves-infra"
 
 # Files/patterns to exclude
 EXCLUDE_PATTERNS = [
@@ -147,7 +147,7 @@ def get_layer_for_import(module_name: str) -> Optional[str]:
 
 def get_layer_for_file(filepath: Path) -> Optional[str]:
     """Determine which layer a file belongs to based on its path."""
-    # Try to get path relative to jeeves-airframe
+    # Try to get path relative to jeeves-infra
     try:
         relative = filepath.relative_to(JEEVES_AIRFRAME_DIR)
     except ValueError:
@@ -312,13 +312,13 @@ def print_layer_diagram() -> None:
 Jeeves Layer Architecture:
 
 ┌─────────────────────────────────────────────────────────────────┐
-│ L4: jeeves_infra.api (jeeves-airframe/jeeves_infra/api/)        │
+│ L4: jeeves_infra.api (jeeves-infra/jeeves_infra/api/)        │
 │     API layer - orchestration, services, capabilities           │
 ├─────────────────────────────────────────────────────────────────┤
-│ L3: jeeves_infra (jeeves-airframe/jeeves_infra/)                │
+│ L3: jeeves_infra (jeeves-infra/jeeves_infra/)                │
 │     Infrastructure - LLM, DB, Gateway, Tools, KernelClient      │
 ├─────────────────────────────────────────────────────────────────┤
-│ L2: jeeves_infra.memory (jeeves-airframe/jeeves_infra/memory/)  │
+│ L2: jeeves_infra.memory (jeeves-infra/jeeves_infra/memory/)  │
 │     Event sourcing, semantic search, session state              │
 ├─────────────────────────────────────────────────────────────────┤
 │ L1: Rust Kernel (jeeves-core/src/) [NOT PYTHON]                 │

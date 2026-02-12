@@ -27,7 +27,7 @@ from typing import List, Set, Tuple
 
 # Directories to check
 CHECK_DIRS = [
-    "jeeves-airframe/jeeves_infra",
+    "../jeeves-infra/jeeves_infra",
     "jeeves_capability_hello_world",
 ]
 
@@ -45,7 +45,7 @@ EXCLUDE_PATTERNS = [
 
 # Allowed files for structlog.get_logger()
 STRUCTLOG_ALLOWED_FILES = {
-    "jeeves-airframe/jeeves_infra/logging/__init__.py",
+    "../jeeves-infra/jeeves_infra/logging/__init__.py",
 }
 
 

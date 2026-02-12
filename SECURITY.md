@@ -101,7 +101,7 @@ pip-audit
 
 This repository includes git submodules:
 - `jeeves-core` - Rust micro-kernel
-- `jeeves-airframe` - Python infrastructure
+- `jeeves-infra` - Python infrastructure
 
 Keep submodules updated:
 

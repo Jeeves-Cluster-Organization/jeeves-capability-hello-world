@@ -17,14 +17,6 @@ repos:
   # Fast local tests (< 10 seconds)
   - repo: local
     hooks:
-      - id: test-airframe-lightweight
-        name: Test Airframe (lightweight, < 2s)
-        entry: bash -c 'pytest jeeves-airframe/tests/unit/ -m "not heavy and not requires_ml and not requires_docker" -v'
-        language: system
-        pass_filenames: false
-        # Only run if airframe files changed
-        files: ^jeeves-airframe/
-
       - id: test-app-layer
         name: Test App Layer (all mocked, < 3s)
         entry: bash -c 'pytest jeeves_capability_hello_world/tests -v'

@@ -544,7 +544,7 @@ requires-dist = [
     { name = "audioop-lts", marker = "python_full_version >= '3.13'", specifier = ">=0.2.1" },
     { name = "gradio", specifier = ">=5.0.0" },
     { name = "httpx", specifier = "==0.27.2" },
-    { name = "jeeves-infra", editable = "jeeves-airframe" },
+    { name = "jeeves-infra", editable = "../jeeves-infra" },
     { name = "msgpack", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.5.0,<3.0.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
@@ -563,7 +563,7 @@ dev = [{ name = "jeeves-capability-hello-world", extras = ["test"] }]
 [[package]]
 name = "jeeves-infra"
 version = "1.0.0"
-source = { editable = "jeeves-airframe" }
+source = { editable = "../jeeves-infra" }
 dependencies = [
     { name = "httpx" },
     { name = "msgpack" },

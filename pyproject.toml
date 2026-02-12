@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Jeeves Hello World - 3-agent Gradio chatbot capability"
 requires-python = ">=3.11"
 dependencies = [
-    # Infrastructure layer (resolved from local jeeves-airframe/ via [tool.uv.sources])
+    # Infrastructure layer (resolved from local ../jeeves-infra/ via [tool.uv.sources])
     "jeeves-infra",
     # Core
     "pydantic>=2.5.0,<3.0.0",
@@ -39,18 +39,18 @@ dev = [
 ]
 
 [tool.uv.sources]
-jeeves-infra = { path = "jeeves-airframe", editable = true }
+jeeves-infra = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["jeeves_capability_hello_world"]
 
 [tool.pytest.ini_options]
-pythonpath = [".", "jeeves-airframe"]
+pythonpath = [".", "../jeeves-infra"]
 asyncio_mode = "auto"
 testpaths = [
     "jeeves_capability_hello_world/tests",
     "tests",
-    "jeeves-airframe/tests",
+    "../jeeves-infra/tests",
 ]
 python_files = "test_*.py"
 python_classes = "Test*"

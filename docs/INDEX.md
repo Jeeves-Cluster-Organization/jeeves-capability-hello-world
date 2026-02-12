@@ -28,17 +28,17 @@
 
 | Document | Description |
 |----------|-------------|
-| [jeeves-core README](../jeeves-core/README.md) | Rust micro-kernel overview |
-| [jeeves-core CONSTITUTION](../jeeves-core/CONSTITUTION.md) | Kernel layer rules |
-| [jeeves-core CONTRIBUTING](../jeeves-core/CONTRIBUTING.md) | Contributing to the kernel |
+| [jeeves-core README](../../jeeves-core/README.md) | Rust micro-kernel overview |
+| [jeeves-core CONSTITUTION](../../jeeves-core/CONSTITUTION.md) | Kernel layer rules |
+| [jeeves-core CONTRIBUTING](../../jeeves-core/CONTRIBUTING.md) | Contributing to the kernel |
 
 ### Infrastructure Layer
 
 | Document | Description |
 |----------|-------------|
-| [jeeves-airframe README](../jeeves-airframe/README.md) | Infrastructure layer overview |
-| [jeeves_infra orchestration docs](../jeeves-airframe/jeeves_infra/orchestrator/) | Orchestration framework |
-| [jeeves_infra README](../jeeves-airframe/jeeves_infra/README.md) | Infrastructure documentation |
+| [jeeves-infra README](../../jeeves-infra/README.md) | Infrastructure layer overview |
+| [jeeves_infra orchestration docs](../../jeeves-infra/jeeves_infra/orchestrator/) | Orchestration framework |
+| [jeeves_infra README](../../jeeves-infra/jeeves_infra/README.md) | Infrastructure documentation |
 
 ---
 

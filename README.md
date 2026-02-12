@@ -192,7 +192,7 @@ jeeves-capability-hello-world/
 │       └── wiring.py                # Service factory
 │
 ├── jeeves-core/                     # Rust micro-kernel (submodule)
-├── jeeves-airframe/                 # Python infrastructure (submodule)
+├── jeeves-infra/                 # Python infrastructure (submodule)
 │   ├── jeeves_infra/                # Infrastructure implementations
 │
 ├── docker/                          # Docker deployment
@@ -360,7 +360,7 @@ Edit files in `prompts/chatbot/`:
 | [CONSTITUTION.md](jeeves_capability_hello_world/CONSTITUTION.md) | Architectural rules |
 | [docs/INDEX.md](docs/INDEX.md) | Documentation hub |
 | [jeeves-core/README.md](jeeves-core/README.md) | Micro-kernel docs |
-| [jeeves-airframe/README.md](jeeves-airframe/README.md) | Infrastructure docs |
+| [jeeves-infra/README.md](jeeves-infra/README.md) | Infrastructure docs |
 
 ## Contributing
 

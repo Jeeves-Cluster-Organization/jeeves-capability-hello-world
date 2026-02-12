@@ -338,7 +338,7 @@ jeeves-capability-hello-world/
 │   └── tests/                       # Unit tests
 │
 ├── jeeves-core/                     # Rust micro-kernel (git submodule)
-└── jeeves-airframe/                 # Python infrastructure (git submodule)
+└── jeeves-infra/                 # Python infrastructure (git submodule)
 ```
 
 ### Key Files Explained

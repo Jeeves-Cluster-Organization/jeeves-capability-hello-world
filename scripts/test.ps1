@@ -67,7 +67,7 @@ function Test-Contract {
     Write-Host "   - Layer boundary enforcement" -ForegroundColor Gray
     Write-Host "   - Evidence chain integrity (P1)" -ForegroundColor Gray
 
-    uv run pytest jeeves-airframe/jeeves_infra/tests/contract -v
+    uv run pytest ../jeeves-infra/jeeves_infra/tests/contract -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
@@ -84,8 +84,8 @@ function Test-Mission {
     Write-Host "Testing infra (contract + unit tests)" -ForegroundColor Cyan
 
     uv run pytest `
-        jeeves-airframe/jeeves_infra/tests/contract `
-        jeeves-airframe/jeeves_infra/tests/unit `
+        ../jeeves-infra/jeeves_infra/tests/contract `
+        ../jeeves-infra/jeeves_infra/tests/unit `
         -m "not requires_llamaserver and not requires_database" `
         -v
 
@@ -105,7 +105,7 @@ function Test-MissionFull {
     Write-Host "Prerequisites: ollama serve" -ForegroundColor Yellow
     Write-Host ""
 
-    uv run pytest jeeves-airframe/jeeves_infra/tests -m "not e2e and not heavy" -v
+    uv run pytest ../jeeves-infra/jeeves_infra/tests -m "not e2e and not heavy" -v
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
@@ -123,7 +123,7 @@ function Test-Tier2 {
     Write-Host ""
 
     uv run pytest `
-        jeeves-airframe/jeeves_infra/tests/unit `
+        ../jeeves-infra/jeeves_infra/tests/unit `
         -m "not requires_llamaserver and not requires_ml" `
         -v
 
@@ -146,7 +146,7 @@ function Test-Tier3 {
     Write-Host ""
 
     uv run pytest `
-        jeeves-airframe/jeeves_infra/tests/integration `
+        ../jeeves-infra/jeeves_infra/tests/integration `
         -m "not e2e and not heavy" `
         -v
 
@@ -169,7 +169,7 @@ function Test-Tier4 {
     Write-Host ""
 
     uv run pytest `
-        jeeves-airframe/jeeves_infra/tests `
+        ../jeeves-infra/jeeves_infra/tests `
         -m e2e `
         -v
 
