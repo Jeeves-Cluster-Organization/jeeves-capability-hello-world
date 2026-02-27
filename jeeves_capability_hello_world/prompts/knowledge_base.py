@@ -185,10 +185,11 @@ Agent types:
 3. **Think-Tools** (No LLM, Has Tools): Executes tools (get_time, list_tools)
 4. **Respond** (LLM): Synthesizes response, may loop back
 
-Routing rules are declared on AgentConfig and evaluated by the Rust kernel:
+Routing rules use expression trees evaluated by the Rust kernel:
 ```python
-RoutingRule(condition="intent", value="general", target="think_tools")
-RoutingRule(condition="needs_more_context", value="true", target="understand")
+from jeeves_core.protocols.routing import eq, not_, always
+RoutingRule(expr=eq("intent", "general"), target="think_tools")
+RoutingRule(expr=eq("needs_more_context", True), target="understand")
 ```
 
 Bounds guarantee termination: `max_llm_calls=6` means max 3 loops.
@@ -455,32 +456,35 @@ CONDITIONAL_ROUTING = """
 
 ### RoutingRule
 
-Agents can define routing rules that the Rust kernel evaluates after each agent completes.
-Rules are checked against the agent's output dict.
+Agents define routing rules using expression trees that the Rust kernel evaluates after each
+agent completes. Rules are checked against the agent's output dict.
 
 ```python
+from jeeves_core.protocols.routing import eq, not_
+
 AgentConfig(
     name="understand",
     routing_rules=[
-        RoutingRule(condition="intent", value="general", target="think_tools"),
-        RoutingRule(condition="intent", value="getting_started", target="think_tools"),
+        RoutingRule(expr=eq("intent", "general"), target="think_tools"),
+        RoutingRule(expr=eq("intent", "getting_started"), target="think_tools"),
     ],
     default_next="think_knowledge",  # Used when no rule matches
     error_next="respond",            # Used on agent failure
 )
 ```
 
-### Loop-Back Routing
+### Loop-Back Routing (Temporal Pattern)
 
-The respond agent can route back to understand for another iteration:
+The respond agent uses the Temporal pattern: routing expresses when to CONTINUE.
+When no rule matches and no default_next is set, the kernel terminates naturally.
 
 ```python
 AgentConfig(
     name="respond",
     routing_rules=[
-        RoutingRule(condition="needs_more_context", value="true", target="understand"),
+        RoutingRule(expr=eq("needs_more_context", True), target="understand"),
     ],
-    default_next="end",
+    default_next=None,  # No match = kernel terminates (COMPLETED)
 )
 ```
 

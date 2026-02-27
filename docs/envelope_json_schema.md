@@ -124,7 +124,8 @@ And deserialized via:
         "max_iterations_exceeded",
         "max_llm_calls_exceeded",
         "max_agent_hops_exceeded",
-        "max_critic_fires_exceeded"
+        "max_critic_fires_exceeded",
+        "max_stage_visits_exceeded"
       ],
       "description": "Why processing terminated"
     },

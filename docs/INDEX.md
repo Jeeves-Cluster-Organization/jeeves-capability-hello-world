@@ -127,14 +127,16 @@ AgentConfig(
 
 ### Conditional Routing
 
-For non-linear pipelines, use `RoutingRule`:
+For non-linear pipelines, use expression-based `RoutingRule`:
 
 ```python
+from jeeves_core.protocols.routing import eq
+
 AgentConfig(
     name="router",
     routing_rules=[
-        RoutingRule(condition="type", value="A", target="handler_a"),
-        RoutingRule(condition="type", value="B", target="handler_b"),
+        RoutingRule(expr=eq("type", "A"), target="handler_a"),
+        RoutingRule(expr=eq("type", "B"), target="handler_b"),
     ],
     default_next="default_handler",
 )

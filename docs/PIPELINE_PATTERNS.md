@@ -22,14 +22,16 @@ AgentConfig(name="respond", default_next="end"),
 
 ## Conditional Branching
 
-Route based on agent output using `RoutingRule`:
+Route based on agent output using expression-based `RoutingRule`:
 
 ```python
+from jeeves_core.protocols.routing import eq
+
 AgentConfig(
     name="classifier",
     routing_rules=[
-        RoutingRule(condition="intent", value="search", target="search_agent"),
-        RoutingRule(condition="intent", value="create", target="create_agent"),
+        RoutingRule(expr=eq("intent", "search"), target="search_agent"),
+        RoutingRule(expr=eq("intent", "create"), target="create_agent"),
     ],
     default_next="general_handler",
     error_next="error_recovery",
@@ -37,6 +39,7 @@ AgentConfig(
 ```
 
 The kernel evaluates `routing_rules` in order; first match wins. Falls back to `default_next`.
+When no rule matches and no `default_next` is set, the kernel terminates (Temporal pattern).
 
 ---
 

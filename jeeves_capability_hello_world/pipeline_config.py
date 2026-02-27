@@ -21,9 +21,9 @@ from jeeves_core.protocols import (
     AgentConfig,
     RoutingRule,
     ToolAccess,
-    TerminalReason,
 )
 from jeeves_core.protocols import AgentOutputMode, TokenStreamMode, GenerationParams
+from jeeves_core.protocols.routing import eq, not_, always
 
 
 # =============================================================================
@@ -186,13 +186,10 @@ async def respond_post_process(envelope: Any, output: Dict[str, Any], agent: Any
         # Don't terminate — kernel routing rule will send back to understand
         return envelope
 
-    # Normal termination
+    # Normal completion — kernel terminates when no routing rules match
     if "response" not in output:
         output["response"] = "I apologize, but I wasn't able to generate a response. Please try again."
 
-    envelope.terminated = True
-    envelope.termination_reason = "completed"
-    envelope.terminal_reason = TerminalReason.COMPLETED
     return envelope
 
 
@@ -222,8 +219,8 @@ ONBOARDING_CHATBOT_PIPELINE = PipelineConfig(
             pre_process=understand_pre_process,
             post_process=understand_post_process,
             routing_rules=[
-                RoutingRule(condition="intent", value="getting_started", target="think_tools"),
-                RoutingRule(condition="intent", value="general", target="think_tools"),
+                RoutingRule(expr=eq("intent", "getting_started"), target="think_tools"),
+                RoutingRule(expr=eq("intent", "general"), target="think_tools"),
             ],
             default_next="think_knowledge",
             error_next="respond",
@@ -274,10 +271,10 @@ ONBOARDING_CHATBOT_PIPELINE = PipelineConfig(
             pre_process=respond_pre_process,
             post_process=respond_post_process,
             routing_rules=[
-                RoutingRule(condition="needs_more_context", value="true", target="understand"),
+                RoutingRule(expr=eq("needs_more_context", True), target="understand"),
             ],
-            default_next="end",
-            error_next="end",
+            default_next=None,  # No match = kernel terminates (Temporal pattern)
+            error_next=None,
             output_mode=AgentOutputMode.TEXT,
             token_stream=TokenStreamMode.AUTHORITATIVE,
             streaming_prompt_key="chatbot.respond_streaming",

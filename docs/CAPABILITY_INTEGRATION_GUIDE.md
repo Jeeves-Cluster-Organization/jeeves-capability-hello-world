@@ -171,12 +171,13 @@ Beyond linear pipelines, capabilities can use routing and DAG patterns.
 ### Routing Rules
 
 ```python
-from protocols import AgentConfig, RoutingRule
+from jeeves_core.protocols import AgentConfig, RoutingRule
+from jeeves_core.protocols.routing import eq
 
 AgentConfig(
     name="classifier",
     routing_rules=[
-        RoutingRule(condition="type", value="urgent", target="priority_handler"),
+        RoutingRule(expr=eq("type", "urgent"), target="priority_handler"),
     ],
     default_next="general_handler",
     error_next="error_recovery",

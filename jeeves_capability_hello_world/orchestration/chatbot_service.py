@@ -19,7 +19,6 @@ from jeeves_core.protocols import (
     create_pipeline_runner,
     create_envelope,
     Envelope,
-    TerminalReason,
     LoggerProtocol,
     ToolExecutorProtocol,
     PipelineConfig,
@@ -102,38 +101,6 @@ class ChatbotService:
             logger=logger,
             persistence=self._persistence,
         )
-
-    # =========================================================================
-    # Pipeline Config Serialization
-    # =========================================================================
-
-    def _build_pipeline_config_dict(self) -> Dict[str, Any]:
-        """Serialize pipeline config for kernel. Shared by both execution paths."""
-        return {
-            "name": self._pipeline_config.name,
-            "max_iterations": self._pipeline_config.max_iterations,
-            "max_llm_calls": self._pipeline_config.max_llm_calls,
-            "max_agent_hops": self._pipeline_config.max_agent_hops,
-            "agents": [
-                {
-                    "name": agent.name,
-                    "stage_order": agent.stage_order,
-                    "default_next": agent.default_next,
-                    "error_next": agent.error_next,
-                    "output_key": agent.output_key,
-                    "routing_rules": [
-                        {
-                            "condition": rule.condition,
-                            "value": rule.value,
-                            "target": rule.target,
-                        }
-                        for rule in agent.routing_rules
-                    ] if agent.routing_rules else [],
-                }
-                for agent in self._pipeline_config.agents
-            ],
-            "edge_limits": dict(self._pipeline_config.edge_limits) if self._pipeline_config.edge_limits else {},
-        }
 
     # =========================================================================
     # Memory (fail-forward)
@@ -228,7 +195,7 @@ class ChatbotService:
 
     async def _run_pipeline(self, envelope: Envelope, thread_id: str) -> WorkerResult:
         """Execute pipeline under kernel control."""
-        pipeline_config_dict = self._build_pipeline_config_dict()
+        pipeline_config_dict = self._pipeline_config.to_kernel_dict()
         return await self._worker.execute(
             process_id=envelope.envelope_id,
             pipeline_config=pipeline_config_dict,
@@ -253,14 +220,8 @@ class ChatbotService:
 
         try:
             result = await self._run_pipeline(envelope, thread_id=session_id)
-            result_envelope = result.envelope
 
-            if result.terminated:
-                result_envelope.terminal_reason = self._map_terminal_reason(result.terminal_reason)
-                result_envelope.terminated = True
-                result_envelope.termination_reason = result.terminal_reason
-
-            chatbot_result = self._envelope_to_result(result_envelope, request_id)
+            chatbot_result = self._build_result(result, request_id)
             await self._persist_messages(session_id, message, chatbot_result.response or "")
             return chatbot_result
 
@@ -290,7 +251,7 @@ class ChatbotService:
 
         envelope = self._build_envelope(message, user_id, session_id, session_context, metadata)
         request_id = envelope.request_id
-        pipeline_config_dict = self._build_pipeline_config_dict()
+        pipeline_config_dict = self._pipeline_config.to_kernel_dict()
 
         self._logger.info(
             "chatbot_streaming_started",
@@ -341,26 +302,16 @@ class ChatbotService:
     # Result Mapping
     # =========================================================================
 
-    @staticmethod
-    def _map_terminal_reason(reason_str: str) -> TerminalReason:
-        reason_map = {
-            "TERMINAL_REASON_COMPLETED": TerminalReason.COMPLETED,
-            "TERMINAL_REASON_MAX_ITERATIONS_EXCEEDED": TerminalReason.MAX_ITERATIONS_EXCEEDED,
-            "TERMINAL_REASON_MAX_LLM_CALLS_EXCEEDED": TerminalReason.MAX_LLM_CALLS_EXCEEDED,
-            "TERMINAL_REASON_MAX_AGENT_HOPS_EXCEEDED": TerminalReason.MAX_AGENT_HOPS_EXCEEDED,
-            "TERMINAL_REASON_MAX_LOOP_EXCEEDED": TerminalReason.MAX_LOOP_EXCEEDED,
-            "TERMINAL_REASON_TOOL_FAILED_FATALLY": TerminalReason.TOOL_FAILED_FATALLY,
-        }
-        return reason_map.get(
-            reason_str,
-            TerminalReason.COMPLETED if reason_str == "" else TerminalReason.TOOL_FAILED_FATALLY,
-        )
+    def _build_result(self, worker_result: WorkerResult, request_id: str) -> ChatbotResult:
+        """Convert WorkerResult to ChatbotResult.
 
-    def _envelope_to_result(self, envelope: Envelope, request_id: str) -> ChatbotResult:
-        """Convert Envelope to ChatbotResult, handling all terminal reasons."""
-        final = envelope.outputs.get("final_response", {})
+        Reads termination status from WorkerResult (kernel is sole authority).
+        """
+        final = worker_result.envelope.outputs.get("final_response", {})
+        reason = worker_result.terminal_reason
 
-        if envelope.terminal_reason == TerminalReason.COMPLETED:
+        # Completed or not terminated — look for response
+        if not worker_result.terminated or reason in ("", "COMPLETED"):
             response = final.get("response")
             if not response:
                 return ChatbotResult(
@@ -378,12 +329,12 @@ class ChatbotService:
 
         # Bounds exits — return partial response if available
         bounds_reasons = {
-            TerminalReason.MAX_ITERATIONS_EXCEEDED,
-            TerminalReason.MAX_LLM_CALLS_EXCEEDED,
-            TerminalReason.MAX_AGENT_HOPS_EXCEEDED,
-            TerminalReason.MAX_LOOP_EXCEEDED,
+            "MAX_ITERATIONS_EXCEEDED",
+            "MAX_LLM_CALLS_EXCEEDED",
+            "MAX_AGENT_HOPS_EXCEEDED",
+            "MAX_STAGE_VISITS_EXCEEDED",
         }
-        if envelope.terminal_reason in bounds_reasons:
+        if reason in bounds_reasons:
             partial = final.get("response")
             if partial:
                 return ChatbotResult(
@@ -392,27 +343,16 @@ class ChatbotService:
                     confidence="low",
                     request_id=request_id,
                 )
-            reason_name = envelope.terminal_reason.value if hasattr(envelope.terminal_reason, 'value') else str(envelope.terminal_reason)
             return ChatbotResult(
                 status="error",
-                error=f"Pipeline stopped: {reason_name}",
+                error=f"Pipeline stopped: {reason}",
                 request_id=request_id,
             )
 
-        if envelope.terminal_reason == TerminalReason.TOOL_FAILED_FATALLY:
+        if reason == "TOOL_FAILED_FATALLY":
             return ChatbotResult(status="error", error="A tool failed during processing", request_id=request_id)
 
-        if envelope.terminal_reason == TerminalReason.LLM_FAILED_FATALLY:
-            return ChatbotResult(status="error", error="LLM provider failed", request_id=request_id)
-
-        if envelope.terminal_reason == TerminalReason.POLICY_VIOLATION:
-            return ChatbotResult(status="error", error="Request blocked by policy", request_id=request_id)
-
-        if envelope.terminal_reason == TerminalReason.USER_CANCELLED:
-            return ChatbotResult(status="error", error="Cancelled", request_id=request_id)
-
-        error_msg = envelope.termination_reason or "Pipeline failed"
-        return ChatbotResult(status="error", error=error_msg, request_id=request_id)
+        return ChatbotResult(status="error", error=reason or "Pipeline failed", request_id=request_id)
 
     # =========================================================================
     # Control Tower Dispatch
@@ -421,12 +361,7 @@ class ChatbotService:
     async def handle_dispatch(self, envelope: Envelope) -> Envelope:
         await self._ensure_memory()
         result = await self._run_pipeline(envelope, thread_id=envelope.session_id)
-        result_envelope = result.envelope
-        if result.terminated:
-            result_envelope.terminal_reason = self._map_terminal_reason(result.terminal_reason)
-            result_envelope.terminated = True
-            result_envelope.termination_reason = result.terminal_reason
-        return result_envelope
+        return result.envelope
 
     def get_dispatch_handler(self):
         return self.handle_dispatch

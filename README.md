@@ -230,14 +230,16 @@ AgentConfig(
 
 ### Routing Rules
 
-For non-linear pipelines, agents can define conditional routing:
+For non-linear pipelines, agents define expression-based routing:
 
 ```python
+from jeeves_core.protocols.routing import eq
+
 AgentConfig(
     name="classifier",
     routing_rules=[
-        RoutingRule(condition="type", value="urgent", target="priority_handler"),
-        RoutingRule(condition="type", value="routine", target="batch_handler"),
+        RoutingRule(expr=eq("type", "urgent"), target="priority_handler"),
+        RoutingRule(expr=eq("type", "routine"), target="batch_handler"),
     ],
     default_next="general_handler",
 )
