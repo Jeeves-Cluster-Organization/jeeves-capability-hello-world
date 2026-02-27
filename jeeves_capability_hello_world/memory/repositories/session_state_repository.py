@@ -20,7 +20,7 @@ import json
 
 from jeeves_capability_hello_world._logging import get_component_logger
 from jeeves_capability_hello_world._serialization import parse_datetime
-from jeeves_infra.protocols import LoggerProtocol, DatabaseClientProtocol
+from jeeves_core.protocols import LoggerProtocol, DatabaseClientProtocol
 
 
 class SessionState:

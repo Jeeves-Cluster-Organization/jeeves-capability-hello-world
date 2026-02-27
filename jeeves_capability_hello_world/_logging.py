@@ -1,7 +1,7 @@
 """Capability-local structured logging utilities.
 
-Replaces jeeves_infra.utils.logging imports with direct structlog usage.
-Satisfies import boundary: no jeeves_infra.utils imports in capability code.
+Replaces jeeves_core.utils.logging imports with direct structlog usage.
+Satisfies import boundary: no jeeves_core.utils imports in capability code.
 """
 
 import structlog

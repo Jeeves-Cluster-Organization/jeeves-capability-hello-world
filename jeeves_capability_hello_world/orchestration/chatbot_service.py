@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from dataclasses import dataclass
 import asyncio
 
-from jeeves_infra.protocols import (
+from jeeves_core.protocols import (
     PipelineRunner,
     create_pipeline_runner,
     create_envelope,
@@ -23,11 +23,11 @@ from jeeves_infra.protocols import (
     ToolExecutorProtocol,
     PipelineConfig,
 )
-from jeeves_infra.protocols import RequestContext
-from jeeves_infra.pipeline_worker import PipelineWorker, WorkerResult
+from jeeves_core.protocols import RequestContext
+from jeeves_core.pipeline_worker import PipelineWorker, WorkerResult
 
 if TYPE_CHECKING:
-    from jeeves_infra.kernel_client import KernelClient
+    from jeeves_core.kernel_client import KernelClient
 
 
 @dataclass
@@ -73,7 +73,7 @@ class ChatbotService:
             self._persistence = persistence
         elif enable_persistence and db is not None:
             import json
-            from jeeves_infra.runtime.persistence import DatabasePersistence
+            from jeeves_core.runtime.persistence import DatabasePersistence
             self._persistence = DatabasePersistence(db, encode=json.dumps, decode=json.loads)
         else:
             self._persistence = None
@@ -285,7 +285,7 @@ class ChatbotService:
         2. Think agent: Buffered (tool execution)
         3. Respond agent: TRUE STREAMING (yields tokens as generated)
         """
-        from jeeves_infra.protocols import PipelineEvent
+        from jeeves_core.protocols import PipelineEvent
 
         request_id = f"req_{uuid4().hex[:16]}"
         request_context = RequestContext(
@@ -352,7 +352,7 @@ class ChatbotService:
             yield PipelineEvent("stage", "respond", {"status": "started"})
             respond_agent = self._runtime.agents.get("respond")
             if respond_agent:
-                from jeeves_infra.protocols import TokenStreamMode
+                from jeeves_core.protocols import TokenStreamMode
 
                 if respond_agent.config.token_stream == TokenStreamMode.AUTHORITATIVE:
                     async for event_type, event in respond_agent.stream(envelope):

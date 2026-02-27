@@ -248,7 +248,7 @@ BARE_EXCEPT:
 
 GLOBAL_STRUCTLOG:
   Replace: logger = structlog.get_logger()
-  With:    from jeeves_infra.logging import create_logger
+  With:    from jeeves_core.logging import create_logger
            # In constructor:
            self._logger = logger or create_logger("component_name")
 """)

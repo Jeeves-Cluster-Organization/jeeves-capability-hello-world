@@ -1,8 +1,8 @@
 """Agent-specific thresholds for hello-world capability.
 
-Moved from jeeves_infra/thresholds.py — these constants are tuning knobs
+Moved from jeeves_core/thresholds.py — these constants are tuning knobs
 for the specific agents in this capability (planner, critic, meta-validator).
-Infrastructure thresholds remain in jeeves_infra/thresholds.py.
+Infrastructure thresholds remain in jeeves_core/thresholds.py.
 """
 
 # =============================================================================

@@ -21,7 +21,7 @@ class TestKnowledgeBase:
     def test_ecosystem_overview_contains_layers(self):
         """Verify all layers are documented."""
         assert "jeeves-core" in ECOSYSTEM_OVERVIEW
-        assert "jeeves-infra" in ECOSYSTEM_OVERVIEW
+        assert "jeeves-core" in ECOSYSTEM_OVERVIEW
         assert "Capabilities" in ECOSYSTEM_OVERVIEW
 
     def test_ecosystem_overview_contains_high_level(self):
@@ -38,11 +38,11 @@ class TestKnowledgeBase:
         assert "Pipeline orchestration" in LAYER_DETAILS
         assert "Envelope state management" in LAYER_DETAILS
 
-        # Layer 2: jeeves-infra
+        # Layer 2: jeeves-core
         assert "LLM providers" in LAYER_DETAILS
         assert "Database clients" in LAYER_DETAILS
 
-        # jeeves-infra includes orchestration
+        # jeeves-core includes orchestration
         assert "Agent profiles" in LAYER_DETAILS
         assert "PipelineRunner" in LAYER_DETAILS
 
@@ -174,7 +174,7 @@ class TestOnboardingIntents:
         ("How do I run this?", "getting_started"),
         ("How do I add a tool?", "getting_started"),
         ("What is jeeves-core?", "component"),
-        ("What does jeeves-infra do?", "component"),
+        ("What does jeeves-core do?", "component"),
         ("Hello!", "general"),
         ("Thanks!", "general"),
     ])

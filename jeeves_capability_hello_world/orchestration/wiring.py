@@ -24,8 +24,8 @@ import structlog
 from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
 
 if TYPE_CHECKING:
-    from jeeves_infra.kernel_client import KernelClient
-    from jeeves_infra.protocols import CapabilityToolCatalog
+    from jeeves_core.kernel_client import KernelClient
+    from jeeves_core.protocols import CapabilityToolCatalog
 
 from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 from jeeves_capability_hello_world.capability.wiring import (
@@ -64,7 +64,7 @@ def create_hello_world_service(
         Configured ChatbotService instance
 
     Example:
-        from jeeves_infra.wiring import create_tool_executor
+        from jeeves_core.wiring import create_tool_executor
 
         service = create_hello_world_service(
             llm_provider_factory=app_context.llm_provider_factory,

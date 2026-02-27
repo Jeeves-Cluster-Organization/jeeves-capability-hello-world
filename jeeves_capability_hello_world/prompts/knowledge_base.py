@@ -29,7 +29,7 @@ a Rust core handles orchestration while Python provides the AI/ML capabilities.
 ### The Three Layers
 
 1. **jeeves-core** (Rust) - The micro-kernel that orchestrates everything
-2. **jeeves-infra** (Python) - Infrastructure & orchestration framework: LLM providers, database protocols, adapters, pipeline runner, config
+2. **jeeves-core** (Python) - Infrastructure & orchestration framework: LLM providers, database protocols, adapters, pipeline runner, config
 3. **Capabilities** (Python) - Your domain-specific code: prompts, tools, services
 
 ### Data Flow
@@ -63,7 +63,7 @@ The foundation of Jeeves, written in Rust for performance and reliability.
 - `src/` - Core orchestration logic
 - `tests/` - Integration tests
 
-### Layer 2: jeeves-infra (Python Infrastructure)
+### Layer 2: jeeves-core (Python Infrastructure)
 
 Shared infrastructure used by all Python components.
 
@@ -82,14 +82,14 @@ Shared infrastructure used by all Python components.
 - Bootstrap - AppContext creation, composition root
 
 **Key Modules:**
-- `jeeves_infra.llm` - LLM provider implementations
-- `jeeves_infra.protocols` - Envelope, AgentConfig, PipelineConfig, PipelineEvent
-- `jeeves_infra.gateway` - API translation layer
-- `jeeves_infra.kernel_client` - IPC client to jeeves-core (TCP+msgpack)
-- `jeeves_infra.wiring` - Factory functions (create_llm_provider_factory, create_tool_executor)
-- `jeeves_infra.orchestrator` - Event orchestration and governance
-- `jeeves_infra.config` - Agent profiles, registry, constants
-- `jeeves_infra.bootstrap` - AppContext composition root
+- `jeeves_core.llm` - LLM provider implementations
+- `jeeves_core.protocols` - Envelope, AgentConfig, PipelineConfig, PipelineEvent
+- `jeeves_core.gateway` - API translation layer
+- `jeeves_core.kernel_client` - IPC client to jeeves-core (TCP+msgpack)
+- `jeeves_core.wiring` - Factory functions (create_llm_provider_factory, create_tool_executor)
+- `jeeves_core.orchestrator` - Event orchestration and governance
+- `jeeves_core.config` - Agent profiles, registry, constants
+- `jeeves_core.bootstrap` - AppContext composition root
 
 ### Layer 3: Capabilities (Python User Space)
 
@@ -157,14 +157,14 @@ A strict rule: Capabilities MUST NOT import infrastructure directly.
 
 **CORRECT:**
 ```python
-from jeeves_infra.bootstrap import create_app_context
+from jeeves_core.bootstrap import create_app_context
 app_context = create_app_context()
 llm_factory = app_context.llm_provider_factory
 ```
 
 **WRONG:**
 ```python
-from jeeves_infra.llm import LLMProvider  # Violates R7!
+from jeeves_core.llm import LLMProvider  # Violates R7!
 ```
 
 **Why?** This ensures capabilities remain portable and the infrastructure
@@ -254,7 +254,7 @@ Respond helpfully.
 
 ```python
 # In pipeline_config.py
-from jeeves_infra.protocols import AgentConfig
+from jeeves_core.protocols import AgentConfig
 
 AgentConfig(
     name="my_agent",
@@ -289,7 +289,7 @@ async def my_post_process(envelope, output, agent=None):
 
 ```python
 # CORRECT way to get LLM provider (via AppContext, K8s-style bootstrap)
-from jeeves_infra.bootstrap import create_app_context
+from jeeves_core.bootstrap import create_app_context
 
 app_context = create_app_context()
 llm = app_context.llm_provider_factory(role="planner")
@@ -339,7 +339,7 @@ jeeves-capability-hello-world/
 │   └── tests/                       # Unit tests
 │
 ├── jeeves-core/                     # Rust micro-kernel (git submodule)
-└── jeeves-infra/                 # Python infrastructure (git submodule)
+└── jeeves-core/                 # Python infrastructure (git submodule)
 ```
 
 ### Key Files Explained
@@ -435,7 +435,7 @@ pytest -v
 ### Common Troubleshooting
 
 **Import Error: Cannot import from protocols**
-- Use `from jeeves_infra.protocols import ...`
+- Use `from jeeves_core.protocols import ...`
 - NOT `from protocols import ...`
 
 **Agent not receiving context**

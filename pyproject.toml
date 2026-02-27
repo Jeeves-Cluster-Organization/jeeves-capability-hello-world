@@ -8,8 +8,8 @@ version = "1.0.0"
 description = "Jeeves Hello World - 3-agent Gradio chatbot capability"
 requires-python = ">=3.11"
 dependencies = [
-    # Infrastructure layer (resolved from jeeves-core/python via [tool.uv.sources])
-    "jeeves-infra",
+    # Infrastructure layer (resolved from jeeves-core via [tool.uv.sources])
+    "jeeves-core",
     # UI
     "gradio>=5.0.0",
     # SQLite (async)
@@ -33,7 +33,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-jeeves-infra = { workspace = true }
+jeeves-core = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["jeeves_capability_hello_world"]

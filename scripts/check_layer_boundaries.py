@@ -2,14 +2,14 @@
 """CI Check: Layer Boundary Enforcement.
 
 This script enforces the Jeeves layer architecture invariants:
-- L0 (jeeves_infra.protocols): Zero dependencies, type definitions
+- L0 (jeeves_core.protocols): Zero dependencies, type definitions
 - L1 (Rust kernel): Process lifecycle, resources - accessed via KernelClient (gRPC)
-- L2 (jeeves_infra.memory): Event sourcing, semantic memory - imports L0 only
-- L3 (jeeves_infra): Infrastructure - LLM, DB, Gateway - imports L0, L2
-- L4 (jeeves_infra.api): API layer - orchestration, services - imports L0, L2, L3
+- L2 (jeeves_core.memory): Event sourcing, semantic memory - imports L0 only
+- L3 (jeeves_core): Infrastructure - LLM, DB, Gateway - imports L0, L2
+- L4 (jeeves_core.api): API layer - orchestration, services - imports L0, L2, L3
 
 Note: L1 is implemented in Rust (jeeves-core/src/). Python code
-accesses it via jeeves_infra.kernel_client (gRPC bridge), which is part of L3.
+accesses it via jeeves_core.kernel_client (gRPC bridge), which is part of L3.
 
 Run as part of CI to prevent layer violations.
 
@@ -37,66 +37,66 @@ from typing import Dict, List, Optional, Set
 # import from lower layers, but not vice versa.
 #
 # Note: L1 (kernel) is implemented in Rust and accessed via gRPC. The Python
-# KernelClient is part of L3 (jeeves_infra) and provides the bridge.
+# KernelClient is part of L3 (jeeves_core) and provides the bridge.
 # =============================================================================
 
 # Layer definitions (order matters - higher index = higher layer)
 # Format: "package_name": layer_number
 LAYERS: Dict[str, int] = {
     # L0: Zero dependencies - protocols and shared utilities
-    "jeeves_infra.protocols": 0,
-    "jeeves_infra.utils": 0,
+    "jeeves_core.protocols": 0,
+    "jeeves_core.utils": 0,
 
     # L2: Memory module (L1 is Rust kernel, not Python)
-    "jeeves_infra.memory": 2,
+    "jeeves_core.memory": 2,
 
     # L3: Infrastructure layer
-    "jeeves_infra": 3,
+    "jeeves_core": 3,
 
     # L4: API layer
-    "jeeves_infra.api": 4,
+    "jeeves_core.api": 4,
 }
 
 # Mapping from import prefixes to their layer
-# This handles the fact that jeeves_infra has sub-packages at different layers
+# This handles the fact that jeeves_core has sub-packages at different layers
 LAYER_MAPPING: Dict[str, int] = {
-    "jeeves_infra.protocols": 0,
-    "jeeves_infra.utils": 0,
-    "jeeves_infra.memory": 2,
-    "jeeves_infra": 3,  # Catch-all for other jeeves_infra imports
-    "jeeves_infra.api": 4,
+    "jeeves_core.protocols": 0,
+    "jeeves_core.utils": 0,
+    "jeeves_core.memory": 2,
+    "jeeves_core": 3,  # Catch-all for other jeeves_core imports
+    "jeeves_core.api": 4,
 }
 
 # Allowed imports per layer
 LAYER_RULES: Dict[str, List[str]] = {
     # L0: Can import from other L0 packages
-    "jeeves_infra.protocols": ["jeeves_infra.utils"],
-    "jeeves_infra.utils": ["jeeves_infra.protocols"],
+    "jeeves_core.protocols": ["jeeves_core.utils"],
+    "jeeves_core.utils": ["jeeves_core.protocols"],
 
     # L2: Can import from L0
-    "jeeves_infra.memory": [
-        "jeeves_infra.protocols",
-        "jeeves_infra.utils",
+    "jeeves_core.memory": [
+        "jeeves_core.protocols",
+        "jeeves_core.utils",
     ],
 
     # L3: Can import from L0, L2
-    "jeeves_infra": [
-        "jeeves_infra.protocols",
-        "jeeves_infra.utils",
-        "jeeves_infra.memory",
+    "jeeves_core": [
+        "jeeves_core.protocols",
+        "jeeves_core.utils",
+        "jeeves_core.memory",
     ],
 
     # L4: Can import from L0, L2, L3
-    "jeeves_infra.api": [
-        "jeeves_infra.protocols",
-        "jeeves_infra.utils",
-        "jeeves_infra.memory",
-        "jeeves_infra",
+    "jeeves_core.api": [
+        "jeeves_core.protocols",
+        "jeeves_core.utils",
+        "jeeves_core.memory",
+        "jeeves_core",
     ],
 }
 
-# Base directory for Python packages (jeeves-infra submodule)
-JEEVES_AIRFRAME_DIR = Path("..") / "jeeves-infra"
+# Base directory for Python packages (jeeves-core submodule)
+JEEVES_AIRFRAME_DIR = Path("..") / "jeeves-core"
 
 # Files/patterns to exclude
 EXCLUDE_PATTERNS = [
@@ -147,7 +147,7 @@ def get_layer_for_import(module_name: str) -> Optional[str]:
 
 def get_layer_for_file(filepath: Path) -> Optional[str]:
     """Determine which layer a file belongs to based on its path."""
-    # Try to get path relative to jeeves-infra
+    # Try to get path relative to jeeves-core
     try:
         relative = filepath.relative_to(JEEVES_AIRFRAME_DIR)
     except ValueError:
@@ -158,17 +158,17 @@ def get_layer_for_file(filepath: Path) -> Optional[str]:
         return None
 
     # Build the module path and find the matching layer
-    if parts[0] == "jeeves_infra":
+    if parts[0] == "jeeves_core":
         if len(parts) > 1:
             if parts[1] == "protocols":
-                return "jeeves_infra.protocols"
+                return "jeeves_core.protocols"
             elif parts[1] == "utils":
-                return "jeeves_infra.utils"
+                return "jeeves_core.utils"
             elif parts[1] == "memory":
-                return "jeeves_infra.memory"
+                return "jeeves_core.memory"
             elif parts[1] == "api":
-                return "jeeves_infra.api"
-        return "jeeves_infra"
+                return "jeeves_core.api"
+        return "jeeves_core"
 
     return None
 
@@ -205,8 +205,8 @@ class LayerBoundaryChecker:
 
     def _check_import(self, module_name: str, lineno: int) -> None:
         """Check if an import violates layer boundaries."""
-        # Only check jeeves_infra imports
-        if not module_name.startswith("jeeves_infra"):
+        # Only check jeeves_core imports
+        if not module_name.startswith("jeeves_core"):
             return
 
         # Determine the layer of the imported module
@@ -273,10 +273,10 @@ def get_files_to_check() -> List[tuple]:
         print(f"Warning: {JEEVES_AIRFRAME_DIR} not found")
         return files
 
-    # Check jeeves_infra
-    jeeves_infra_dir = JEEVES_AIRFRAME_DIR / "jeeves_infra"
-    if jeeves_infra_dir.exists():
-        for filepath in jeeves_infra_dir.rglob("*.py"):
+    # Check jeeves_core
+    jeeves_core_dir = JEEVES_AIRFRAME_DIR / "jeeves_core"
+    if jeeves_core_dir.exists():
+        for filepath in jeeves_core_dir.rglob("*.py"):
             if should_check_file(filepath, EXCLUDE_PATTERNS):
                 layer = get_layer_for_file(filepath)
                 if layer:
@@ -312,20 +312,20 @@ def print_layer_diagram() -> None:
 Jeeves Layer Architecture:
 
 ┌─────────────────────────────────────────────────────────────────┐
-│ L4: jeeves_infra.api (jeeves-infra/jeeves_infra/api/)        │
+│ L4: jeeves_core.api (jeeves-core/jeeves_core/api/)        │
 │     API layer - orchestration, services, capabilities           │
 ├─────────────────────────────────────────────────────────────────┤
-│ L3: jeeves_infra (jeeves-infra/jeeves_infra/)                │
+│ L3: jeeves_core (jeeves-core/jeeves_core/)                │
 │     Infrastructure - LLM, DB, Gateway, Tools, KernelClient      │
 ├─────────────────────────────────────────────────────────────────┤
-│ L2: jeeves_infra.memory (jeeves-infra/jeeves_infra/memory/)  │
+│ L2: jeeves_core.memory (jeeves-core/jeeves_core/memory/)  │
 │     Event sourcing, semantic search, session state              │
 ├─────────────────────────────────────────────────────────────────┤
 │ L1: Rust Kernel (jeeves-core/src/) [NOT PYTHON]                 │
 │     Process lifecycle, resources, orchestration                 │
 │     Python access via: KernelClient (gRPC) in L3                │
 ├─────────────────────────────────────────────────────────────────┤
-│ L0: jeeves_infra.protocols, jeeves_infra.utils                  │
+│ L0: jeeves_core.protocols, jeeves_core.utils                  │
 │     Zero dependencies - types, protocols, shared utilities      │
 └─────────────────────────────────────────────────────────────────┘
 
@@ -388,17 +388,17 @@ def main() -> int:
             print("=" * 70)
             print("""
 Option 1: Move the import to an allowed layer
-  - If jeeves_infra.memory needs DB access, use protocols interfaces
+  - If jeeves_core.memory needs DB access, use protocols interfaces
 
 Option 2: Extract to protocols
-  - If multiple layers need a type, define it in L0 (jeeves_infra.protocols)
+  - If multiple layers need a type, define it in L0 (jeeves_core.protocols)
 
 Option 3: Use dependency injection
   - Instead of importing concrete implementations, accept protocols
 
 Example fix for memory importing from infra:
-  BEFORE: from jeeves_infra.database import PostgresClient
-  AFTER:  from jeeves_infra.protocols import DatabaseClientProtocol
+  BEFORE: from jeeves_core.database import PostgresClient
+  AFTER:  from jeeves_core.protocols import DatabaseClientProtocol
           # Inject concrete client at runtime
 """)
 

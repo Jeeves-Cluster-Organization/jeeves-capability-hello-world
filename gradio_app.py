@@ -74,7 +74,7 @@ def get_or_create_service() -> ChatbotService:
     if _service is None:
         logger.info("initializing_chatbot_service")
 
-        from jeeves_infra.bootstrap import create_app_context
+        from jeeves_core.bootstrap import create_app_context
         app_context = create_app_context()
 
         _service = create_hello_world_from_app_context(app_context)

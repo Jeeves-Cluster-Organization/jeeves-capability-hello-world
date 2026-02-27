@@ -12,13 +12,13 @@ Use case: Learning template, ecosystem onboarding
 """
 
 from typing import Any, Dict
-from jeeves_infra.protocols import (
+from jeeves_core.protocols import (
     PipelineConfig,
     AgentConfig,
     ToolAccess,
     TerminalReason,
 )
-from jeeves_infra.protocols import AgentOutputMode, TokenStreamMode, GenerationParams
+from jeeves_core.protocols import AgentOutputMode, TokenStreamMode, GenerationParams
 
 
 # ═══════════════════════════════════════════════════════════════

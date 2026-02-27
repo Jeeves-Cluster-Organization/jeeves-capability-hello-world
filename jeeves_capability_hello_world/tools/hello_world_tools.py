@@ -88,7 +88,7 @@ def list_tools() -> Dict[str, Any]:
     capabilities = [
         "Explain the Jeeves ecosystem architecture (3 layers)",
         "Describe jeeves-core (Rust micro-kernel)",
-        "Describe jeeves-infra (Python infrastructure & orchestration framework)",
+        "Describe jeeves-core (Python infrastructure & orchestration framework)",
         "Explain key concepts: Envelope, AgentConfig, Constitution R7",
         "Explain the 3-agent pipeline pattern",
         "Help with getting started and adding tools",

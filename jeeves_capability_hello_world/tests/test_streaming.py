@@ -15,7 +15,7 @@ import time
 from typing import List, AsyncIterator
 from unittest.mock import Mock, AsyncMock, MagicMock
 
-from jeeves_infra.protocols import (
+from jeeves_core.protocols import (
     AgentConfig,
     AgentOutputMode,
     TokenStreamMode,
@@ -191,7 +191,7 @@ async def test_cancellation_propagates():
     class MockKernelClient:
         """Mock KernelClient for testing."""
         async def create_process(self, *args, **kwargs):
-            from jeeves_infra.kernel_client import ProcessInfo
+            from jeeves_core.kernel_client import ProcessInfo
             return ProcessInfo(
                 pid=kwargs.get("pid", "mock-pid"),
                 request_id="mock-req",
@@ -202,15 +202,15 @@ async def test_cancellation_propagates():
             )
 
         async def record_usage(self, *args, **kwargs):
-            from jeeves_infra.kernel_client import QuotaCheckResult
+            from jeeves_core.kernel_client import QuotaCheckResult
             return QuotaCheckResult(within_bounds=True)
 
         async def check_quota(self, *args, **kwargs):
-            from jeeves_infra.kernel_client import QuotaCheckResult
+            from jeeves_core.kernel_client import QuotaCheckResult
             return QuotaCheckResult(within_bounds=True)
 
         async def get_process(self, *args, **kwargs):
-            from jeeves_infra.kernel_client import ProcessInfo
+            from jeeves_core.kernel_client import ProcessInfo
             return ProcessInfo(
                 pid="mock-pid",
                 request_id="mock-req",
@@ -269,7 +269,7 @@ async def test_cancellation_propagates():
 @pytest.mark.asyncio
 async def test_inline_citations_best_effort():
     """Verify inline citations are extracted but not guaranteed."""
-    from jeeves_infra.protocols import Agent
+    from jeeves_core.protocols import Agent
 
     config = AgentConfig(name="test", output_key="test")
     agent = Agent(config=config, logger=Mock())
@@ -467,7 +467,7 @@ async def test_exactly_one_terminal_event():
     class MockKernelClient:
         """Mock KernelClient for testing."""
         async def create_process(self, *args, **kwargs):
-            from jeeves_infra.kernel_client import ProcessInfo
+            from jeeves_core.kernel_client import ProcessInfo
             return ProcessInfo(
                 pid=kwargs.get("pid", "mock-pid"),
                 request_id="mock-req",
@@ -478,15 +478,15 @@ async def test_exactly_one_terminal_event():
             )
 
         async def record_usage(self, *args, **kwargs):
-            from jeeves_infra.kernel_client import QuotaCheckResult
+            from jeeves_core.kernel_client import QuotaCheckResult
             return QuotaCheckResult(within_bounds=True)
 
         async def check_quota(self, *args, **kwargs):
-            from jeeves_infra.kernel_client import QuotaCheckResult
+            from jeeves_core.kernel_client import QuotaCheckResult
             return QuotaCheckResult(within_bounds=True)
 
         async def get_process(self, *args, **kwargs):
-            from jeeves_infra.kernel_client import ProcessInfo
+            from jeeves_core.kernel_client import ProcessInfo
             return ProcessInfo(
                 pid="mock-pid",
                 request_id="mock-req",

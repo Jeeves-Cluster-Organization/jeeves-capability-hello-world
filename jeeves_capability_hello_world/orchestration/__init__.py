@@ -13,7 +13,7 @@ Usage (recommended - via capability layer):
         register_capability,
         create_hello_world_from_app_context,
     )
-    from jeeves_infra.bootstrap import create_app_context
+    from jeeves_core.bootstrap import create_app_context
 
     register_capability()
     app_context = create_app_context()

@@ -1,6 +1,6 @@
 """Capability Registration for Hello World Chatbot.
 
-Registers hello-world as a capability with jeeves-infra.
+Registers hello-world as a capability with jeeves-core.
 Tools, agents, and orchestrator are registered here.
 SQLite-backed in-dialogue memory is created lazily in ChatbotService.
 
@@ -8,7 +8,7 @@ Usage:
     from jeeves_capability_hello_world.capability.wiring import register_capability
     register_capability()
 
-    from jeeves_infra.bootstrap import create_app_context
+    from jeeves_core.bootstrap import create_app_context
     app_context = create_app_context()
 
     from jeeves_capability_hello_world.capability.wiring import create_hello_world_from_app_context
@@ -20,7 +20,7 @@ import os
 from pathlib import Path
 from typing import Any, Callable, Optional, TYPE_CHECKING
 
-from jeeves_infra.protocols import (
+from jeeves_core.protocols import (
     get_capability_resource_registry,
     DomainModeConfig,
     DomainServiceConfig,
@@ -32,7 +32,7 @@ from jeeves_infra.protocols import (
 )
 
 if TYPE_CHECKING:
-    from jeeves_infra.context import AppContext
+    from jeeves_core.context import AppContext
 
 logger = logging.getLogger(__name__)
 
@@ -255,7 +255,7 @@ def register_capability() -> None:
 
     # 6. Register LLM configurations
     try:
-        from jeeves_infra.capability_registry import get_capability_registry
+        from jeeves_core.capability_registry import get_capability_registry
 
         llm_registry = get_capability_registry()
         for agent_name, config in AGENT_LLM_CONFIGS.items():
@@ -290,12 +290,12 @@ def get_agent_config(agent_name: str) -> AgentLLMConfig:
 
 
 def create_hello_world_from_app_context(app_context: "AppContext") -> Any:
-    """Create ChatbotService from jeeves_infra AppContext.
+    """Create ChatbotService from jeeves_core AppContext.
 
     Wires app_context.db from capability-owned SQLiteClient if not already set.
     Requires register_capability() to have been called first.
     """
-    from jeeves_infra.wiring import create_tool_executor
+    from jeeves_core.wiring import create_tool_executor
     from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
