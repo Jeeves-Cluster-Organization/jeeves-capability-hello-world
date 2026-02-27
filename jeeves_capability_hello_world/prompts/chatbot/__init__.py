@@ -1,9 +1,9 @@
 """
-Chatbot prompts for general-purpose assistant capability.
+Chatbot prompts for onboarding assistant capability.
 
-This module contains LLM prompts for the 3-agent chatbot pipeline:
-- understand: Classifies intent and determines if web search is needed
-- respond: Crafts helpful responses with or without search results
+LLM prompts for the pipeline:
+- understand: Classifies intent for routing
+- respond: Crafts responses (JSON or streaming plain text)
 """
 
 from .understand import chatbot_understand

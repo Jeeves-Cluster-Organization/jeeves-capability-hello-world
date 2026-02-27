@@ -10,6 +10,7 @@ Sections:
 - code_examples: Practical code snippets
 - hello_world_structure: This capability's structure
 - how_to_guides: Step-by-step guides for common tasks
+- conditional_routing: RoutingRule, loop-back, bounds, error_next
 """
 
 from typing import List
@@ -172,16 +173,25 @@ can be upgraded without breaking user code.
 
 ### The Pipeline Pattern
 
-Jeeves uses a staged pipeline pattern: **Understand -> Think -> Respond**
+Jeeves uses a staged pipeline with declarative routing:
 
-1. **Understand** (LLM): Analyzes user intent, classifies the request
-2. **Think** (Tools): Executes tools, retrieves data, performs actions
-3. **Respond** (LLM): Synthesizes a response from all gathered context
+**Linear flow:** Understand → Think-Knowledge → Respond
+**Conditional routing:** Understand can route to Think-Tools for general/getting_started intents
+**Loop-back:** Respond can route back to Understand when knowledge is insufficient
 
-This separation enables:
-- Clear responsibility boundaries
-- Easier testing (mock each stage)
-- Flexible tool execution without LLM overhead
+Agent types:
+1. **Understand** (LLM): Classifies intent, determines routing
+2. **Think-Knowledge** (No LLM): Retrieves embedded knowledge sections
+3. **Think-Tools** (No LLM, Has Tools): Executes tools (get_time, list_tools)
+4. **Respond** (LLM): Synthesizes response, may loop back
+
+Routing rules are declared on AgentConfig and evaluated by the Rust kernel:
+```python
+RoutingRule(condition="intent", value="general", target="think_tools")
+RoutingRule(condition="needs_more_context", value="true", target="understand")
+```
+
+Bounds guarantee termination: `max_llm_calls=6` means max 3 loops.
 """
 
 
@@ -210,18 +220,17 @@ def get_time(timezone: str = "UTC") -> dict:
 ### Registering a Tool
 
 ```python
-# In tools/registration.py
-from .catalog import tool_catalog, ToolId
+# In capability/wiring.py
+from jeeves_core.protocols import CapabilityToolCatalog
 
-tool_catalog.register(
-    tool_id=ToolId.GET_TIME.value,
+catalog = CapabilityToolCatalog("my_capability")
+catalog.register(
+    tool_id="get_time",
     func=get_time,
     description="Get current date and time",
-    category="utility",
+    category="standalone",
     risk_semantic="read_only",
     risk_severity="low",
-    parameters={"timezone": "string? - default UTC"},
-    is_async=False,
 )
 ```
 
@@ -312,7 +321,7 @@ jeeves-capability-hello-world/
 ├── gradio_app.py                    # Entry point - Gradio web UI
 ├── jeeves_capability_hello_world/   # Main capability package
 │   ├── __init__.py
-│   ├── pipeline_config.py           # 3-agent pipeline configuration
+│   ├── pipeline_config.py           # 4-agent pipeline configuration
 │   │
 │   ├── prompts/                     # LLM prompts
 │   │   ├── __init__.py
@@ -324,8 +333,6 @@ jeeves-capability-hello-world/
 │   │
 │   ├── tools/                       # Available tools
 │   │   ├── __init__.py
-│   │   ├── catalog.py               # Tool registry
-│   │   ├── registration.py          # Tool registration
 │   │   └── hello_world_tools.py     # get_time, list_tools
 │   │
 │   ├── orchestration/               # Service layer
@@ -337,19 +344,16 @@ jeeves-capability-hello-world/
 │   │   └── wiring.py                # Register with jeeves-core
 │   │
 │   └── tests/                       # Unit tests
-│
-├── jeeves-core/                     # Rust micro-kernel (git submodule)
-└── jeeves-core/                 # Python infrastructure (git submodule)
 ```
 
 ### Key Files Explained
 
 - **gradio_app.py**: Starts the web UI, initializes the capability
-- **pipeline_config.py**: Defines the 3-agent pipeline with hooks
+- **pipeline_config.py**: Defines the 4-agent pipeline with routing rules
 - **prompts/chatbot/*.py**: LLM prompts for each agent
 - **tools/hello_world_tools.py**: Simple demonstration tools
 - **orchestration/chatbot_service.py**: Wraps PipelineRunner
-- **capability/wiring.py**: Registers with jeeves-core registry
+- **capability/wiring.py**: Registers tools and capability with jeeves-core
 """
 
 
@@ -368,43 +372,37 @@ HOW_TO_GUIDES = """
        return {"status": "success", "result": param1.upper()}
    ```
 
-2. **Add to ToolId enum** in `tools/catalog.py`:
+2. **Register in** `capability/wiring.py` using `catalog.register(...)`:
    ```python
-   class ToolId(str, Enum):
-       MY_TOOL = "my_tool"
-   ```
+   from jeeves_core.protocols import CapabilityToolCatalog
 
-3. **Add to EXPOSED_TOOL_IDS** in `tools/catalog.py`:
-   ```python
-   EXPOSED_TOOL_IDS = frozenset([ToolId.MY_TOOL.value, ...])
-   ```
-
-4. **Register in** `tools/registration.py`:
-   ```python
-   tool_catalog.register(
-       tool_id=ToolId.MY_TOOL.value,
+   catalog = CapabilityToolCatalog("hello_world")
+   catalog.register(
+       tool_id="my_tool",
        func=my_tool,
        description="Does something useful",
-       category=ToolCategory.UTILITY.value,
-       risk_semantic=RiskSemantic.READ_ONLY.value,
-       risk_severity=RiskSeverity.LOW.value,
+       category="standalone",
+       risk_semantic="read_only",
+       risk_severity="low",
    )
    ```
 
-5. **Export from** `tools/__init__.py`
+That's it -- no ToolId enum, no catalog.py, no registration.py, no EXPOSED_TOOL_IDS.
 
 ### How to Create a New Agent
 
 1. **Create the prompt** in `prompts/chatbot/my_agent.py`
 2. **Add AgentConfig** to `pipeline_config.py`
 3. **Create pre/post hooks** if needed
-4. **Update EXPOSED_TOOL_IDS** if agent needs tools
+4. **Register tools** in `capability/wiring.py` if agent needs tools
 
 ### How to Modify the Pipeline Flow
 
 Edit `pipeline_config.py`:
 - Change `stage_order` to reorder agents
-- Change `default_next` to alter flow
+- Change `default_next` to alter the default flow
+- Add `routing_rules` to create conditional branches
+- Set `error_next` to define fallback agents on failure
 - Add/remove agents from the `agents` list
 
 ### How to Run the Capability
@@ -443,8 +441,71 @@ pytest -v
 - Check prompt uses `{variable_name}` placeholders
 
 **Tool not executing**
-- Verify tool is in `EXPOSED_TOOL_IDS`
+- Verify tool is registered in `capability/wiring.py` via `catalog.register(...)`
 - Verify agent has `has_tools=True` and `tool_access=ToolAccess.ALL`
+"""
+
+
+# =============================================================================
+# SECTION: CONDITIONAL ROUTING
+# =============================================================================
+
+CONDITIONAL_ROUTING = """
+## Conditional Routing
+
+### RoutingRule
+
+Agents can define routing rules that the Rust kernel evaluates after each agent completes.
+Rules are checked against the agent's output dict.
+
+```python
+AgentConfig(
+    name="understand",
+    routing_rules=[
+        RoutingRule(condition="intent", value="general", target="think_tools"),
+        RoutingRule(condition="intent", value="getting_started", target="think_tools"),
+    ],
+    default_next="think_knowledge",  # Used when no rule matches
+    error_next="respond",            # Used on agent failure
+)
+```
+
+### Loop-Back Routing
+
+The respond agent can route back to understand for another iteration:
+
+```python
+AgentConfig(
+    name="respond",
+    routing_rules=[
+        RoutingRule(condition="needs_more_context", value="true", target="understand"),
+    ],
+    default_next="end",
+)
+```
+
+### Tight Bounds
+
+Circular routes require bounds to guarantee termination:
+- `max_llm_calls=6`: Each loop uses 2 LLM calls (understand + respond), so max 3 loops
+- `max_agent_hops=12`: Each loop uses ~4 hops, so max 3 loops
+- `max_iterations=3`: Explicit iteration cap
+
+When bounds are exceeded, the kernel returns `TERMINATE` with a reason like
+`TERMINAL_REASON_MAX_LLM_CALLS_EXCEEDED`. The Python worker maps this to
+`TerminalReason.MAX_LLM_CALLS_EXCEEDED` and returns a partial response if available.
+
+### error_next
+
+Each agent can define a fallback agent via `error_next`. If the agent fails,
+the kernel routes to error_next instead of terminating the pipeline.
+
+```python
+AgentConfig(
+    name="think_knowledge",
+    error_next="respond",  # If retrieval fails, go straight to respond
+)
+```
 """
 
 
@@ -459,6 +520,7 @@ KNOWLEDGE_SECTIONS = {
     "code_examples": CODE_EXAMPLES,
     "hello_world_structure": HELLO_WORLD_STRUCTURE,
     "how_to_guides": HOW_TO_GUIDES,
+    "conditional_routing": CONDITIONAL_ROUTING,
 }
 
 
@@ -501,6 +563,7 @@ __all__ = [
     "CODE_EXAMPLES",
     "HELLO_WORLD_STRUCTURE",
     "HOW_TO_GUIDES",
+    "CONDITIONAL_ROUTING",
     # Registry and functions
     "KNOWLEDGE_SECTIONS",
     "get_knowledge_for_sections",

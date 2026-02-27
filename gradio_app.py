@@ -81,30 +81,31 @@ def get_or_create_service() -> ChatbotService:
 
         logger.info("chatbot_service_ready",
                     pipeline="onboarding_chatbot",
-                    agents=3)
+                    agents=4)
 
     return _service
 
 
-def format_agent_output(agent_name: str, data: dict, status: str) -> str:
-    """Format agent output for display."""
-    if status == "completed":
-        if agent_name == "understand":
-            intent = data.get("intent", "")
-            topic = data.get("topic", "")
-            if intent and topic:
-                return f"*{intent}: {topic}*"
-            elif intent:
-                return f"*{intent}*"
-        elif agent_name == "think":
-            info = data.get("information", {})
-            if info.get("knowledge_retrieved"):
-                return "*Knowledge retrieved*"
+def format_agent_status(agent_name: str, data: dict) -> str:
+    """Format agent completion for pipeline status display."""
+    if agent_name == "understand":
+        intent = data.get("intent", "")
+        topic = data.get("topic", "")
+        if intent and topic:
+            return f"*{intent}: {topic}*"
+        elif intent:
+            return f"*{intent}*"
+    elif agent_name in ("think_knowledge", "think_tools"):
+        info = data.get("information", {})
+        if info.get("knowledge_retrieved"):
+            return "*Knowledge retrieved*"
+        elif info.get("tools_executed"):
+            return "*Tools executed*"
     return ""
 
 
 async def chat_with_pipeline(message: str, history: List[List], session_id: str) -> Generator:
-    """Handle user message showing full pipeline progress."""
+    """Handle user message with kernel-driven pipeline streaming."""
     service = get_or_create_service()
     user_id = "gradio-user"
 
@@ -114,7 +115,6 @@ async def chat_with_pipeline(message: str, history: List[List], session_id: str)
     current_response = ""
 
     try:
-        # Build conversation history from Gradio format
         conversation_history = []
         for msg in history:
             if isinstance(msg, dict):
@@ -139,9 +139,7 @@ async def chat_with_pipeline(message: str, history: List[List], session_id: str)
                         clean_msg = clean_msg.split("---")[-1].strip()
                     conversation_history.append({"role": "assistant", "content": clean_msg})
 
-        metadata = {
-            "conversation_history": conversation_history[-5:]
-        }
+        metadata = {"conversation_history": conversation_history[-5:]}
 
         async for event in service.process_message_stream(
             user_id=user_id,
@@ -154,18 +152,14 @@ async def chat_with_pipeline(message: str, history: List[List], session_id: str)
             data = event.data if hasattr(event, 'data') else {}
 
             if event_type == "stage":
-                status = data.get("status", "")
-                agent_name = agent_name or data.get("agent", "")
+                status_text = format_agent_status(agent_name, data)
+                if status_text:
+                    if agent_name == "understand":
+                        pipeline_status = status_text + " "
+                    elif agent_name.startswith("think"):
+                        pipeline_status += status_text + "\n\n"
 
-                if status == "completed":
-                    output_text = format_agent_output(agent_name, data, "completed")
-                    if output_text:
-                        if agent_name == "understand":
-                            pipeline_status = output_text + " "
-                        elif agent_name == "think":
-                            pipeline_status += output_text + "\n\n"
-
-            elif event_type == "token" and not getattr(event, 'debug', False):
+            elif event_type == "token":
                 token = data.get("token", "")
                 current_response += token
                 yield pipeline_status + current_response
@@ -176,7 +170,16 @@ async def chat_with_pipeline(message: str, history: List[List], session_id: str)
                 yield f"Error: {error_msg}"
                 break
 
+            elif event_type == "interrupt":
+                interrupt_kind = data.get("kind", "unknown")
+                yield f"Pipeline paused: {interrupt_kind}"
+                break
+
             elif event_type == "done":
+                # If we didn't get tokens (non-streaming), extract response from final output
+                if not current_response:
+                    final_output = data.get("final_output", {})
+                    current_response = final_output.get("response", "")
                 logger.info("response_completed", session_id=session_id)
                 yield pipeline_status + current_response
                 break

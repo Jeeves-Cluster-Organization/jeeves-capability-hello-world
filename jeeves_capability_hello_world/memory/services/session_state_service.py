@@ -1,315 +1,193 @@
 """
-Session State Service for L4 Working Memory.
+Session State Service for In-Dialogue Working Memory.
 
-High-level service for managing session state, providing:
+Manages session state with direct SQLite access:
 - Session lifecycle management
 - Focus tracking across conversations
 - Entity reference management
-- Short-term memory coordination with summarization
-
-Unified Interrupt System:
-- Clarification and confirmation methods have been removed
-- Interrupt handling goes through InterruptService
-
-Constitutional Alignment:
-- P1: Uses LLM for context understanding (via SummarizationService)
-- P5: Deterministic spine with clear state transitions
-- M5: Always uses repository abstraction
+- Short-term memory coordination
 """
 
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
+from uuid import UUID
 import json
 
-from jeeves_capability_hello_world._logging import get_component_logger
-from jeeves_capability_hello_world._serialization import parse_datetime
 from jeeves_core.protocols import LoggerProtocol, DatabaseClientProtocol
-from jeeves_capability_hello_world.memory.repositories.session_state_repository import (
-    SessionStateRepository,
-    SessionState
-)
 
+
+class SessionState:
+    """Represents the current state of a user session."""
+
+    def __init__(
+        self,
+        session_id: str,
+        user_id: str,
+        focus_type: Optional[str] = None,
+        focus_id: Optional[str] = None,
+        focus_context: Optional[Dict[str, Any]] = None,
+        referenced_entities: Optional[List[Dict[str, str]]] = None,
+        short_term_memory: Optional[str] = None,
+        turn_count: int = 0,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+    ):
+        self.session_id = session_id
+        self.user_id = user_id
+        self.focus_type = focus_type
+        self.focus_id = focus_id
+        self.focus_context = focus_context or {}
+        self.referenced_entities = referenced_entities or []
+        self.short_term_memory = short_term_memory
+        self.turn_count = turn_count
+        self.created_at = created_at or datetime.now(timezone.utc)
+        self.updated_at = updated_at or datetime.now(timezone.utc)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "session_id": self.session_id,
+            "user_id": self.user_id,
+            "focus_type": self.focus_type,
+            "focus_id": self.focus_id,
+            "focus_context": self.focus_context,
+            "referenced_entities": self.referenced_entities,
+            "short_term_memory": self.short_term_memory,
+            "turn_count": self.turn_count,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+def _parse_datetime(value: Any) -> Optional[datetime]:
+    """Parse a datetime value from various formats."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        return datetime.fromisoformat(value)
+    return None
+
+
+def _row_to_session_state(row: Dict[str, Any]) -> SessionState:
+    """Convert a database row to SessionState."""
+    focus_context = row.get("focus_context")
+    if isinstance(focus_context, str):
+        focus_context = json.loads(focus_context) if focus_context else {}
+
+    referenced_entities = row.get("referenced_entities")
+    if isinstance(referenced_entities, str):
+        referenced_entities = json.loads(referenced_entities) if referenced_entities else []
+
+    session_id = row["session_id"]
+    if isinstance(session_id, UUID):
+        session_id = str(session_id)
+
+    user_id = row["user_id"]
+    if isinstance(user_id, UUID):
+        user_id = str(user_id)
+
+    return SessionState(
+        session_id=session_id,
+        user_id=user_id,
+        focus_type=row.get("focus_type"),
+        focus_id=row.get("focus_id"),
+        focus_context=focus_context,
+        referenced_entities=referenced_entities,
+        short_term_memory=row.get("short_term_memory"),
+        turn_count=row.get("turn_count", 0),
+        created_at=_parse_datetime(row.get("created_at")),
+        updated_at=_parse_datetime(row.get("updated_at")),
+    )
 
 
 class SessionStateService:
-    """
-    Service for managing session state.
+    """Service for managing session state with direct DB access."""
 
-    Provides high-level operations for:
-    - Creating and managing session contexts
-    - Tracking conversation focus
-    - Managing entity references
-    - Coordinating with summarization for memory compression
+    _GET_QUERY = """
+        SELECT session_id, user_id, focus_type, focus_id,
+               focus_context, referenced_entities, short_term_memory,
+               turn_count, created_at, updated_at
+        FROM session_state
+        WHERE session_id = ?
     """
 
     def __init__(
         self,
         db: DatabaseClientProtocol,
-        repository: Optional[SessionStateRepository] = None,
-        logger: Optional[LoggerProtocol] = None
+        logger: Optional[LoggerProtocol] = None,
     ):
-        """
-        Initialize service.
-
-        Args:
-            db: Database client instance
-            repository: Optional pre-configured repository (for testing)
-            logger: Optional logger instance (ADR-001 DI)
-        """
         self.db = db
-        self.repository = repository or SessionStateRepository(db)
-        self._logger = get_component_logger("SessionStateService", logger)
+        self._logger = logger
 
-    async def ensure_initialized(self) -> None:
-        """Ensure the repository table exists."""
-        await self.repository.ensure_table()
+    async def get(self, session_id: str) -> Optional[SessionState]:
+        row = await self.db.fetch_one(self._GET_QUERY, (session_id,))
+        if not row:
+            return None
+        return _row_to_session_state(row)
 
-    async def get_or_create(
-        self,
-        session_id: str,
-        user_id: str
-    ) -> SessionState:
-        """
-        Get existing session state or create a new one.
+    async def _upsert(self, state: SessionState) -> SessionState:
+        state.updated_at = datetime.now(timezone.utc)
+        data = {
+            "session_id": state.session_id,
+            "user_id": state.user_id,
+            "focus_type": state.focus_type,
+            "focus_id": state.focus_id,
+            "focus_context": json.dumps(state.focus_context) if state.focus_context else None,
+            "referenced_entities": json.dumps(state.referenced_entities) if state.referenced_entities else None,
+            "short_term_memory": state.short_term_memory,
+            "turn_count": state.turn_count,
+            "created_at": state.created_at.isoformat() if state.created_at else None,
+            "updated_at": state.updated_at.isoformat() if state.updated_at else None,
+        }
+        await self.db.upsert("session_state", data, key_columns=["session_id"])
+        return state
 
-        Args:
-            session_id: Session identifier
-            user_id: User identifier
-
-        Returns:
-            SessionState (existing or newly created)
-        """
-        existing = await self.repository.get(session_id)
+    async def get_or_create(self, session_id: str, user_id: str) -> SessionState:
+        existing = await self.get(session_id)
         if existing:
             return existing
-
-        # Create new session state
         new_state = SessionState(
             session_id=session_id,
             user_id=user_id,
             focus_type="general",
-            turn_count=0
+            turn_count=0,
         )
-
-        await self.repository.upsert(new_state)
-
-        self._logger.info(
-            "session_state_created",
-            session_id=session_id,
-            user_id=user_id
-        )
-
+        await self._upsert(new_state)
         return new_state
 
-    async def get(self, session_id: str) -> Optional[SessionState]:
-        """
-        Get session state by ID.
+    async def on_user_turn(self, session_id: str, user_message: str) -> Optional[SessionState]:
+        state = await self.get(session_id)
+        if not state:
+            return None
+        state.turn_count += 1
+        return await self._upsert(state)
 
-        Args:
-            session_id: Session identifier
-
-        Returns:
-            SessionState or None if not found
-        """
-        return await self.repository.get(session_id)
-
-    async def update_focus(
-        self,
-        session_id: str,
-        focus_type: str,
-        focus_id: Optional[str] = None,
-        focus_context: Optional[Dict[str, Any]] = None
-    ) -> Optional[SessionState]:
-        """
-        Update the current focus of a session.
-
-        Used when the conversation shifts to a specific topic or entity.
-
-        Args:
-            session_id: Session identifier
-            focus_type: Type of focus ('task', 'journal', 'planning', 'general')
-            focus_id: ID of focused entity if applicable
-            focus_context: Additional context about the focus
-
-        Returns:
-            Updated SessionState or None if session not found
-        """
-        result = await self.repository.update_focus(
-            session_id=session_id,
-            focus_type=focus_type,
-            focus_id=focus_id,
-            focus_context=focus_context
-        )
-
-        if result:
-            self._logger.info(
-                "session_focus_updated",
-                session_id=session_id,
-                focus_type=focus_type,
-                focus_id=focus_id
-            )
-
-        return result
-
-    async def record_entity_reference(
-        self,
-        session_id: str,
-        entity_type: str,
-        entity_id: str,
-        entity_title: Optional[str] = None
-    ) -> Optional[SessionState]:
-        """
-        Record that an entity was referenced in the conversation.
-
-        Used to track what tasks, journal entries, etc. have been
-        discussed in this session for context awareness.
-
-        Args:
-            session_id: Session identifier
-            entity_type: Type of entity ('task', 'journal', 'fact', etc.)
-            entity_id: Entity identifier
-            entity_title: Human-readable title (optional)
-
-        Returns:
-            Updated SessionState or None if session not found
-        """
-        return await self.repository.add_referenced_entity(
-            session_id=session_id,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            entity_title=entity_title
-        )
-
-    async def on_user_turn(
-        self,
-        session_id: str,
-        user_message: str
-    ) -> Optional[SessionState]:
-        """
-        Handle a new user message (increment turn counter).
-
-        Called at the start of each user interaction.
-
-        Args:
-            session_id: Session identifier
-            user_message: The user's message (for potential analysis)
-
-        Returns:
-            Updated SessionState or None if session not found
-        """
-        return await self.repository.increment_turn(session_id)
-
-    async def update_memory(
-        self,
-        session_id: str,
-        memory_summary: str
-    ) -> Optional[SessionState]:
-        """
-        Update the short-term memory summary.
-
-        Called after summarization service compresses recent context.
-
-        Args:
-            session_id: Session identifier
-            memory_summary: Compressed summary of recent conversation
-
-        Returns:
-            Updated SessionState or None if session not found
-        """
-        return await self.repository.update_short_term_memory(
-            session_id=session_id,
-            memory=memory_summary
-        )
-
-    async def get_context_for_prompt(
-        self,
-        session_id: str
-    ) -> Dict[str, Any]:
-        """
-        Get session context formatted for LLM prompts.
-
-        Returns a structured context dictionary that can be included
-        in agent prompts for context awareness.
-
-        Args:
-            session_id: Session identifier
-
-        Returns:
-            Dictionary with session context for prompts
-        """
-        state = await self.repository.get(session_id)
+    async def get_context_for_prompt(self, session_id: str) -> Dict[str, Any]:
+        state = await self.get(session_id)
         if not state:
             return {}
-
-        context = {
+        context: Dict[str, Any] = {
             "turn_count": state.turn_count,
             "focus": {
                 "type": state.focus_type,
                 "id": state.focus_id,
-                "context": state.focus_context
+                "context": state.focus_context,
             } if state.focus_type else None,
         }
-
-        # Add recent entity references
         if state.referenced_entities:
-            context["recent_entities"] = state.referenced_entities[-5:]  # Last 5
-
-        # Add short-term memory if available
+            context["recent_entities"] = state.referenced_entities[-5:]
         if state.short_term_memory:
             context["conversation_summary"] = state.short_term_memory
-
         return context
 
-    async def clear_focus(self, session_id: str) -> Optional[SessionState]:
-        """
-        Clear the current focus (return to general mode).
-
-        Args:
-            session_id: Session identifier
-
-        Returns:
-            Updated SessionState or None if session not found
-        """
-        return await self.repository.update_focus(
-            session_id=session_id,
-            focus_type="general",
-            focus_id=None,
-            focus_context={}
-        )
-
     async def delete(self, session_id: str) -> bool:
-        """
-        Delete session state.
+        result = await self.db.execute(
+            "DELETE FROM session_state WHERE session_id = ?", (session_id,)
+        )
+        return result is not None
 
-        Called when a session is terminated or cleaned up.
 
-        Args:
-            session_id: Session identifier
-
-        Returns:
-            True if deleted, False if not found
-        """
-        return await self.repository.delete(session_id)
-
-    async def should_summarize(
-        self,
-        session_id: str,
-        summarize_every_n_turns: int = 5
-    ) -> bool:
-        """
-        Check if the session should trigger summarization.
-
-        Args:
-            session_id: Session identifier
-            summarize_every_n_turns: Summarize after this many turns
-
-        Returns:
-            True if summarization should be triggered
-        """
-        state = await self.repository.get(session_id)
-        if not state:
-            return False
-
-        # Summarize every N turns
-        return state.turn_count > 0 and state.turn_count % summarize_every_n_turns == 0
-
+__all__ = ["SessionStateService", "SessionState"]

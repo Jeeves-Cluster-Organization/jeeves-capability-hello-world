@@ -22,7 +22,7 @@ Jeeves Hello World is part of a layered architecture:
                               │
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  jeeves-infra (Infrastructure + Orchestration Layer)            │
+│  jeeves-core (Infrastructure + Orchestration Layer)             │
 │  LLM providers, database clients, orchestration framework      │
 └─────────────────────────────────────────────────────────────────┘
                               │ IPC (TCP+msgpack)
@@ -39,7 +39,7 @@ Jeeves Hello World is part of a layered architecture:
 
 Contributions should:
 
-1. **Respect layer boundaries** - Capabilities import from jeeves_infra infrastructure layer
+1. **Respect layer boundaries** - Capabilities import from jeeves_core infrastructure layer
 2. **Follow Constitution R7** - Import boundaries are enforced by tests
 3. **Include tests** - All new code needs test coverage
 4. **Update documentation** - Keep docs in sync with code changes
@@ -53,8 +53,8 @@ Before contributing, verify your change belongs in this layer:
 | Domain-specific prompts | jeeves-capability-hello-world (here) |
 | Custom tools | jeeves-capability-hello-world (here) |
 | Pipeline configuration | jeeves-capability-hello-world (here) |
-| LLM provider adapters | jeeves-infra |
-| Database clients | jeeves-infra |
+| LLM provider adapters | jeeves-core |
+| Database clients | jeeves-core |
 | Pipeline orchestration | jeeves-core |
 | Envelope state management | jeeves-core |
 

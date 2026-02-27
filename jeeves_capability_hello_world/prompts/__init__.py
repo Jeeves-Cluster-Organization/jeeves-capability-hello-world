@@ -1,11 +1,12 @@
 """
 Chatbot Prompts for Hello World capability.
 
-This module contains prompt templates for the 3-agent chatbot:
-- chatbot.understand: Understand agent (intent classification + search decision)
-- chatbot.respond: Respond agent (response crafting with citations)
+Prompt templates for the 4-agent pipeline:
+- chatbot.understand: Intent classification and routing
+- chatbot.respond: Response synthesis (JSON mode)
+- chatbot.respond_streaming: Response synthesis (plain text streaming)
 
-Note: Think agent has has_llm=False (pure tool execution), so no prompt needed.
+Think agents have no LLM, so no prompts needed.
 """
 
 from .chatbot import (

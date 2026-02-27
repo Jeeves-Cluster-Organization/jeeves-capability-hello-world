@@ -1,6 +1,6 @@
 # Envelope State Exchange JSON Schema
 
-**Purpose**: Define the boundary contract for envelope state exchange between Python `jeeves_infra` and Go `coreengine` (or vice versa) via stdin/stdout or HTTP.
+**Purpose**: Define the boundary contract for envelope state exchange between Python `jeeves_core` and the Rust micro-kernel (or vice versa) via TCP+msgpack IPC or HTTP.
 
 ---
 
@@ -8,11 +8,11 @@
 
 The `GenericEnvelope` can be serialized to JSON via:
 - **Python**: `envelope.to_state_dict()` → JSON
-- **Go**: `envelope.ToStateDict()` → JSON
+- **Rust**: via serde serialization → JSON
 
 And deserialized via:
 - **Python**: `GenericEnvelope.from_state_dict(data)`
-- **Go**: `FromStateDict(data)`
+- **Rust**: via serde deserialization
 
 ---
 
@@ -22,7 +22,7 @@ And deserialized via:
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GenericEnvelope",
-  "description": "Envelope state for cross-language exchange between Python and Go",
+  "description": "Envelope state for cross-language exchange between Python and Rust",
   "type": "object",
   "required": [
     "envelope_id",
@@ -229,48 +229,19 @@ And deserialized via:
 
 ### Pattern 1: stdin/stdout (Process-based)
 
-Python calls Go coreengine via subprocess:
+Python communicates with the Rust micro-kernel via TCP+msgpack IPC:
 
 ```python
-import subprocess
-import json
+from jeeves_core.kernel_client import KernelClient
 
-# Python → Go
-envelope_json = json.dumps(envelope.to_state_dict())
-process = subprocess.Popen(
-    ["./go-coreengine", "process"],
-    stdin=subprocess.PIPE,
-    stdout=subprocess.PIPE,
-    text=True
-)
-result_json, _ = process.communicate(input=envelope_json)
-updated_envelope = GenericEnvelope.from_state_dict(json.loads(result_json))
-```
-
-Go receives and responds:
-
-```go
-import (
-    "encoding/json"
-    "os"
-    "github.com/.../go/coreengine/envelope"
-)
-
-func main() {
-    var state map[string]any
-    json.NewDecoder(os.Stdin).Decode(&state)
-
-    env := envelope.FromStateDict(state)
-    // Process envelope...
-
-    result := env.ToStateDict()
-    json.NewEncoder(os.Stdout).Encode(result)
-}
+# Python → Rust kernel (via KernelClient)
+kernel = KernelClient(host="localhost", port=9500)
+updated_envelope = await kernel.process(envelope)
 ```
 
 ### Pattern 2: HTTP JSON API
 
-**Request** (Python → Go):
+**Request** (Python → Rust kernel):
 ```http
 POST /api/v1/process HTTP/1.1
 Content-Type: application/json
@@ -286,7 +257,7 @@ Content-Type: application/json
 }
 ```
 
-**Response** (Go → Python):
+**Response** (Rust kernel → Python):
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -486,9 +457,9 @@ All datetime fields use **ISO 8601 / RFC 3339** format:
 "2025-12-10T10:00:00.123456Z"    # With microseconds
 ```
 
-Both Python and Go produce compatible formats:
+Both Python and Rust produce compatible formats:
 - Python: `datetime.isoformat()`
-- Go: `time.Format(time.RFC3339)`
+- Rust: `chrono::DateTime::to_rfc3339()`
 
 ---
 
@@ -507,7 +478,7 @@ Both Python and Go produce compatible formats:
 ### Python (Pydantic)
 
 ```python
-from jeeves_infra.protocols import GenericEnvelope
+from jeeves_core.protocols import GenericEnvelope
 import json
 
 data = json.loads(json_string)

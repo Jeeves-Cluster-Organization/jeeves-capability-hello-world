@@ -49,7 +49,6 @@ The chatbot executes tools based on LLM decisions. Current tools are read-only:
 
 | Tool | Risk Level | Notes |
 |------|------------|-------|
-| `web_search` | External | Makes HTTP requests to search APIs |
 | `get_time` | Read-only | No external calls |
 | `list_tools` | Read-only | Introspection only |
 
@@ -101,7 +100,7 @@ pip-audit
 
 This repository includes git submodules:
 - `jeeves-core` - Rust micro-kernel
-- `jeeves-infra` - Python infrastructure
+- `jeeves-core/python` - Python infrastructure
 
 Keep submodules updated:
 

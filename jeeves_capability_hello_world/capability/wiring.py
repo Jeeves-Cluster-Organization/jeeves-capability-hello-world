@@ -61,8 +61,16 @@ AGENT_LLM_CONFIGS = {
         context_window=8192,
         timeout_seconds=30,
     ),
-    "think": AgentLLMConfig(
-        agent_name="think",
+    "think_knowledge": AgentLLMConfig(
+        agent_name="think_knowledge",
+        model="",
+        temperature=0.0,
+        max_tokens=0,
+        context_window=0,
+        timeout_seconds=60,
+    ),
+    "think_tools": AgentLLMConfig(
+        agent_name="think_tools",
         model="",
         temperature=0.0,
         max_tokens=0,
@@ -87,19 +95,25 @@ AGENT_LLM_CONFIGS = {
 AGENT_DEFINITIONS = [
     DomainAgentConfig(
         name="understand",
-        description="Analyzes user intent for onboarding questions",
+        description="Classifies user intent for targeted knowledge retrieval",
         layer="perception",
         tools=[],
     ),
     DomainAgentConfig(
-        name="think",
-        description="Executes tools based on analyzed intent",
+        name="think_knowledge",
+        description="Retrieves targeted knowledge sections (no LLM, no tools)",
+        layer="execution",
+        tools=[],
+    ),
+    DomainAgentConfig(
+        name="think_tools",
+        description="Executes tools based on classified intent",
         layer="execution",
         tools=["get_time", "list_tools"],
     ),
     DomainAgentConfig(
         name="respond",
-        description="Synthesizes onboarding response from embedded knowledge",
+        description="Synthesizes response with optional loop-back routing",
         layer="synthesis",
         tools=[],
     ),
@@ -229,7 +243,7 @@ def register_capability() -> None:
             is_readonly=True,
             requires_confirmation=False,
             default_session_title="Chat Session",
-            pipeline_stages=["understand", "think", "respond"],
+            pipeline_stages=["understand", "think_knowledge", "think_tools", "respond"],
         ),
     )
 

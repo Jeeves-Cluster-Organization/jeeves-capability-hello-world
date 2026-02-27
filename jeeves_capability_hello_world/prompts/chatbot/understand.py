@@ -1,9 +1,8 @@
 """
 Understand Agent Prompt - Onboarding Chatbot
 
-This prompt helps the LLM analyze user messages and determine:
-1. Intent classification (architecture, concept, getting_started, component, general)
-2. Topic identification for targeted knowledge retrieval
+Classifies user intent and identifies topic for targeted knowledge retrieval.
+Supports retry-awareness: on loop-back from respond, refines classification.
 """
 
 from jeeves_capability_hello_world.prompts.registry import register_prompt
@@ -11,8 +10,8 @@ from jeeves_capability_hello_world.prompts.registry import register_prompt
 
 @register_prompt(
     name="chatbot.understand",
-    version="2.1",
-    description="Understand agent prompt for onboarding intent classification",
+    version="3.0",
+    description="Understand agent prompt with retry-awareness for routing loops",
     constitutional_compliance="P1 (NLP-First)"
 )
 def chatbot_understand() -> str:
@@ -25,11 +24,7 @@ def chatbot_understand() -> str:
 {conversation_history}
 
 ## Your Role
-Help newcomers understand the Jeeves ecosystem by correctly classifying their questions
-so we can provide the most relevant information.
-
-## Task
-Classify the user's question into one of these categories:
+Classify the user's question so we can retrieve the most relevant information.
 
 ## Intent Categories
 
@@ -38,8 +33,8 @@ Classify the user's question into one of these categories:
 | **architecture** | System design, layers, data flow | "layers", "architecture", "how does X connect", "data flow" |
 | **concept** | Core concepts: Envelope, AgentConfig, Constitution R7, Pipeline | "what is", "explain", "Envelope", "AgentConfig", "R7" |
 | **getting_started** | Setup, running, adding tools, creating agents | "how do I", "add a tool", "create", "run", "start" |
-| **component** | Specific components: jeeves-core, jeeves-core | "jeeves-core", "jeeves-core", "kernel", "orchestrator" |
-| **general** | Greetings, thanks, off-topic, unclear | "hello", "thanks", "weather", non-technical |
+| **component** | Specific components: Rust kernel, Python infrastructure | "jeeves-core", "kernel", "orchestrator", "pipeline runner" |
+| **general** | Greetings, time queries, tool introspection, off-topic | "hello", "thanks", "what time", "what tools", non-technical |
 
 ## Output Format (JSON only)
 {{
@@ -51,46 +46,22 @@ Classify the user's question into one of these categories:
 ## Examples
 
 User: "What is jeeves-core?"
-{{
-  "intent": "component",
-  "topic": "jeeves-core",
-  "reasoning": "Direct question about a specific ecosystem component"
-}}
+{{"intent": "component", "topic": "jeeves-core", "reasoning": "Direct question about a specific ecosystem component"}}
 
 User: "How do the layers connect?"
-{{
-  "intent": "architecture",
-  "topic": "layer connections",
-  "reasoning": "Question about system architecture and layer relationships"
-}}
+{{"intent": "architecture", "topic": "layer connections", "reasoning": "Question about system architecture and layer relationships"}}
 
 User: "What is an Envelope?"
-{{
-  "intent": "concept",
-  "topic": "Envelope",
-  "reasoning": "Question about a core framework concept"
-}}
+{{"intent": "concept", "topic": "Envelope", "reasoning": "Question about a core framework concept"}}
 
 User: "How do I add a new tool?"
-{{
-  "intent": "getting_started",
-  "topic": "adding tools",
-  "reasoning": "Practical how-to question"
-}}
+{{"intent": "getting_started", "topic": "adding tools", "reasoning": "Practical how-to question"}}
 
 User: "Hello!"
-{{
-  "intent": "general",
-  "topic": "greeting",
-  "reasoning": "Simple greeting"
-}}
+{{"intent": "general", "topic": "greeting", "reasoning": "Simple greeting"}}
 
-User: "Explain the pipeline pattern"
-{{
-  "intent": "concept",
-  "topic": "pipeline pattern",
-  "reasoning": "Question about Understand-Think-Respond pattern"
-}}
+User: "What time is it?"
+{{"intent": "general", "topic": "time", "reasoning": "Time query — routed to tools"}}
 
 Now classify the user's message:
 """

@@ -10,7 +10,7 @@
 Jeeves Hello World is a **learning-focused chatbot** that demonstrates the core patterns of the Jeeves multi-agent orchestration system. It serves two purposes:
 
 1. **A working chatbot** - Real LLM inference with a 3-agent pipeline
-2. **An onboarding guide** - Understand how jeeves-core and jeeves-infra work together
+2. **An onboarding guide** - Understand how jeeves-core works
 
 ## The Jeeves Ecosystem
 
@@ -27,7 +27,7 @@ Jeeves Hello World is a **learning-focused chatbot** that demonstrates the core 
                               │
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  jeeves-infra (Infrastructure + Orchestration Layer)            │
+│  jeeves-core (Infrastructure + Orchestration Layer — Python)    │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │  Infrastructure:                                        │    │
 │  │  - LLM providers (OpenAI, Anthropic, llama.cpp)        │    │
@@ -57,13 +57,12 @@ Jeeves Hello World is a **learning-focused chatbot** that demonstrates the core 
 
 | Layer | Language | What It Does |
 |-------|----------|--------------|
-| **jeeves-core** | Go | Micro-kernel: pipeline execution, state management, resource limits |
-| **jeeves-infra** | Python | Infrastructure: LLM providers, database, protocols |
+| **jeeves-core** | Rust | Micro-kernel: pipeline execution, state management, resource limits |
 | **Capabilities** | Python | Your code: prompts, tools, domain logic |
 
-## The 3-Agent Pipeline
+## The 4-Agent Pipeline
 
-This chatbot uses a minimal but complete multi-agent pattern:
+This chatbot uses a multi-agent pattern with conditional routing:
 
 ```
 User Message
@@ -71,24 +70,31 @@ User Message
 ┌─────────────────────────────────────────┐
 │  UNDERSTAND (LLM)                       │
 │  - Classifies user intent               │
-│  - Identifies topic for knowledge       │
+│  - Routes via RoutingRule               │
 │  - Output: {intent, topic, reasoning}   │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│  THINK (Knowledge Retrieval - No LLM)   │
-│  - Retrieves targeted knowledge         │
-│  - Maps intent → knowledge sections     │
-│  - Output: {targeted_knowledge}         │
-└─────────────────────────────────────────┘
-    ↓
+└──────┬──────────────┬──────────────────┘
+       │              │
+       │ default      │ intent=general|getting_started
+       ↓              ↓
+┌──────────────┐  ┌──────────────────┐
+│ THINK-KNOWLEDGE│ │ THINK-TOOLS      │
+│ (No LLM)      │ │ (No LLM, Tools)  │
+│ Knowledge      │ │ get_time,        │
+│ retrieval      │ │ list_tools       │
+└──────┬─────────┘ └──────┬───────────┘
+       │                   │
+       └───────┬───────────┘
+               ↓
 ┌─────────────────────────────────────────┐
 │  RESPOND (LLM - Streaming)              │
 │  - Synthesizes information              │
-│  - Crafts helpful response              │
+│  - May loop back if needs_more_context  │
 │  - Streams tokens to user               │
-└─────────────────────────────────────────┘
-    ↓
+└──────┬──────────────────────────────────┘
+       │
+       │ needs_more_context=true → back to UNDERSTAND
+       │ default → end
+       ↓
 Response to User
 ```
 
@@ -104,7 +110,7 @@ The chatbot classifies questions into categories for targeted knowledge retrieva
 | `component` | Specific components: jeeves-core, etc. | "What is jeeves-core?" |
 | `general` | Greetings, conversation, off-topic | "Hello!", "Summarize our chat" |
 
-**Key insight**: The middle agent has **no LLM** - it retrieves relevant knowledge based on the classified intent, avoiding the cost of unnecessary inference.
+**Key insight**: The think agents have **no LLM** — one retrieves knowledge sections, the other executes tools. Routing is declarative: the Rust kernel evaluates `RoutingRule` conditions after each agent. `max_llm_calls=6` guarantees termination even with circular routes.
 
 > **Note:** This is a linear pipeline for simplicity. Jeeves supports DAG topologies, conditional branching via `RoutingRule`, and parallel execution. See [Pipeline Patterns](docs/PIPELINE_PATTERNS.md).
 
@@ -113,20 +119,9 @@ The chatbot classifies questions into categories for targeted knowledge retrieva
 ### Prerequisites
 
 - Python 3.11+
-- Git (for submodules)
 - Docker (optional, for full deployment)
 
-### 1. Clone with Submodules
-
-```bash
-git clone --recursive <repository-url>
-cd jeeves-capability-hello-world
-
-# If you already cloned without --recursive
-git submodule update --init --recursive
-```
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 python -m venv venv
@@ -134,7 +129,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements/all.txt
 ```
 
-### 3. Configure LLM Provider
+### 2. Configure LLM Provider
 
 ```bash
 # Option A: Ollama (default - recommended for local development)
@@ -154,7 +149,7 @@ export JEEVES_LLM_MODEL=your-model
 export JEEVES_LLM_API_KEY=your-key  # if required
 ```
 
-### 4. Run the Chatbot
+### 3. Run the Chatbot
 
 ```bash
 python gradio_app.py
@@ -180,9 +175,7 @@ jeeves-capability-hello-world/
 │   │       └── respond_streaming.py # Streaming plain text
 │   │
 │   ├── tools/                       # Available tools
-│   │   ├── hello_world_tools.py     # get_time, list_tools
-│   │   ├── catalog.py               # Tool registry and metadata
-│   │   └── registration.py          # Tool registration
+│   │   └── hello_world_tools.py     # get_time, list_tools
 │   │
 │   ├── capability/                  # Registration with framework
 │   │   └── wiring.py                # Dependency injection
@@ -190,10 +183,6 @@ jeeves-capability-hello-world/
 │   └── orchestration/               # Service layer
 │       ├── chatbot_service.py       # Pipeline execution wrapper
 │       └── wiring.py                # Service factory
-│
-├── jeeves-core/                     # Rust micro-kernel (submodule)
-├── jeeves-infra/                 # Python infrastructure (submodule)
-│   ├── jeeves_infra/                # Infrastructure implementations
 │
 ├── docker/                          # Docker deployment
 ├── docs/                            # Documentation
@@ -260,10 +249,10 @@ Capabilities must follow import boundaries:
 
 ```python
 # CORRECT - Use adapters
-from jeeves_infra.wiring import create_llm_provider_factory
+from jeeves_core.wiring import create_llm_provider_factory
 
-# INCORRECT - Don't import jeeves_infra directly
-from jeeves_infra.llm import LLMProvider  # DON'T DO THIS
+# INCORRECT - Don't import jeeves_core directly
+from jeeves_core.llm import LLMProvider  # DON'T DO THIS
 ```
 
 ## Docker Deployment
@@ -350,18 +339,6 @@ Edit files in `prompts/chatbot/`:
 4. **Add a tool** - Extend functionality
 5. **Modify prompts** - Customize behavior
 6. **Explore jeeves-core** - Understand the micro-kernel
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [README.md](README.md) | This file |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| [SECURITY.md](SECURITY.md) | Security policy |
-| [CONSTITUTION.md](jeeves_capability_hello_world/CONSTITUTION.md) | Architectural rules |
-| [docs/INDEX.md](docs/INDEX.md) | Documentation hub |
-| [jeeves-core/README.md](jeeves-core/README.md) | Micro-kernel docs |
-| [jeeves-infra/README.md](jeeves-infra/README.md) | Infrastructure docs |
 
 ## Contributing
 

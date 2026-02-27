@@ -24,12 +24,12 @@ This constitution defines the contract between capabilities and the platform lay
 
 | Concern | Belongs To |
 |---------|------------|
-| LLM wire protocol (HTTP, SSE, JSON) | LiteLLM / jeeves_infra LLM Providers |
+| LLM wire protocol (HTTP, SSE, JSON) | LiteLLM / jeeves_core LLM Providers |
 | Provider-specific API handling | LiteLLM |
 | Backend-specific payload formatting | LiteLLM |
 | Mission orchestration (checkpointing, recovery) | Mission System |
-| Tool execution framework | jeeves_infra |
-| Database schemas (sessions, memory) | jeeves_infra |
+| Tool execution framework | jeeves_core |
+| Database schemas (sessions, memory) | jeeves_core |
 | IPC service scaffolding | Mission System |
 
 ## 2) Layer Dependencies
@@ -43,7 +43,7 @@ This constitution defines the contract between capabilities and the platform lay
 |                           |                                  |
 |                           v                                  |
 |  +------------------------------------------------------+   |
-|  |              jeeves_infra (Infrastructure +          |   |
+|  |              jeeves_core (Infrastructure +          |   |
 |  |               Orchestration Framework)               |   |
 |  |  - LLM providers (LiteLLM, OpenAI, Anthropic)       |   |
 |  |  - Database clients, tool executor                   |   |
@@ -62,25 +62,25 @@ This constitution defines the contract between capabilities and the platform lay
 
 ```python
 # Capability CAN import from:
-from jeeves_infra.wiring import (
+from jeeves_core.wiring import (
     create_llm_provider_factory,
     create_tool_executor,
 )
-from jeeves_infra.settings import get_settings
-from jeeves_infra.protocols import DatabaseClientProtocol, ContextBounds
+from jeeves_core.settings import get_settings
+from jeeves_core.protocols import DatabaseClientProtocol, ContextBounds
 
 # Capability MUST NOT import from:
-# - jeeves-core Rust code directly (use Python bindings via jeeves_infra)
+# - jeeves-core Rust code directly (use Python bindings via jeeves_core)
 
 # Capability MUST NOT be imported by:
-# - jeeves_infra (no capability imports)
+# - jeeves_core (no capability imports)
 # - jeeves-core (no capability imports)
 # - other capabilities (no cross-capability imports)
 ```
 
 ### Infrastructure and Orchestration
 
-jeeves_infra provides both infrastructure implementations and orchestration framework:
+jeeves_core provides both infrastructure implementations and orchestration framework:
 - **Infrastructure**: LLM providers, database clients, tool execution
 - **Orchestration**: Agent profiles, event handling, state management
 - **Protocols**: Type definitions and contracts
@@ -88,7 +88,7 @@ jeeves_infra provides both infrastructure implementations and orchestration fram
 This ensures:
 1. Clean separation between infrastructure and user-space capabilities
 2. Capabilities access infrastructure through well-defined interfaces
-3. Testing is easier (mock at jeeves_infra boundary)
+3. Testing is easier (mock at jeeves_core boundary)
 
 ## 3) LLM Integration Contract
 
@@ -100,8 +100,8 @@ from jeeves_capability_hello_world import register_capability
 register_capability()  # Must be called BEFORE infrastructure imports
 
 # 2. Get LLM provider factory via wiring
-from jeeves_infra.wiring import create_llm_provider_factory
-from jeeves_infra.settings import get_settings
+from jeeves_core.wiring import create_llm_provider_factory
+from jeeves_core.settings import get_settings
 
 settings = get_settings()
 llm_factory = create_llm_provider_factory(settings)
@@ -133,11 +133,11 @@ async for chunk in provider.generate_stream(model, prompt, options):
 
 ## 4) LLM Provider Factory Pattern
 
-Capabilities receive an LLM factory from jeeves_infra wiring:
+Capabilities receive an LLM factory from jeeves_core wiring:
 
 ```python
 # Factory pattern (infrastructure-provided, capability-consumed)
-from jeeves_infra.wiring import create_llm_provider_factory
+from jeeves_core.wiring import create_llm_provider_factory
 
 def create_service(settings: Settings) -> ChatbotService:
     """Create service with injected LLM factory."""
@@ -153,7 +153,7 @@ def create_service(settings: Settings) -> ChatbotService:
 
 ```python
 class LLMProvider(Protocol):
-    """Interface that jeeves_infra implements, capabilities consume."""
+    """Interface that jeeves_core implements, capabilities consume."""
 
     async def generate(
         self,
@@ -190,14 +190,14 @@ class LLMProvider(Protocol):
 | Domain timeouts | `ANALYSIS_TIMEOUT=300` | Capability |
 | Prompt templates | `chatbot.understand`, `chatbot.respond` | Capability |
 
-### jeeves_infra-Owned Configuration (via LiteLLM)
+### jeeves_core-Owned Configuration (via LiteLLM)
 
 | Config | Example | Owner |
 |--------|---------|-------|
-| Provider URL | `LLAMASERVER_HOST` | jeeves_infra (read by capability) |
-| Provider type | `llamaserver`, `openai`, `anthropic` | jeeves_infra |
+| Provider URL | `LLAMASERVER_HOST` | jeeves_core (read by capability) |
+| Provider type | `llamaserver`, `openai`, `anthropic` | jeeves_core |
 | Retry policy | 3 retries, exponential backoff | LiteLLM |
-| API keys | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | jeeves_infra/Environment |
+| API keys | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | jeeves_core/Environment |
 
 ### Configuration Flow
 
@@ -264,10 +264,10 @@ def test_pipeline_with_local_llm(llama_server):
     assert result.status == "complete"
 ```
 
-### jeeves_infra Test Guarantees
+### jeeves_core Test Guarantees
 
-- jeeves_infra tests **never depend** on capability code
-- jeeves_infra provides **test utilities** (MockProvider, test settings)
+- jeeves_core tests **never depend** on capability code
+- jeeves_core provides **test utilities** (MockProvider, test settings)
 - LiteLLM integration tests cover **all provider types** independently
 
 ## 8) Deployment Independence
@@ -284,7 +284,7 @@ Capabilities depend on jeeves-core (which includes LiteLLM providers):
 
 ### Version Compatibility
 
-| jeeves_infra Change | Capability Impact |
+| jeeves_core Change | Capability Impact |
 |-----------------|-------------------|
 | New LLM provider | None (opt-in) |
 | New error type | Handle in catch-all |
@@ -295,9 +295,9 @@ Capabilities depend on jeeves-core (which includes LiteLLM providers):
 
 A capability change is acceptable only if:
 
-- [ ] Infrastructure accessed through jeeves_infra public APIs
+- [ ] Infrastructure accessed through jeeves_core public APIs
 - [ ] LLM configuration policy is capability-owned
 - [ ] Error handling is capability-owned
 - [ ] No provider-specific payload formatting
 - [ ] Tests don't require real LLM endpoints (use mocks or local llama-server)
-- [ ] Configuration documented in capability, not jeeves_infra
+- [ ] Configuration documented in capability, not jeeves_core

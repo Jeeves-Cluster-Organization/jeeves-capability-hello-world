@@ -36,9 +36,9 @@
 
 | Document | Description |
 |----------|-------------|
-| [jeeves-infra README](../../jeeves-core/python/README.md) | Infrastructure layer overview |
-| [jeeves_infra orchestration docs](../../jeeves-core/python/jeeves_infra/orchestrator/) | Orchestration framework |
-| [jeeves_infra README](../../jeeves-core/python/jeeves_infra/README.md) | Infrastructure documentation |
+| [jeeves-core README](../../jeeves-core/python/README.md) | Infrastructure layer overview |
+| [jeeves_core orchestration docs](../../jeeves-core/python/jeeves_core/orchestrator/) | Orchestration framework |
+| [jeeves_core README](../../jeeves-core/python/jeeves_core/README.md) | Infrastructure documentation |
 
 ---
 
@@ -62,7 +62,7 @@
 
 ## Understanding the Layers
 
-### Layer 0: Protocols (jeeves_infra.protocols)
+### Layer 0: Protocols (jeeves_core.protocols)
 
 Zero-dependency type definitions:
 - **Protocols** - Interface contracts (LLMProviderProtocol, etc.)
@@ -76,14 +76,14 @@ The Rust micro-kernel (accessed via `KernelClient` TCP+msgpack IPC):
 - **Resource quotas** - Limits on iterations, LLM calls, agent hops
 - **Pipeline orchestration** - Multi-stage agent execution
 
-### Layer 2: Infrastructure and Orchestration (jeeves_infra)
+### Layer 2: Infrastructure and Orchestration (jeeves_core)
 
 Memory and event sourcing:
 - **Session state** - Working memory, focus state
 - **Semantic search** - vector search
 - **Event sourcing** - Domain events with deduplication
 
-### Layer 3: Infrastructure (jeeves_infra)
+### Layer 3: Infrastructure (jeeves_core)
 
 Infrastructure implementations:
 - **LLM providers** - OpenAI, Anthropic, llama.cpp adapters
@@ -104,10 +104,10 @@ Orchestration + domain logic:
 
 ```python
 # CORRECT - Capabilities use adapters
-from jeeves_infra.wiring import create_llm_provider_factory
+from jeeves_core.wiring import create_llm_provider_factory
 
 # INCORRECT - Don't bypass the adapter layer
-from jeeves_infra.llm import LLMProvider  # DON'T DO THIS
+from jeeves_core.llm import LLMProvider  # DON'T DO THIS
 ```
 
 ### Agent Configuration

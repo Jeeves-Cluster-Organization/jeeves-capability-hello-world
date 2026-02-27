@@ -9,9 +9,9 @@ This document describes how capability layer repositories (e.g., `jeeves-capabil
 Capability layers follow this import boundary pattern:
 
 ```
-capability → jeeves_infra → jeeves_infra.protocols
+capability → jeeves_core → jeeves_core.protocols
                   ↓
-           jeeves_infra.memory (L2)
+           jeeves_core.memory (L2)
 ```
 
 **Important:** Capabilities MUST NOT import directly from `coreengine/` (Rust kernel).
@@ -75,12 +75,12 @@ from protocols import (
 
 ---
 
-## 2. jeeves_infra Exports
+## 2. jeeves_core Exports
 
 ### protocols Module
 
 ```python
-from jeeves_infra.protocols import (
+from jeeves_core.protocols import (
     # Re-exported from protocols
     LoggerProtocol, ContextBounds, WorkingMemory, RiskSemantic, RiskSeverity,
     ToolCategory,
@@ -99,7 +99,7 @@ from jeeves_infra.protocols import (
 ### protocols Module (Core Types)
 
 ```python
-from jeeves_infra.protocols import (
+from jeeves_core.protocols import (
     # Re-exported from protocols
     AgentConfig, PipelineConfig, GenericEnvelope, UnifiedRuntime,
     ContextBounds, WorkingMemory, RiskSemantic, RiskSeverity, ToolCategory,
@@ -110,7 +110,7 @@ from jeeves_infra.protocols import (
 ### wiring Module
 
 ```python
-from jeeves_infra.wiring import (
+from jeeves_core.wiring import (
     # Logging facade
     get_current_logger,
 
@@ -129,11 +129,11 @@ from jeeves_infra.wiring import (
 ### orchestrator Module
 
 ```python
-from jeeves_infra.orchestrator.state import (
+from jeeves_core.orchestrator.state import (
     JeevesState, create_initial_state,
 )
 
-from jeeves_infra.orchestrator.agent_events import (
+from jeeves_core.orchestrator.agent_events import (
     AgentEvent, AgentEventType, AgentEventEmitter,
 )
 ```
@@ -149,12 +149,12 @@ from jeeves_capability_hello_world.prompts.registry import (
 ### config Module
 
 ```python
-from jeeves_infra.config.agent_profiles import (
+from jeeves_core.config.agent_profiles import (
     AgentLLMConfig, ThresholdProfile, AgentProfile,
     get_agent_profile, get_llm_profile, get_thresholds, get_latency_budget,
 )
 
-from jeeves_infra.config.registry import (
+from jeeves_core.config.registry import (
     ConfigRegistry, ConfigKeys,
     get_config_registry, set_config_registry, reset_config_registry,
 )
@@ -197,12 +197,12 @@ See [PIPELINE_PATTERNS.md](PIPELINE_PATTERNS.md) for complete examples.
 
 ---
 
-## 3. jeeves_infra Exports
+## 3. jeeves_core Exports
 
 ### logging Module
 
 ```python
-from jeeves_infra.logging import (
+from jeeves_core.logging import (
     # Configuration
     configure_logging, configure_from_flags,
 
@@ -228,7 +228,7 @@ from jeeves_infra.logging import (
 ### settings Module
 
 ```python
-from jeeves_infra.settings import (
+from jeeves_core.settings import (
     Settings, get_settings,
 )
 ```
@@ -236,7 +236,7 @@ from jeeves_infra.settings import (
 ### capability_registry Module
 
 ```python
-from jeeves_infra.capability_registry import (
+from jeeves_core.capability_registry import (
     CapabilityLLMConfigRegistry,
     get_capability_registry, set_capability_registry, reset_capability_registry,
 )
@@ -245,11 +245,11 @@ from jeeves_infra.capability_registry import (
 ### llm Module
 
 ```python
-from jeeves_infra.llm.factory import (
+from jeeves_core.llm.factory import (
     create_llm_provider, create_llm_provider_factory,
 )
 
-from jeeves_infra.llm.providers import (
+from jeeves_core.llm.providers import (
     LLMProvider, MockProvider, LlamaServerProvider,
     OpenAIProvider, AnthropicProvider, AzureAIFoundryProvider,
 )
@@ -258,7 +258,7 @@ from jeeves_infra.llm.providers import (
 ### database Module
 
 ```python
-from jeeves_infra.database.client import (
+from jeeves_core.database.client import (
     DatabaseClientProtocol,
 )
 ```
@@ -266,7 +266,7 @@ from jeeves_infra.database.client import (
 ### wiring Module
 
 ```python
-from jeeves_infra.wiring import (
+from jeeves_core.wiring import (
     ToolExecutor, AgentContext,
     create_tool_executor, create_llm_provider_factory,
     get_database_client,
@@ -314,7 +314,7 @@ from protocols import (
     CapabilityModeConfig,
     AgentLLMConfig,
 )
-from jeeves_infra.capability_registry import get_capability_registry
+from jeeves_core.capability_registry import get_capability_registry
 
 def register_capability():
     """Register code-analysis capability resources."""
@@ -354,7 +354,7 @@ def register_capability():
     )
 
     # 3. Register tools (via tool catalog)
-    from jeeves_infra.protocols import tool_catalog, ToolId
+    from jeeves_core.protocols import tool_catalog, ToolId
     from protocols import ToolCategory, RiskSemantic, RiskSeverity
 
     @tool_catalog.register(
@@ -379,15 +379,15 @@ Per the capability layer CONSTITUTION:
 | Requirement | Status | Notes |
 |-------------|--------|-------|
 | Capability can import from `protocols` | ✅ | All types available |
-| Capability can import from `jeeves_infra` | ✅ | Infrastructure and orchestration |
+| Capability can import from `jeeves_core` | ✅ | Infrastructure and orchestration |
 | Capability MUST NOT import from `coreengine/` | ✅ | Rust kernel isolation |
-| Import boundary: capability → jeeves_infra → protocols | ✅ | Clean layer separation |
+| Import boundary: capability → jeeves_core → protocols | ✅ | Clean layer separation |
 
 ### Layer Rules
 
-1. **L0 (jeeves_infra.protocols, jeeves_infra.utils)**: No dependencies on other Jeeves packages
+1. **L0 (jeeves_core.protocols, jeeves_core.utils)**: No dependencies on other Jeeves packages
 2. **L1 (Rust kernel)**: Accessed via KernelClient (TCP+msgpack IPC), not directly importable
-3. **L2 (jeeves_infra)**: Infrastructure + orchestration, can import from L0 and L1
+3. **L2 (jeeves_core)**: Infrastructure + orchestration, can import from L0 and L1
 4. **L3 (Capabilities)**: Can import from L0 and L2
 
 ---
@@ -411,18 +411,18 @@ def test_protocols_importable():
     assert AgentConfig is not None
     assert get_capability_resource_registry() is not None
 
-def test_jeeves_infra_contracts_importable():
-    """Verify jeeves_infra contracts are importable."""
-    from jeeves_infra.protocols import (
+def test_jeeves_core_contracts_importable():
+    """Verify jeeves_core contracts are importable."""
+    from jeeves_core.protocols import (
         LoggerProtocol, ContextBounds, tool_catalog
     )
-    from jeeves_infra.logging import get_current_logger
+    from jeeves_core.logging import get_current_logger
     assert tool_catalog is not None
 
-def test_jeeves_infra_importable():
-    """Verify jeeves_infra services are importable."""
-    from jeeves_infra.logging import create_logger
-    from jeeves_infra.capability_registry import get_capability_registry
+def test_jeeves_core_importable():
+    """Verify jeeves_core services are importable."""
+    from jeeves_core.logging import create_logger
+    from jeeves_core.capability_registry import get_capability_registry
     assert create_logger is not None
     assert get_capability_registry() is not None
 

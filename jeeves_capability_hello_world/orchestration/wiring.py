@@ -96,7 +96,7 @@ def create_hello_world_service(
     logger.info(
         "hello_world_service_created",
         pipeline="general_chatbot",
-        agents=3,
+        agents=4,
     )
 
     return service

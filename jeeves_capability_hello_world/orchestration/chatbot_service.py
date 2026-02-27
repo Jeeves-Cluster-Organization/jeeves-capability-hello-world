@@ -1,7 +1,8 @@
 """ChatbotService - Kernel-driven pipeline execution for general chatbot.
 
-Provides a clean interface for running the 3-agent chatbot pipeline
-(Understand -> Think -> Respond) with SQLite-backed in-dialogue memory.
+Both process_message() and process_message_stream() use PipelineWorker,
+which delegates all orchestration decisions to the Rust kernel:
+routing rules, bounds enforcement, error_next, interrupts.
 
 Memory is fail-forward: if SQLite is unavailable, the pipeline runs
 without persistence (conversation context from Gradio frontend only).
@@ -22,8 +23,9 @@ from jeeves_core.protocols import (
     LoggerProtocol,
     ToolExecutorProtocol,
     PipelineConfig,
+    PipelineEvent,
+    RequestContext,
 )
-from jeeves_core.protocols import RequestContext
 from jeeves_core.pipeline_worker import PipelineWorker, WorkerResult
 
 if TYPE_CHECKING:
@@ -43,12 +45,12 @@ class ChatbotResult:
 
 class ChatbotService:
     """
-    Service wrapper for PipelineRunner executing general chatbot pipeline.
+    Service wrapper for kernel-driven pipeline execution.
 
     Features:
-    - 3-agent pipeline (Understand -> Think -> Respond)
+    - 4-agent pipeline with conditional routing (kernel-driven)
     - SQLite-backed session state and message persistence
-    - Streaming support (token-level)
+    - Streaming support via PipelineWorker.execute_streaming()
     - Fail-forward memory: pipeline works without DB
     """
 
@@ -68,7 +70,6 @@ class ChatbotService:
         from jeeves_capability_hello_world.prompts.registry import PromptRegistry
         prompt_registry = PromptRegistry.get_instance()
 
-        # Resolve persistence: explicit override > default adapter > None
         if persistence is not None:
             self._persistence = persistence
         elif enable_persistence and db is not None:
@@ -91,7 +92,6 @@ class ChatbotService:
         self._kernel_client = kernel_client
         self._pipeline_config = pipeline_config
 
-        # Memory (lazy init, fail-forward)
         self._db = db
         self._session_state = None
         self._memory_ready = False
@@ -103,76 +103,13 @@ class ChatbotService:
             persistence=self._persistence,
         )
 
-    async def _ensure_memory(self):
-        """Lazily initialize SQLite memory. Fail-forward: errors are logged, not raised."""
-        if self._memory_ready:
-            return
-        self._memory_ready = True
-        if self._db is None:
-            return
-        try:
-            from jeeves_capability_hello_world.database.schema import SESSION_STATE_DDL, MESSAGES_DDL
-            from jeeves_capability_hello_world.memory.services.session_state_service import SessionStateService
+    # =========================================================================
+    # Pipeline Config Serialization
+    # =========================================================================
 
-            await self._db.connect()
-            # executescript doesn't work with multiple statements via execute(),
-            # so split and run each statement
-            for ddl in [SESSION_STATE_DDL, MESSAGES_DDL]:
-                for stmt in ddl.strip().split(";"):
-                    stmt = stmt.strip()
-                    if stmt:
-                        await self._db.execute(stmt)
-            self._session_state = SessionStateService(db=self._db)
-            self._logger.info("memory_initialized", backend="sqlite")
-        except Exception as e:
-            self._logger.error("memory_init_failed", error=str(e))
-            self._db = None
-
-    async def _load_session_context(self, session_id: str, user_id: str, message: str) -> Dict[str, Any]:
-        """Load session context from memory. Returns empty dict on failure."""
-        if not self._session_state:
-            return {}
-        try:
-            await self._session_state.get_or_create(session_id, user_id)
-            await self._session_state.on_user_turn(session_id, message)
-            return await self._session_state.get_context_for_prompt(session_id)
-        except Exception as e:
-            self._logger.warning("session_state_load_failed", error=str(e))
-            return {}
-
-    async def _persist_messages(self, session_id: str, user_message: str, assistant_response: str):
-        """Persist user and assistant messages. Fail-forward."""
-        if not self._db:
-            return
-        try:
-            now = datetime.now(timezone.utc).isoformat()
-            await self._db.insert("messages", {
-                "message_id": f"msg_{uuid4().hex[:12]}",
-                "session_id": session_id,
-                "role": "user",
-                "content": user_message,
-                "created_at": now,
-            })
-            if assistant_response:
-                await self._db.insert("messages", {
-                    "message_id": f"msg_{uuid4().hex[:12]}",
-                    "session_id": session_id,
-                    "role": "assistant",
-                    "content": assistant_response,
-                    "created_at": now,
-                })
-        except Exception as e:
-            self._logger.error("message_persist_failed", session_id=session_id, error=str(e))
-
-    async def _run_with_resource_tracking(
-        self,
-        envelope: Envelope,
-        thread_id: str,
-    ) -> Envelope:
-        """Run pipeline with kernel-driven orchestration."""
-        pid = envelope.envelope_id
-
-        pipeline_config_dict = {
+    def _build_pipeline_config_dict(self) -> Dict[str, Any]:
+        """Serialize pipeline config for kernel. Shared by both execution paths."""
+        return {
             "name": self._pipeline_config.name,
             "max_iterations": self._pipeline_config.max_iterations,
             "max_llm_calls": self._pipeline_config.max_llm_calls,
@@ -198,32 +135,106 @@ class ChatbotService:
             "edge_limits": dict(self._pipeline_config.edge_limits) if self._pipeline_config.edge_limits else {},
         }
 
-        result = await self._worker.execute(
-            process_id=pid,
+    # =========================================================================
+    # Memory (fail-forward)
+    # =========================================================================
+
+    async def _ensure_memory(self):
+        if self._memory_ready:
+            return
+        self._memory_ready = True
+        if self._db is None:
+            return
+        try:
+            from jeeves_capability_hello_world.database.schema import SESSION_STATE_DDL, MESSAGES_DDL
+            from jeeves_capability_hello_world.memory.services.session_state_service import SessionStateService
+
+            await self._db.connect()
+            for ddl in [SESSION_STATE_DDL, MESSAGES_DDL]:
+                for stmt in ddl.strip().split(";"):
+                    stmt = stmt.strip()
+                    if stmt:
+                        await self._db.execute(stmt)
+            self._session_state = SessionStateService(db=self._db)
+            self._logger.info("memory_initialized", backend="sqlite")
+        except Exception as e:
+            self._logger.error("memory_init_failed", error=str(e))
+            self._db = None
+
+    async def _load_session_context(self, session_id: str, user_id: str, message: str) -> Dict[str, Any]:
+        if not self._session_state:
+            return {}
+        try:
+            await self._session_state.get_or_create(session_id, user_id)
+            await self._session_state.on_user_turn(session_id, message)
+            return await self._session_state.get_context_for_prompt(session_id)
+        except Exception as e:
+            self._logger.warning("session_state_load_failed", error=str(e))
+            return {}
+
+    async def _persist_messages(self, session_id: str, user_message: str, assistant_response: str):
+        if not self._db:
+            return
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            await self._db.insert("messages", {
+                "message_id": f"msg_{uuid4().hex[:12]}",
+                "session_id": session_id,
+                "role": "user",
+                "content": user_message,
+                "created_at": now,
+            })
+            if assistant_response:
+                await self._db.insert("messages", {
+                    "message_id": f"msg_{uuid4().hex[:12]}",
+                    "session_id": session_id,
+                    "role": "assistant",
+                    "content": assistant_response,
+                    "created_at": now,
+                })
+        except Exception as e:
+            self._logger.error("message_persist_failed", session_id=session_id, error=str(e))
+
+    # =========================================================================
+    # Envelope Building
+    # =========================================================================
+
+    def _build_envelope(
+        self,
+        message: str,
+        user_id: str,
+        session_id: str,
+        session_context: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Envelope:
+        request_id = f"req_{uuid4().hex[:16]}"
+        request_context = RequestContext(
+            request_id=request_id,
+            capability="general_chatbot",
+            session_id=session_id,
+            user_id=user_id,
+        )
+        meta = metadata or {}
+        meta["session_context"] = session_context
+        return create_envelope(
+            raw_input=message,
+            request_context=request_context,
+            metadata=meta,
+        )
+
+    # =========================================================================
+    # Kernel-Driven Execution (non-streaming)
+    # =========================================================================
+
+    async def _run_pipeline(self, envelope: Envelope, thread_id: str) -> WorkerResult:
+        """Execute pipeline under kernel control."""
+        pipeline_config_dict = self._build_pipeline_config_dict()
+        return await self._worker.execute(
+            process_id=envelope.envelope_id,
             pipeline_config=pipeline_config_dict,
             envelope=envelope,
             thread_id=thread_id,
         )
-
-        result_envelope = result.envelope
-
-        if result.terminated:
-            reason_map = {
-                "TERMINAL_REASON_COMPLETED": TerminalReason.COMPLETED,
-                "TERMINAL_REASON_MAX_ITERATIONS_EXCEEDED": TerminalReason.MAX_ITERATIONS_EXCEEDED,
-                "TERMINAL_REASON_MAX_LLM_CALLS_EXCEEDED": TerminalReason.MAX_LLM_CALLS_EXCEEDED,
-                "TERMINAL_REASON_MAX_AGENT_HOPS_EXCEEDED": TerminalReason.MAX_AGENT_HOPS_EXCEEDED,
-                "TERMINAL_REASON_MAX_LOOP_EXCEEDED": TerminalReason.MAX_LOOP_EXCEEDED,
-                "TERMINAL_REASON_TOOL_FAILED_FATALLY": TerminalReason.TOOL_FAILED_FATALLY,
-            }
-            result_envelope.terminal_reason = reason_map.get(
-                result.terminal_reason,
-                TerminalReason.COMPLETED if result.terminal_reason == "" else TerminalReason.TOOL_FAILED_FATALLY
-            )
-            result_envelope.terminated = True
-            result_envelope.termination_reason = result.terminal_reason
-
-        return result_envelope
 
     async def process_message(
         self,
@@ -233,42 +244,33 @@ class ChatbotService:
         message: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> ChatbotResult:
-        """Process a user message through the 3-agent chatbot pipeline."""
-        request_id = f"req_{uuid4().hex[:16]}"
-        request_context = RequestContext(
-            request_id=request_id,
-            capability="general_chatbot",
-            session_id=session_id,
-            user_id=user_id,
-        )
-
+        """Process a user message through the kernel-driven pipeline."""
         await self._ensure_memory()
         session_context = await self._load_session_context(session_id, user_id, message)
 
-        meta = metadata or {}
-        meta["session_context"] = session_context
-
-        envelope = create_envelope(
-            raw_input=message,
-            request_context=request_context,
-            metadata=meta,
-        )
+        envelope = self._build_envelope(message, user_id, session_id, session_context, metadata)
+        request_id = envelope.request_id
 
         try:
-            result_envelope = await self._run_with_resource_tracking(
-                envelope, thread_id=session_id
-            )
+            result = await self._run_pipeline(envelope, thread_id=session_id)
+            result_envelope = result.envelope
 
-            result = self._envelope_to_result(result_envelope, request_id)
+            if result.terminated:
+                result_envelope.terminal_reason = self._map_terminal_reason(result.terminal_reason)
+                result_envelope.terminated = True
+                result_envelope.termination_reason = result.terminal_reason
 
-            # Persist messages
-            await self._persist_messages(session_id, message, result.response or "")
-
-            return result
+            chatbot_result = self._envelope_to_result(result_envelope, request_id)
+            await self._persist_messages(session_id, message, chatbot_result.response or "")
+            return chatbot_result
 
         except Exception as e:
             self._logger.error("chatbot_processing_error", request_id=request_id, error=str(e))
             return ChatbotResult(status="error", error=f"Processing failed: {str(e)}", request_id=request_id)
+
+    # =========================================================================
+    # Kernel-Driven Streaming
+    # =========================================================================
 
     async def process_message_stream(
         self,
@@ -278,164 +280,155 @@ class ChatbotService:
         message: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> AsyncIterator:
-        """Process message with token-level streaming from Respond agent.
+        """Process message with kernel-driven streaming.
 
-        Pipeline flow:
-        1. Understand agent: Buffered (JSON output needed)
-        2. Think agent: Buffered (tool execution)
-        3. Respond agent: TRUE STREAMING (yields tokens as generated)
+        Uses PipelineWorker.execute_streaming() — the kernel controls
+        routing, bounds, and interrupts. Yields PipelineEvents.
         """
-        from jeeves_core.protocols import PipelineEvent
-
-        request_id = f"req_{uuid4().hex[:16]}"
-        request_context = RequestContext(
-            request_id=request_id,
-            capability="general_chatbot",
-            session_id=session_id,
-            user_id=user_id,
-        )
-
-        # Initialize memory and load session context
         await self._ensure_memory()
         session_context = await self._load_session_context(session_id, user_id, message)
 
-        meta = metadata or {}
-        meta["session_context"] = session_context
-
-        envelope = create_envelope(
-            raw_input=message,
-            request_context=request_context,
-            metadata=meta,
-        )
-
-        pid = envelope.envelope_id
+        envelope = self._build_envelope(message, user_id, session_id, session_context, metadata)
+        request_id = envelope.request_id
+        pipeline_config_dict = self._build_pipeline_config_dict()
 
         self._logger.info(
             "chatbot_streaming_started",
             request_id=request_id,
-            user_id=user_id,
             session_id=session_id,
         )
-
-        # Register process with kernel before tracking usage
-        await self._kernel_client.create_process(
-            pid=pid,
-            request_id=request_id,
-            user_id=user_id,
-            session_id=session_id,
-        )
-        await self._kernel_client.record_usage(pid=pid, agent_hops=1)
-        quota_result = await self._kernel_client.check_quota(pid)
-        if not quota_result.within_bounds:
-            yield PipelineEvent(
-                "error", "__end__",
-                {"error": f"Quota exceeded: {quota_result.exceeded_reason}", "request_id": request_id}
-            )
-            return
 
         try:
-            # Stage 1: Understand (buffered)
-            yield PipelineEvent("stage", "understand", {"status": "started"})
-            understand_agent = self._runtime.agents.get("understand")
-            if understand_agent:
-                envelope = await understand_agent.process(envelope)
-                yield PipelineEvent("stage", "understand", {"status": "completed"})
-
-            # Stage 2: Think (buffered)
-            yield PipelineEvent("stage", "think", {"status": "started"})
-            think_agent = self._runtime.agents.get("think")
-            if think_agent:
-                envelope = await think_agent.process(envelope)
-                yield PipelineEvent("stage", "think", {"status": "completed"})
-
-            # Stage 3: Respond (STREAMING)
-            yield PipelineEvent("stage", "respond", {"status": "started"})
-            respond_agent = self._runtime.agents.get("respond")
-            if respond_agent:
-                from jeeves_core.protocols import TokenStreamMode
-
-                if respond_agent.config.token_stream == TokenStreamMode.AUTHORITATIVE:
-                    async for event_type, event in respond_agent.stream(envelope):
-                        yield event
+            async for agent_name, output in self._worker.execute_streaming(
+                process_id=envelope.envelope_id,
+                pipeline_config=pipeline_config_dict,
+                envelope=envelope,
+                thread_id=session_id,
+                force=True,
+            ):
+                if agent_name == "__end__":
+                    yield PipelineEvent("done", "__end__", {
+                        "final_output": envelope.outputs.get("final_response", {}),
+                        "request_id": request_id,
+                        **output,
+                    })
+                elif agent_name == "__interrupt__":
+                    yield PipelineEvent("interrupt", "__interrupt__", output)
+                elif agent_name == "__error__":
+                    yield PipelineEvent("error", "__error__", output)
+                elif agent_name == "__token__":
+                    yield PipelineEvent(
+                        "token",
+                        output.get("agent", "respond"),
+                        output.get("event", {}).data if hasattr(output.get("event", {}), "data") else output,
+                        debug=False,
+                    )
                 else:
-                    envelope = await respond_agent.process(envelope)
-                    response = envelope.outputs.get("final_response", {}).get("response", "")
-                    chunk_size = 10
-                    for i in range(0, len(response), chunk_size):
-                        yield PipelineEvent(
-                            "token", "respond",
-                            {"token": response[i:i+chunk_size]},
-                            debug=False
-                        )
+                    yield PipelineEvent("stage", agent_name, {"status": "completed", **(output or {})})
 
-                yield PipelineEvent("stage", "respond", {"status": "completed"})
-
-            # Record resource usage
-            runtime_hops = envelope.metadata.get("agent_hops", 0)
-            runtime_llm_calls = envelope.metadata.get("llm_call_count", 0)
-            runtime_tool_calls = envelope.metadata.get("tool_call_count", 0)
-            tokens_in = envelope.metadata.get("total_tokens_in", 0)
-            tokens_out = envelope.metadata.get("total_tokens_out", 0)
-            await self._kernel_client.record_usage(
-                pid=pid,
-                agent_hops=max(0, runtime_hops - 1),
-                llm_calls=runtime_llm_calls,
-                tool_calls=runtime_tool_calls,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-            )
-
-            # Persist messages (fail-forward)
+            # Persist messages
             response_text = envelope.outputs.get("final_response", {}).get("response", "")
             await self._persist_messages(session_id, message, response_text)
-
-            # Terminal event: done
-            yield PipelineEvent(
-                "done", "__end__",
-                {"final_output": envelope.outputs.get("final_response", {}), "request_id": request_id}
-            )
 
         except asyncio.CancelledError:
             self._logger.info("chatbot_streaming_cancelled", request_id=request_id)
             raise
         except Exception as e:
-            self._logger.error("chatbot_streaming_error", request_id=request_id, error=str(e), exc_info=True)
+            self._logger.error("chatbot_streaming_error", request_id=request_id, error=str(e))
             yield PipelineEvent("error", "__end__", {"error": str(e), "request_id": request_id})
 
+    # =========================================================================
+    # Result Mapping
+    # =========================================================================
+
+    @staticmethod
+    def _map_terminal_reason(reason_str: str) -> TerminalReason:
+        reason_map = {
+            "TERMINAL_REASON_COMPLETED": TerminalReason.COMPLETED,
+            "TERMINAL_REASON_MAX_ITERATIONS_EXCEEDED": TerminalReason.MAX_ITERATIONS_EXCEEDED,
+            "TERMINAL_REASON_MAX_LLM_CALLS_EXCEEDED": TerminalReason.MAX_LLM_CALLS_EXCEEDED,
+            "TERMINAL_REASON_MAX_AGENT_HOPS_EXCEEDED": TerminalReason.MAX_AGENT_HOPS_EXCEEDED,
+            "TERMINAL_REASON_MAX_LOOP_EXCEEDED": TerminalReason.MAX_LOOP_EXCEEDED,
+            "TERMINAL_REASON_TOOL_FAILED_FATALLY": TerminalReason.TOOL_FAILED_FATALLY,
+        }
+        return reason_map.get(
+            reason_str,
+            TerminalReason.COMPLETED if reason_str == "" else TerminalReason.TOOL_FAILED_FATALLY,
+        )
+
     def _envelope_to_result(self, envelope: Envelope, request_id: str) -> ChatbotResult:
-        """Convert Envelope to ChatbotResult."""
-        final_response_output = envelope.outputs.get("final_response", {})
+        """Convert Envelope to ChatbotResult, handling all terminal reasons."""
+        final = envelope.outputs.get("final_response", {})
 
         if envelope.terminal_reason == TerminalReason.COMPLETED:
-            response = final_response_output.get("response")
-            citations = final_response_output.get("citations", [])
-            confidence = final_response_output.get("confidence", "medium")
-
+            response = final.get("response")
             if not response:
                 return ChatbotResult(
                     status="error",
                     error="Pipeline completed but no response generated",
                     request_id=request_id,
                 )
-
             return ChatbotResult(
                 status="success",
                 response=response,
-                citations=citations if citations else None,
-                confidence=confidence,
+                citations=final.get("citations") or None,
+                confidence=final.get("confidence", "medium"),
                 request_id=request_id,
             )
+
+        # Bounds exits — return partial response if available
+        bounds_reasons = {
+            TerminalReason.MAX_ITERATIONS_EXCEEDED,
+            TerminalReason.MAX_LLM_CALLS_EXCEEDED,
+            TerminalReason.MAX_AGENT_HOPS_EXCEEDED,
+            TerminalReason.MAX_LOOP_EXCEEDED,
+        }
+        if envelope.terminal_reason in bounds_reasons:
+            partial = final.get("response")
+            if partial:
+                return ChatbotResult(
+                    status="success",
+                    response=partial,
+                    confidence="low",
+                    request_id=request_id,
+                )
+            reason_name = envelope.terminal_reason.value if hasattr(envelope.terminal_reason, 'value') else str(envelope.terminal_reason)
+            return ChatbotResult(
+                status="error",
+                error=f"Pipeline stopped: {reason_name}",
+                request_id=request_id,
+            )
+
+        if envelope.terminal_reason == TerminalReason.TOOL_FAILED_FATALLY:
+            return ChatbotResult(status="error", error="A tool failed during processing", request_id=request_id)
+
+        if envelope.terminal_reason == TerminalReason.LLM_FAILED_FATALLY:
+            return ChatbotResult(status="error", error="LLM provider failed", request_id=request_id)
+
+        if envelope.terminal_reason == TerminalReason.POLICY_VIOLATION:
+            return ChatbotResult(status="error", error="Request blocked by policy", request_id=request_id)
+
+        if envelope.terminal_reason == TerminalReason.USER_CANCELLED:
+            return ChatbotResult(status="error", error="Cancelled", request_id=request_id)
 
         error_msg = envelope.termination_reason or "Pipeline failed"
         return ChatbotResult(status="error", error=error_msg, request_id=request_id)
 
+    # =========================================================================
+    # Control Tower Dispatch
+    # =========================================================================
+
     async def handle_dispatch(self, envelope: Envelope) -> Envelope:
-        """Control Tower dispatch handler."""
         await self._ensure_memory()
-        return await self._run_with_resource_tracking(envelope, thread_id=envelope.session_id)
+        result = await self._run_pipeline(envelope, thread_id=envelope.session_id)
+        result_envelope = result.envelope
+        if result.terminated:
+            result_envelope.terminal_reason = self._map_terminal_reason(result.terminal_reason)
+            result_envelope.terminated = True
+            result_envelope.termination_reason = result.terminal_reason
+        return result_envelope
 
     def get_dispatch_handler(self):
-        """Get dispatch handler for Control Tower registration."""
         return self.handle_dispatch
 
 

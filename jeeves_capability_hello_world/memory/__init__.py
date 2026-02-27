@@ -1,1 +1,1 @@
-"""Capability-owned memory repositories and services."""
+"""Capability-owned memory services."""

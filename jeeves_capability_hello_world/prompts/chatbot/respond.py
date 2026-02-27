@@ -1,10 +1,8 @@
 """
 Respond Agent Prompt - Onboarding Chatbot
 
-This prompt helps the LLM craft helpful responses about the Jeeves ecosystem by:
-1. Using TARGETED knowledge based on classified intent
-2. Explaining concepts clearly for newcomers
-3. Providing practical examples when relevant
+Synthesizes response from targeted knowledge. Signals needs_more_context
+when retrieved knowledge is insufficient, enabling the routing loop.
 """
 
 from jeeves_capability_hello_world.prompts.registry import register_prompt
@@ -12,8 +10,8 @@ from jeeves_capability_hello_world.prompts.registry import register_prompt
 
 @register_prompt(
     name="chatbot.respond",
-    version="2.1",
-    description="Respond agent prompt with intent-targeted knowledge retrieval",
+    version="3.0",
+    description="Respond agent prompt with needs_more_context signaling for routing loop",
     constitutional_compliance="P1 (NLP-First)"
 )
 def chatbot_respond() -> str:
@@ -41,8 +39,8 @@ Answer the user's question using the knowledge above. Be specific and helpful.
 2. **For conversation questions** (summarize, what did we discuss, etc.) - Use the conversation history above to answer
 3. **Be concise** - 2-4 sentences for simple questions, more for complex topics
 4. **Include code examples** when the user asks "how to" questions
-5. **Mention specific file paths** when relevant (e.g., `tools/catalog.py`)
-6. **If Jeeves topic not covered** - Say "I don't have information about that in my knowledge base" rather than guessing
+5. **Mention specific file paths** when relevant (e.g., `tools/hello_world_tools.py`)
+6. **If Jeeves topic not covered** - Set needs_more_context to true so we can try a different approach
 7. **For greetings/off-topic** - Briefly redirect to what you can help with
 8. **NEVER hallucinate URLs or links** - If you're not sure about specific details, say so
 
@@ -50,24 +48,14 @@ Answer the user's question using the knowledge above. Be specific and helpful.
 {{
   "response": "<your helpful response>",
   "citations": [],
-  "confidence": "<high|medium|low>"
+  "confidence": "<high|medium|low>",
+  "needs_more_context": false
 }}
 
-## Confidence Levels
-- **high**: Topic directly covered in knowledge, clear answer
-- **medium**: Related info available, some inference needed
-- **low**: Topic not well covered, general guidance only
-
-## Example Responses
-
-Intent: concept, Topic: Envelope
-Response: "The Envelope is Jeeves' state container that flows through the pipeline. It holds the raw_input (user message), metadata (context dict), and outputs (results from each agent). Each state transition is immutable, enabling full replay and debugging."
-
-Intent: getting_started, Topic: adding tools
-Response: "To add a tool: 1) Create your function in tools/hello_world_tools.py returning a dict with status and result. 2) Add to ToolId enum in tools/catalog.py. 3) Register in tools/registration.py with tool_catalog.register(). 4) Add to EXPOSED_TOOL_IDS if agents should access it."
-
-Intent: general, Topic: greeting
-Response: "Hello! I'm here to help you learn about the Jeeves ecosystem. I can explain the 4-layer architecture, core concepts like Envelope and AgentConfig, or guide you through adding tools and agents. What would you like to explore?"
+Set `needs_more_context` to `true` ONLY if:
+- The knowledge above doesn't contain enough information to answer well
+- AND you believe a different classification might yield better knowledge
+- Do NOT set it to true for greetings, off-topic, or questions you can answer
 
 Now respond to the user:
 """

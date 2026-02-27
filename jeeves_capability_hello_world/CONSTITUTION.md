@@ -40,21 +40,21 @@ Response to User
 ### Allowed Imports
 
 Capability code MAY import from:
-- `jeeves_infra.protocols` - Type definitions, protocols, pipeline types
-- `jeeves_infra.bootstrap` - `create_app_context()` (eagerly provisions kernel, LLM, config)
-- `jeeves_infra.wiring` - `create_tool_executor` (tool executor framework)
-- `jeeves_infra.settings` - Settings management
-- `jeeves_infra.kernel_client` - `KernelClient` class (instance via AppContext)
-- `jeeves_infra.orchestrator` - Event orchestration
+- `jeeves_core.protocols` - Type definitions, protocols, pipeline types
+- `jeeves_core.bootstrap` - `create_app_context()` (eagerly provisions kernel, LLM, config)
+- `jeeves_core.wiring` - `create_tool_executor` (tool executor framework)
+- `jeeves_core.settings` - Settings management
+- `jeeves_core.kernel_client` - `KernelClient` class (instance via AppContext)
+- `jeeves_core.orchestrator` - Event orchestration
 
 ### Forbidden Imports
 
 Capability code MUST NOT import from:
-- `jeeves_infra.llm.*` directly - LLM factory provided via `AppContext.llm_provider_factory`
-- `jeeves_infra.gateway.*` - Internal server infrastructure
+- `jeeves_core.llm.*` directly - LLM factory provided via `AppContext.llm_provider_factory`
+- `jeeves_core.gateway.*` - Internal server infrastructure
 - `coreengine.*` - Rust kernel accessed via KernelClient only
 
-**Apps MUST NOT** import from `jeeves_infra` directly (except `bootstrap`). Apps use the capability layer entry point.
+**Apps MUST NOT** import from `jeeves_core` directly (except `bootstrap`). Apps use the capability layer entry point.
 
 ### Correct Pattern (App)
 
@@ -64,7 +64,7 @@ from jeeves_capability_hello_world import register_capability
 register_capability()
 
 # Bootstrap provisions everything (K8s-style eager provisioning)
-from jeeves_infra.bootstrap import create_app_context
+from jeeves_core.bootstrap import create_app_context
 app_context = create_app_context()
 
 # Capability creates fully-wired service from AppContext
@@ -116,7 +116,7 @@ service = create_hello_world_from_app_context(app_context)
    - Schema definitions
    - Domain-specific services (code indexer, etc.)
 
-### Infrastructure Owns (jeeves_infra)
+### Infrastructure Owns (jeeves_core)
 
 - LLM provider factory
 - Tool executor framework

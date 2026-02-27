@@ -1,18 +1,18 @@
 """
-Jeeves Hello World - General Chatbot Capability
+Jeeves Hello World - Onboarding Chatbot Capability
 
-A simplified 3-agent template demonstrating multi-agent orchestration patterns.
-Uses framework components for orchestration - capability layer is thin.
+A 4-agent pipeline with conditional routing demonstrating kernel-driven orchestration.
 
 Architecture:
-    Understand (LLM) → Think (Tools) → Respond (LLM)
+    Understand (LLM) → Think-Knowledge | Think-Tools → Respond (LLM)
+    Respond may loop back to Understand (bounded by max_llm_calls=6)
 
 Key components:
 - capability/wiring.py: Capability registration and ChatbotService factory
-- pipeline_config.py: 3-agent pipeline configuration
+- pipeline_config.py: 4-agent pipeline with RoutingRule and error_next
 - prompts/chatbot/: LLM prompts for Understand and Respond agents
-- tools/: Minimal general-purpose tools (web_search, get_time, list_tools)
-- orchestration/: ChatbotService wrapper over PipelineRunner
+- tools/hello_world_tools.py: get_time, list_tools
+- orchestration/: ChatbotService wrapper over PipelineWorker
 
 Usage (RECOMMENDED - using jeeves_core bootstrap):
     from jeeves_core.bootstrap import create_app_context
