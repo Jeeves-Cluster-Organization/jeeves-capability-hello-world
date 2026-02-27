@@ -36,9 +36,9 @@
 
 | Document | Description |
 |----------|-------------|
-| [jeeves-infra README](../../jeeves-infra/README.md) | Infrastructure layer overview |
-| [jeeves_infra orchestration docs](../../jeeves-infra/jeeves_infra/orchestrator/) | Orchestration framework |
-| [jeeves_infra README](../../jeeves-infra/jeeves_infra/README.md) | Infrastructure documentation |
+| [jeeves-infra README](../../jeeves-core/python/README.md) | Infrastructure layer overview |
+| [jeeves_infra orchestration docs](../../jeeves-core/python/jeeves_infra/orchestrator/) | Orchestration framework |
+| [jeeves_infra README](../../jeeves-core/python/jeeves_infra/README.md) | Infrastructure documentation |
 
 ---
 
