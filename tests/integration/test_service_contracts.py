@@ -79,7 +79,8 @@ class ToolRegistryProtocol(Protocol):
         description: str,
         parameters: dict,
         category: str,
-        risk_level: str,
+        risk_semantic: str,
+        risk_severity: str,
     ) -> None:
         """Register a tool."""
         ...
@@ -201,14 +202,16 @@ class MockToolRegistry:
         description: str,
         parameters: dict,
         category: str,
-        risk_level: str,
+        risk_semantic: str,
+        risk_severity: str,
     ) -> None:
         self.registered_tools[tool_id] = {
             "handler": handler,
             "description": description,
             "parameters": parameters,
             "category": category,
-            "risk_level": risk_level,
+            "risk_semantic": risk_semantic,
+            "risk_severity": risk_severity,
         }
 
 
@@ -316,7 +319,8 @@ class TestToolRegistryContract:
             description="Test tool",
             parameters={"param1": "string"},
             category="COMPOSITE",
-            risk_level="LOW",
+            risk_semantic="read_only",
+            risk_severity="low",
         )
 
         assert "my.tool" in registry.registered_tools
@@ -331,13 +335,15 @@ class TestToolRegistryContract:
             description="Test tool",
             parameters={"param1": "string"},
             category="COMPOSITE",
-            risk_level="LOW",
+            risk_semantic="read_only",
+            risk_severity="low",
         )
 
         tool = registry.registered_tools["my.tool"]
         assert tool["description"] == "Test tool"
         assert tool["category"] == "COMPOSITE"
-        assert tool["risk_level"] == "LOW"
+        assert tool["risk_semantic"] == "read_only"
+        assert tool["risk_severity"] == "low"
 
 
 class TestStandardToolResultContract:
@@ -450,14 +456,20 @@ class TestToolCategoriesContract:
         assert len(category_descriptions) == 4
 
 
-class TestRiskLevelsContract:
-    """Tests for Risk Levels per contract."""
+class TestRiskClassificationContract:
+    """Tests for Risk Classification per contract."""
 
-    def test_valid_risk_levels(self):
-        """Contract: valid risk levels."""
-        valid_levels = ["LOW", "MEDIUM", "HIGH"]
-        for level in valid_levels:
-            assert level in valid_levels
+    def test_valid_risk_semantics(self):
+        """Contract: valid risk semantics."""
+        valid_semantics = ["read_only", "write", "destructive"]
+        for semantic in valid_semantics:
+            assert semantic in valid_semantics
+
+    def test_valid_risk_severities(self):
+        """Contract: valid risk severities."""
+        valid_severities = ["low", "medium", "high", "critical"]
+        for severity in valid_severities:
+            assert severity in valid_severities
 
 
 class TestCapabilityRegistrationContract:

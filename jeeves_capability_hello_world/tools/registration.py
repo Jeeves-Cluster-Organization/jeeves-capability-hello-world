@@ -16,7 +16,8 @@ from jeeves_capability_hello_world.tools.catalog import (
     tool_catalog,
     ToolId,
     ToolCategory,
-    RiskLevel,
+    RiskSemantic,
+    RiskSeverity,
 )
 
 
@@ -52,7 +53,8 @@ def register_all_tools(logger: Optional[Any] = None) -> Dict[str, Any]:
         func=get_time,
         description="Get the current date and time (UTC)",
         category=ToolCategory.UTILITY.value,
-        risk_level=RiskLevel.READ_ONLY.value,
+        risk_semantic=RiskSemantic.READ_ONLY.value,
+        risk_severity=RiskSeverity.LOW.value,
         parameters={},
         is_async=False,
     )
@@ -63,7 +65,8 @@ def register_all_tools(logger: Optional[Any] = None) -> Dict[str, Any]:
         func=list_tools,
         description="List all available tools and onboarding capabilities",
         category=ToolCategory.INTROSPECTION.value,
-        risk_level=RiskLevel.READ_ONLY.value,
+        risk_semantic=RiskSemantic.READ_ONLY.value,
+        risk_severity=RiskSeverity.LOW.value,
         parameters={},
         is_async=False,
     )

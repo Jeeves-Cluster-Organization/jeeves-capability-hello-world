@@ -145,7 +145,8 @@ def _create_tool_catalog() -> CapabilityToolCatalog:
             "format": "string? - Output format (default: iso)",
         },
         category="standalone",
-        risk_level="read_only",
+        risk_semantic="read_only",
+        risk_severity="low",
     )
 
     catalog.register(
@@ -154,7 +155,8 @@ def _create_tool_catalog() -> CapabilityToolCatalog:
         description="List available tools and onboarding capabilities",
         parameters={},
         category="standalone",
-        risk_level="read_only",
+        risk_semantic="read_only",
+        risk_severity="low",
     )
 
     return catalog

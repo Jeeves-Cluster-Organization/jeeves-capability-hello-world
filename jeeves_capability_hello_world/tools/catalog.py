@@ -2,7 +2,7 @@
 Tool Catalog for Onboarding Capability.
 
 Constitution R7 compliant tool catalog with metadata.
-Provides typed tool identifiers, categories, and risk levels.
+Provides typed tool identifiers, categories, and risk classification.
 
 Architecture:
     Tools are registered with the catalog at initialization time.
@@ -27,12 +27,21 @@ class ToolCategory(str, Enum):
     INTROSPECTION = "introspection"  # Self-inspection
 
 
-class RiskLevel(str, Enum):
-    """Risk levels for tool access control."""
+class RiskSemantic(str, Enum):
+    """Risk semantic for tool execution behavior."""
 
     READ_ONLY = "read_only"  # Safe, no side effects
-    EXTERNAL = "external"  # Calls external services
     WRITE = "write"  # Modifies state
+    DESTRUCTIVE = "destructive"  # Irreversible changes
+
+
+class RiskSeverity(str, Enum):
+    """Risk severity for tool execution impact."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 # Exposed tools available to agents
@@ -50,7 +59,7 @@ class CapabilityToolCatalog:
     - Function reference
     - Description
     - Category
-    - Risk level
+    - Risk semantic and severity
     - Parameters schema
     - Async flag
 
@@ -61,7 +70,8 @@ class CapabilityToolCatalog:
             func=get_time,
             description="Get current time",
             category=ToolCategory.UTILITY.value,
-            risk_level=RiskLevel.READ_ONLY.value,
+            risk_semantic=RiskSemantic.READ_ONLY.value,
+            risk_severity=RiskSeverity.LOW.value,
         )
     """
 
@@ -81,7 +91,8 @@ class CapabilityToolCatalog:
         func: Callable,
         description: str,
         category: str,
-        risk_level: str,
+        risk_semantic: str,
+        risk_severity: str,
         parameters: Optional[Dict[str, Any]] = None,
         is_async: bool = False,
     ) -> None:
@@ -93,7 +104,8 @@ class CapabilityToolCatalog:
             func: Tool function reference
             description: Human-readable description
             category: Tool category (from ToolCategory)
-            risk_level: Risk level (from RiskLevel)
+            risk_semantic: Risk semantic (from RiskSemantic)
+            risk_severity: Risk severity (from RiskSeverity)
             parameters: Optional parameters schema
             is_async: Whether the tool is async
         """
@@ -102,7 +114,8 @@ class CapabilityToolCatalog:
             "func": func,
             "description": description,
             "category": category,
-            "risk_level": risk_level,
+            "risk_semantic": risk_semantic,
+            "risk_severity": risk_severity,
             "parameters": parameters or {},
             "is_async": is_async,
         }
@@ -151,7 +164,8 @@ tool_catalog = CapabilityToolCatalog(
 __all__ = [
     "ToolId",
     "ToolCategory",
-    "RiskLevel",
+    "RiskSemantic",
+    "RiskSeverity",
     "EXPOSED_TOOL_IDS",
     "CapabilityToolCatalog",
     "tool_catalog",

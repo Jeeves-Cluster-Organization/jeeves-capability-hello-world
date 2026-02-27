@@ -218,7 +218,8 @@ tool_catalog.register(
     func=get_time,
     description="Get current date and time",
     category="utility",
-    risk_level="read_only",
+    risk_semantic="read_only",
+    risk_severity="low",
     parameters={"timezone": "string? - default UTC"},
     is_async=False,
 )
@@ -385,7 +386,8 @@ HOW_TO_GUIDES = """
        func=my_tool,
        description="Does something useful",
        category=ToolCategory.UTILITY.value,
-       risk_level=RiskLevel.READ_ONLY.value,
+       risk_semantic=RiskSemantic.READ_ONLY.value,
+       risk_severity=RiskSeverity.LOW.value,
    )
    ```
 

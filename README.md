@@ -330,7 +330,8 @@ catalog.register(
     func=my_tool,
     description="What my tool does",
     category="standalone",
-    risk_level="read_only",
+    risk_semantic="read_only",
+    risk_severity="low",
 )
 ```
 

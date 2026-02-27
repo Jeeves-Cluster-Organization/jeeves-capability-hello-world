@@ -20,7 +20,8 @@ from typing import Any, Dict, Optional
 from .catalog import (
     ToolId,
     ToolCategory,
-    RiskLevel,
+    RiskSemantic,
+    RiskSeverity,
     EXPOSED_TOOL_IDS,
     tool_catalog,
 )
@@ -81,7 +82,8 @@ __all__ = [
     # Catalog exports
     "ToolId",
     "ToolCategory",
-    "RiskLevel",
+    "RiskSemantic",
+    "RiskSeverity",
     "EXPOSED_TOOL_IDS",
     "tool_catalog",
     # Individual tools (for direct access if needed)

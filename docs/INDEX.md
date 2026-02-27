@@ -173,7 +173,8 @@ catalog.register(
     func=my_tool_function,
     description="What it does",
     category="standalone",
-    risk_level="read_only",
+    risk_semantic="read_only",
+    risk_severity="low",
 )
 ```
 

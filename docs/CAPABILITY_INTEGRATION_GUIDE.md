@@ -25,7 +25,7 @@ The `protocols` package provides all core type contracts. Import directly:
 ```python
 from protocols import (
     # Core Enums
-    RiskLevel, ToolAccess, ToolCategory, OperationStatus, HealthStatus,
+    RiskSemantic, RiskSeverity, ToolAccess, ToolCategory, OperationStatus, HealthStatus,
     TerminalReason, CriticVerdict, RiskApproval, OperationResult,
 
     # Configuration
@@ -43,7 +43,7 @@ from protocols import (
     # Protocols
     LoggerProtocol, DatabaseClientProtocol,
     LLMProviderProtocol, ToolRegistryProtocol, ToolExecutorProtocol,
-    SettingsProtocol, FeatureFlagsProtocol, AppContextProtocol,
+    ClockProtocol, AppContextProtocol,
     NodeProfile, NodeProfilesProtocol, AgentLLMConfig,
     CapabilityLLMConfigRegistryProtocol, AgentToolAccessProtocol,
 
@@ -82,7 +82,7 @@ from protocols import (
 ```python
 from jeeves_infra.protocols import (
     # Re-exported from protocols
-    LoggerProtocol, ContextBounds, WorkingMemory, RiskLevel,
+    LoggerProtocol, ContextBounds, WorkingMemory, RiskSemantic, RiskSeverity,
     ToolCategory,
 
     # Tool catalog
@@ -102,7 +102,7 @@ from jeeves_infra.protocols import (
 from jeeves_infra.protocols import (
     # Re-exported from protocols
     AgentConfig, PipelineConfig, GenericEnvelope, UnifiedRuntime,
-    ContextBounds, WorkingMemory, RiskLevel, ToolCategory,
+    ContextBounds, WorkingMemory, RiskSemantic, RiskSeverity, ToolCategory,
     OperationStatus, ToolAccess, ToolId,
 )
 ```
@@ -246,8 +246,7 @@ from jeeves_infra.capability_registry import (
 
 ```python
 from jeeves_infra.llm.factory import (
-    create_llm_provider, create_agent_provider,
-    create_agent_provider_with_node_awareness, LLMFactory,
+    create_llm_provider, create_llm_provider_factory,
 )
 
 from jeeves_infra.llm.providers import (
@@ -356,14 +355,15 @@ def register_capability():
 
     # 3. Register tools (via tool catalog)
     from jeeves_infra.protocols import tool_catalog, ToolId
-    from protocols import ToolCategory, RiskLevel
+    from protocols import ToolCategory, RiskSemantic, RiskSeverity
 
     @tool_catalog.register(
         tool_id=ToolId.ANALYZE,
         description="Unified code analysis entry point",
         parameters={"query": "string", "context": "dict?"},
         category=ToolCategory.UNIFIED,
-        risk_level=RiskLevel.LOW,
+        risk_semantic=RiskSemantic.READ_ONLY,
+        risk_severity=RiskSeverity.LOW,
     )
     async def analyze(query: str, context: dict = None):
         # Implementation
@@ -404,7 +404,7 @@ def test_protocols_importable():
     """Verify all required protocols are importable."""
     from protocols import (
         AgentConfig, PipelineConfig, GenericEnvelope,
-        RiskLevel, ToolAccess, OperationStatus,
+        RiskSemantic, RiskSeverity, ToolAccess, OperationStatus,
         CapabilityResourceRegistry, get_capability_resource_registry,
         NodeProfile, AgentLLMConfig
     )
