@@ -21,10 +21,9 @@ from jeeves_core.protocols import (
     TokenStreamMode,
     Envelope,
     PipelineEvent,
-    Agent,
-    create_envelope,
     RequestContext,
 )
+from jeeves_core.runtime import Agent, create_envelope
 
 
 # =============================================================================
@@ -269,7 +268,7 @@ async def test_cancellation_propagates():
 @pytest.mark.asyncio
 async def test_inline_citations_best_effort():
     """Verify inline citations are extracted but not guaranteed."""
-    from jeeves_core.protocols import Agent
+    from jeeves_core.runtime import Agent
 
     config = AgentConfig(name="test", output_key="test")
     agent = Agent(config=config, logger=Mock())
