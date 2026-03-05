@@ -43,7 +43,6 @@ from jeeves_capability_hello_world.capability.wiring import (
     CAPABILITY_ROOT,
     AGENT_LLM_CONFIGS,
     AGENT_DEFINITIONS,
-    get_agent_config,
     create_hello_world_from_app_context,
 )
 
@@ -59,7 +58,6 @@ __all__ = [
     # Agent configurations
     "AGENT_LLM_CONFIGS",
     "AGENT_DEFINITIONS",
-    "get_agent_config",
     # Service factory (use jeeves_core.bootstrap for AppContext)
     "create_hello_world_from_app_context",
     # Metadata

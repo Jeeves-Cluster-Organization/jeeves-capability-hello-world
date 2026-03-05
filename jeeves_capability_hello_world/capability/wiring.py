@@ -1,27 +1,25 @@
 """Capability Registration for Hello World Chatbot.
 
-Registers hello-world as a capability with jeeves-core.
-Tools, agents, and orchestrator are registered here.
-SQLite-backed in-dialogue memory is created lazily in ChatbotService.
+Registers hello-world as a capability with jeeves-core via one-call
+register_capability(). SQLite-backed in-dialogue memory is created lazily
+in ChatbotService.
 
 Usage:
     from jeeves_capability_hello_world.capability.wiring import register_capability
     register_capability()
 
     from jeeves_core.bootstrap import create_app_context
-    app_context = create_app_context()
-
     from jeeves_capability_hello_world.capability.wiring import create_hello_world_from_app_context
+    app_context = create_app_context()
     service = create_hello_world_from_app_context(app_context)
 """
 
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from jeeves_core.protocols import (
-    get_capability_resource_registry,
     DomainModeConfig,
     DomainServiceConfig,
     DomainAgentConfig,
@@ -30,6 +28,7 @@ from jeeves_core.protocols import (
     CapabilityToolCatalog,
     AgentLLMConfig,
 )
+from jeeves_core.capability_wiring import register_capability as _register
 
 if TYPE_CHECKING:
     from jeeves_core.context import AppContext
@@ -46,7 +45,6 @@ CAPABILITY_ROOT = Path(__file__).resolve().parent.parent
 
 # Capability-owned database client — created in register_capability()
 _capability_db = None
-
 
 # =============================================================================
 # AGENT LLM CONFIGURATIONS
@@ -87,7 +85,6 @@ AGENT_LLM_CONFIGS = {
     ),
 }
 
-
 # =============================================================================
 # AGENT DEFINITIONS
 # =============================================================================
@@ -119,7 +116,6 @@ AGENT_DEFINITIONS = [
     ),
 ]
 
-
 # =============================================================================
 # TOOL REGISTRY ADAPTER
 # =============================================================================
@@ -136,9 +132,8 @@ class ToolRegistryAdapter:
     def get_tool(self, name: str):
         return self._catalog.get_tool(name)
 
-
 # =============================================================================
-# TOOL CATALOG
+# FACTORY FUNCTIONS
 # =============================================================================
 
 def _create_tool_catalog() -> CapabilityToolCatalog:
@@ -176,18 +171,14 @@ def _create_tool_catalog() -> CapabilityToolCatalog:
     return catalog
 
 
-# =============================================================================
-# ORCHESTRATOR FACTORY (called by infra framework)
-# =============================================================================
-
 def _create_orchestrator_service(
-    llm_factory: Callable,
-    tool_executor: Any,
-    log: Any,
-    persistence: Optional[Any],
-    kernel_client: Any,
-) -> Any:
-    """Factory to create ChatbotService for framework dispatch."""
+    llm_factory,
+    tool_executor,
+    log,
+    persistence,
+    kernel_client,
+):
+    """Factory: creates ChatbotService for kernel dispatch."""
     from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
@@ -206,35 +197,21 @@ def _create_orchestrator_service(
 
 
 # =============================================================================
-# CAPABILITY REGISTRATION
+# ONE-CALL REGISTRATION
 # =============================================================================
 
 def register_capability() -> None:
     """Register hello-world capability with jeeves-core.
 
-    Must be called at startup before using runtime services.
     Creates the capability-owned SQLiteClient for in-dialogue memory.
     """
     global _capability_db
     from jeeves_capability_hello_world.database.sqlite_client import SQLiteClient
     _capability_db = SQLiteClient()
 
-    registry = get_capability_resource_registry()
-
-    # 1. Register capability mode
-    registry.register_mode(
-        CAPABILITY_ID,
-        DomainModeConfig(
-            mode_id=CAPABILITY_ID,
-            response_fields=["response", "citations", "confidence"],
-            requires_repo_path=False,
-        ),
-    )
-
-    # 2. Register service configuration
-    registry.register_service(
-        CAPABILITY_ID,
-        DomainServiceConfig(
+    _register(
+        capability_id=CAPABILITY_ID,
+        service_config=DomainServiceConfig(
             service_id=f"{CAPABILITY_ID}_service",
             service_type="flow",
             capabilities=["query", "chat", "general"],
@@ -245,49 +222,27 @@ def register_capability() -> None:
             default_session_title="Chat Session",
             pipeline_stages=["understand", "think_knowledge", "think_tools", "respond"],
         ),
-    )
-
-    # 3. Register agent definitions
-    registry.register_agents(CAPABILITY_ID, AGENT_DEFINITIONS)
-
-    # 4. Register tools configuration (lazy initialization)
-    registry.register_tools(
-        CAPABILITY_ID,
-        CapabilityToolsConfig(
+        mode_config=DomainModeConfig(
+            mode_id=CAPABILITY_ID,
+            response_fields=["response", "citations", "confidence"],
+            requires_repo_path=False,
+        ),
+        agents=AGENT_DEFINITIONS,
+        tools_config=CapabilityToolsConfig(
             tool_ids=["get_time", "list_tools"],
             initializer=_create_tool_catalog,
         ),
-    )
-
-    # 5. Register orchestrator factory
-    registry.register_orchestrator(
-        CAPABILITY_ID,
-        CapabilityOrchestratorConfig(
+        orchestrator_config=CapabilityOrchestratorConfig(
             factory=_create_orchestrator_service,
         ),
+        agent_llm_configs=AGENT_LLM_CONFIGS,
     )
-
-    # 6. Register LLM configurations
-    try:
-        from jeeves_core.capability_registry import get_capability_registry
-
-        llm_registry = get_capability_registry()
-        for agent_name, config in AGENT_LLM_CONFIGS.items():
-            llm_registry.register(
-                capability_id=CAPABILITY_ID,
-                agent_name=agent_name,
-                config=config,
-            )
-    except ImportError:
-        pass
 
     logger.info(
         "hello_world_capability_registered",
         extra={
             "capability_id": CAPABILITY_ID,
             "version": CAPABILITY_VERSION,
-            "agents": [a.name for a in AGENT_DEFINITIONS],
-            "tools": ["get_time", "list_tools"],
         }
     )
 
@@ -296,30 +251,21 @@ def register_capability() -> None:
 # APP CONTEXT HELPER
 # =============================================================================
 
-def get_agent_config(agent_name: str) -> AgentLLMConfig:
-    """Get LLM configuration for a specific agent."""
-    if agent_name not in AGENT_LLM_CONFIGS:
-        raise KeyError(f"Unknown agent: {agent_name}")
-    return AGENT_LLM_CONFIGS[agent_name]
-
-
 def create_hello_world_from_app_context(app_context: "AppContext") -> Any:
     """Create ChatbotService from jeeves_core AppContext.
 
     Wires app_context.db from capability-owned SQLiteClient if not already set.
-    Requires register_capability() to have been called first.
     """
     from jeeves_core.wiring import create_tool_executor
     from jeeves_capability_hello_world.orchestration.chatbot_service import ChatbotService
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
-    # Wire db from capability registration if not already on AppContext
     if app_context.db is None:
         if _capability_db is None:
             raise RuntimeError("No database client available. Call register_capability() first.")
         app_context.db = _capability_db
 
-    # Get tool registry from capability registration
+    from jeeves_core.protocols import get_capability_resource_registry
     registry = get_capability_resource_registry()
     tools_config = registry.get_tools(CAPABILITY_ID)
     tool_catalog = tools_config.get_catalog() if tools_config else _create_tool_catalog()
@@ -337,16 +283,12 @@ def create_hello_world_from_app_context(app_context: "AppContext") -> Any:
 
 
 def get_capability_db():
-    """Get the capability-owned database client.
-
-    Returns None if register_capability() hasn't been called yet.
-    """
+    """Get the capability-owned database client."""
     return _capability_db
 
 
 __all__ = [
     "register_capability",
-    "get_agent_config",
     "get_capability_db",
     "CAPABILITY_ID",
     "CAPABILITY_VERSION",

@@ -154,7 +154,7 @@ service = create_hello_world_from_app_context(app_context)
 
 This capability intentionally omits:
 - Rust kernel IPC servicer (Gradio-only deployment)
-- Control Tower integration (no event tracking)
+- Kernel event tracking integration
 - Persistence layer (stateless)
 - Complex tool suites (3 tools only)
 

@@ -353,7 +353,7 @@ class ChatbotService:
         return ChatbotResult(status="error", error=reason or "Pipeline failed", request_id=request_id)
 
     # =========================================================================
-    # Control Tower Dispatch
+    # Kernel Dispatch
     # =========================================================================
 
     async def handle_dispatch(self, envelope: Envelope) -> Envelope:
