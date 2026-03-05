@@ -23,7 +23,7 @@ from jeeves_core.protocols import (
     ToolAccess,
 )
 from jeeves_core.protocols import AgentOutputMode, TokenStreamMode, GenerationParams
-from jeeves_core.protocols.routing import eq, not_, always
+from jeeves_core.protocols.routing import eq
 
 
 # =============================================================================

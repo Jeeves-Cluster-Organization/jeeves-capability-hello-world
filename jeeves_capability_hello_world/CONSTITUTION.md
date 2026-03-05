@@ -7,7 +7,7 @@ This document defines the architectural rules and ownership boundaries for the `
 ## Capability Identity
 
 - **Capability ID**: `hello_world`
-- **Version**: `0.1.0`
+- **Version**: `0.3.0`
 - **Purpose**: Minimal 3-agent chatbot demonstrating multi-agent orchestration patterns
 - **Scope**: General-purpose conversational AI template
 
