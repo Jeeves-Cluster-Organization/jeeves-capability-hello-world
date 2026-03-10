@@ -4,6 +4,8 @@ Kernel-driven 4-agent pipeline with conditional routing.
 Memory is fail-forward: pipeline works without SQLite persistence.
 """
 
+import asyncio
+import json
 from datetime import datetime, timezone
 from typing import Any, Dict
 from uuid import uuid4
@@ -51,22 +53,53 @@ class ChatbotService(CapabilityService):
             from jeeves_capability_hello_world.database.schema import (
                 SESSION_STATE_DDL,
                 MESSAGES_DDL,
+                PIPELINE_SNAPSHOTS_DDL,
             )
             from jeeves_capability_hello_world.memory.services.session_state_service import (
                 SessionStateService,
             )
 
             await self._db.connect()
-            for ddl in [SESSION_STATE_DDL, MESSAGES_DDL]:
+            for ddl in [SESSION_STATE_DDL, MESSAGES_DDL, PIPELINE_SNAPSHOTS_DDL]:
                 for stmt in ddl.strip().split(";"):
                     stmt = stmt.strip()
                     if stmt:
                         await self._db.execute(stmt)
             self._session_state = SessionStateService(db=self._db)
+            self._snapshot_task = asyncio.create_task(self._snapshot_listener())
             self._logger.info("memory_initialized", backend="sqlite")
         except Exception as e:
             self._logger.error("memory_init_failed", error=str(e))
             self._db = None
+
+    async def _snapshot_listener(self):
+        """Subscribe to envelope.snapshot and persist."""
+        try:
+            async for event in self._kernel_client.subscribe_events(
+                ["envelope.snapshot"], subscriber_id="hello-world-snapshots"
+            ):
+                await self._handle_snapshot(event)
+        except asyncio.CancelledError:
+            pass
+
+    async def _handle_snapshot(self, event: dict):
+        """Persist envelope snapshot to SQLite."""
+        if self._db is None:
+            return
+        try:
+            payload = event.get("payload", event)
+            if isinstance(payload, str):
+                payload = json.loads(payload)
+            pid = payload.get("pid", "")
+            trigger = payload.get("trigger", "")
+            envelope = payload.get("envelope", {})
+            await self._db.execute(
+                "INSERT OR REPLACE INTO pipeline_snapshots (pid, trigger, snapshot, created_at) "
+                "VALUES (?, ?, ?, datetime('now'))",
+                (pid, trigger, json.dumps(envelope)),
+            )
+        except Exception as e:
+            self._logger.error("snapshot_persist_failed", error=str(e))
 
     async def _enrich_metadata(self, meta, message, user_id, session_id):
         """Inject session context into envelope metadata."""

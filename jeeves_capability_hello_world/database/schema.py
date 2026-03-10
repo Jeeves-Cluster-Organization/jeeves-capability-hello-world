@@ -29,3 +29,13 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
 """
+
+PIPELINE_SNAPSHOTS_DDL = """
+CREATE TABLE IF NOT EXISTS pipeline_snapshots (
+    pid TEXT NOT NULL,
+    trigger TEXT NOT NULL,
+    snapshot TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (pid, trigger)
+);
+"""
