@@ -54,7 +54,7 @@ register_capability()
 
 # Capability layer imports only
 from jeeves_capability_hello_world.orchestration import ChatbotService
-from jeeves_capability_hello_world.capability.wiring import create_hello_world_from_app_context
+from jeeves_capability_hello_world.capability.wiring import create_from_app_context
 
 # Import prompts to register them (the @register_prompt decorators run on import)
 import jeeves_capability_hello_world.prompts.chatbot.understand  # noqa
@@ -77,7 +77,7 @@ def get_or_create_service() -> ChatbotService:
         from jeeves_core.bootstrap import create_app_context
         app_context = create_app_context()
 
-        _service = create_hello_world_from_app_context(app_context)
+        _service = create_from_app_context(app_context)
 
         logger.info("chatbot_service_ready",
                     pipeline="onboarding_chatbot",

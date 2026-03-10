@@ -19,7 +19,7 @@ from typing import Any, Dict
 from jeeves_core.protocols import (
     PipelineConfig,
     AgentConfig,
-    RoutingRule,
+    Edge,
     ToolAccess,
 )
 from jeeves_core.protocols import AgentOutputMode, TokenStreamMode, GenerationParams
@@ -55,7 +55,7 @@ async def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
         "conversation_history": formatted_history,
         "conversation_summary": session_context.get("conversation_summary", ""),
         "turn_count": session_context.get("turn_count", 0),
-        "is_retry": envelope.metadata.get("_routing_loop_count", 0) > 0,
+        "is_retry": "final_response" in envelope.outputs,
         "previous_response": "",
     }
 
@@ -177,19 +177,13 @@ async def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
 
 
 async def respond_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
-    """Check if response is complete or needs another loop."""
-    loop_count = envelope.metadata.get("_routing_loop_count", 0)
+    """Check if response is complete or needs another loop.
 
-    # If LLM signals more context needed AND we haven't looped too much, loop back
-    if output.get("needs_more_context") and loop_count < 2:
-        envelope.metadata["_routing_loop_count"] = loop_count + 1
-        # Don't terminate — kernel routing rule will send back to understand
-        return envelope
-
-    # Normal completion — kernel terminates when no routing rules match
+    needs_more_context=True → kernel routing rule sends back to understand.
+    max_visits=3 on respond stage → kernel terminates after 3 visits.
+    """
     if "response" not in output:
         output["response"] = "I apologize, but I wasn't able to generate a response. Please try again."
-
     return envelope
 
 
@@ -197,89 +191,58 @@ async def respond_post_process(envelope: Any, output: Dict[str, Any], agent: Any
 # PIPELINE CONFIGURATION
 # =============================================================================
 
-ONBOARDING_CHATBOT_PIPELINE = PipelineConfig(
-    name="onboarding_chatbot",
-    max_iterations=3,           # Max 3 understand→think→respond loops
-    max_llm_calls=6,            # 2 LLM agents × 3 loops
-    max_agent_hops=12,          # 4 hops per loop × 3 loops
-    clarification_resume_stage="understand",
-    confirmation_resume_stage="think_knowledge",
-    agents=[
-        # ─── Agent 1: Understand (LLM) ───
-        AgentConfig(
-            name="understand",
-            stage_order=0,
-            has_llm=True,
-            model_role="planner",
-            prompt_key="chatbot.understand",
-            output_key="understanding",
+ONBOARDING_CHATBOT_PIPELINE = PipelineConfig.graph(
+    "onboarding_chatbot",
+    stages={
+        "understand": AgentConfig(
+            name="understand", has_llm=True, model_role="planner",
+            prompt_key="chatbot.understand", output_key="understanding",
             required_output_fields=["intent", "topic"],
-            max_tokens=4000,
-            temperature=0.3,
+            max_tokens=4000, temperature=0.3,
             pre_process=understand_pre_process,
             post_process=understand_post_process,
-            routing_rules=[
-                RoutingRule(expr=eq("intent", "getting_started"), target="think_tools"),
-                RoutingRule(expr=eq("intent", "general"), target="think_tools"),
-            ],
-            default_next="think_knowledge",
             error_next="respond",
         ),
-
-        # ─── Agent 2a: Think-Knowledge (No LLM, No Tools) ───
-        AgentConfig(
-            name="think_knowledge",
-            stage_order=1,
-            has_llm=False,
-            has_tools=False,
+        "think_knowledge": AgentConfig(
+            name="think_knowledge", has_llm=False, has_tools=False,
             output_key="think_results",
             pre_process=think_knowledge_pre_process,
             post_process=think_knowledge_post_process,
-            default_next="respond",
             error_next="respond",
         ),
-
-        # ─── Agent 2b: Think-Tools (No LLM, Has Tools) ───
-        AgentConfig(
-            name="think_tools",
-            stage_order=2,
-            has_llm=False,
-            has_tools=True,
-            tool_access=ToolAccess.ALL,
-            output_key="think_results",
+        "think_tools": AgentConfig(
+            name="think_tools", has_llm=False, has_tools=True,
+            tool_access=ToolAccess.ALL, output_key="think_results",
             pre_process=think_tools_pre_process,
             post_process=think_tools_post_process,
-            default_next="respond",
             error_next="respond",
         ),
-
-        # ─── Agent 3: Respond (LLM, Streaming) ───
-        AgentConfig(
-            name="respond",
-            stage_order=3,
-            has_llm=True,
-            model_role="planner",
-            prompt_key="chatbot.respond",
-            output_key="final_response",
+        "respond": AgentConfig(
+            name="respond", has_llm=True, model_role="planner",
+            prompt_key="chatbot.respond", output_key="final_response",
             required_output_fields=["response"],
-            max_tokens=4000,
-            temperature=0.5,
-            generation=GenerationParams(
-                stop=["\n\n\n", "User:", "Question:"],
-                repeat_penalty=1.15,
-            ),
+            max_tokens=4000, temperature=0.5,
+            generation=GenerationParams(stop=["\n\n\n", "User:", "Question:"], repeat_penalty=1.15),
             pre_process=respond_pre_process,
             post_process=respond_post_process,
-            routing_rules=[
-                RoutingRule(expr=eq("needs_more_context", True), target="understand"),
-            ],
-            default_next=None,  # No match = kernel terminates (Temporal pattern)
-            error_next=None,
             output_mode=AgentOutputMode.TEXT,
             token_stream=TokenStreamMode.AUTHORITATIVE,
             streaming_prompt_key="chatbot.respond_streaming",
+            max_visits=3,
         ),
+    },
+    edges=[
+        Edge("understand", "think_tools", when=eq("intent", "getting_started")),
+        Edge("understand", "think_tools", when=eq("intent", "general")),
+        Edge("understand", "think_knowledge"),  # default
+        Edge("think_knowledge", "respond"),
+        Edge("think_tools", "respond"),
+        Edge("respond", "understand", when=eq("needs_more_context", True)),
+        # respond has no unconditional edge → None → kernel terminates (Temporal pattern)
     ],
+    max_iterations=3, max_llm_calls=6, max_agent_hops=12,
+    clarification_resume_stage="understand",
+    confirmation_resume_stage="think_knowledge",
 )
 
 
