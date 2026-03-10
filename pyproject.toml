@@ -35,6 +35,9 @@ dev = [
 [tool.uv.sources]
 jeeves-core = { workspace = true }
 
+[project.entry-points."jeeves_core.capabilities"]
+hello_world = "jeeves_capability_hello_world.capability.wiring:register_capability"
+
 [tool.hatch.build.targets.wheel]
 packages = ["jeeves_capability_hello_world"]
 

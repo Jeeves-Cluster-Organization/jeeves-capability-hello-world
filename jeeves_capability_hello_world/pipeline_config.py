@@ -18,9 +18,8 @@ Tight bounds guarantee termination:
 from typing import Any, Dict
 from jeeves_core.protocols import (
     PipelineConfig,
-    AgentConfig,
     Edge,
-    ToolAccess,
+    stage,
 )
 from jeeves_core.protocols import AgentOutputMode, TokenStreamMode, GenerationParams
 from jeeves_core.protocols.routing import eq
@@ -194,8 +193,8 @@ async def respond_post_process(envelope: Any, output: Dict[str, Any], agent: Any
 ONBOARDING_CHATBOT_PIPELINE = PipelineConfig.graph(
     "onboarding_chatbot",
     stages={
-        "understand": AgentConfig(
-            name="understand", has_llm=True, model_role="planner",
+        "understand": stage(
+            "understand", model_role="planner",
             prompt_key="chatbot.understand", output_key="understanding",
             required_output_fields=["intent", "topic"],
             max_tokens=4000, temperature=0.3,
@@ -203,22 +202,20 @@ ONBOARDING_CHATBOT_PIPELINE = PipelineConfig.graph(
             post_process=understand_post_process,
             error_next="respond",
         ),
-        "think_knowledge": AgentConfig(
-            name="think_knowledge", has_llm=False, has_tools=False,
-            output_key="think_results",
+        "think_knowledge": stage(
+            "think_knowledge", output_key="think_results",
             pre_process=think_knowledge_pre_process,
             post_process=think_knowledge_post_process,
             error_next="respond",
         ),
-        "think_tools": AgentConfig(
-            name="think_tools", has_llm=False, has_tools=True,
-            tool_access=ToolAccess.ALL, output_key="think_results",
+        "think_tools": stage(
+            "think_tools", tools=True, output_key="think_results",
             pre_process=think_tools_pre_process,
             post_process=think_tools_post_process,
             error_next="respond",
         ),
-        "respond": AgentConfig(
-            name="respond", has_llm=True, model_role="planner",
+        "respond": stage(
+            "respond", model_role="planner",
             prompt_key="chatbot.respond", output_key="final_response",
             required_output_fields=["response"],
             max_tokens=4000, temperature=0.5,
