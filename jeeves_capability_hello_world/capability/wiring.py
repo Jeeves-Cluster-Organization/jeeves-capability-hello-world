@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 CAPABILITY_ID = "hello_world"
-CAPABILITY_VERSION = "0.3.0"
+CAPABILITY_VERSION = "0.0.1"
 CAPABILITY_ROOT = Path(__file__).resolve().parent.parent
 
 # Capability-owned database client — created in register_capability()

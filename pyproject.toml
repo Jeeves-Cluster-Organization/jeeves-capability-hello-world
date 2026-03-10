@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jeeves-capability-hello-world"
-version = "1.0.0"
+version = "0.0.1"
 description = "Jeeves Hello World - 3-agent Gradio chatbot capability"
 requires-python = ">=3.11"
 dependencies = [
