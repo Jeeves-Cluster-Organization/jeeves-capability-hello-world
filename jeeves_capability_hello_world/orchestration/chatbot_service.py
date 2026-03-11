@@ -27,7 +27,7 @@ class ChatbotService(CapabilityService):
     capability_id = "hello_world"
 
     def __init__(self, *, db=None, **kwargs):
-        from jeeves_capability_hello_world.prompts.registry import PromptRegistry
+        from jeeves_capability_hello_world.prompts import prompt_registry
 
         self._db = db
         self._session_state = None
@@ -42,7 +42,7 @@ class ChatbotService(CapabilityService):
             )
 
         super().__init__(
-            prompt_registry=PromptRegistry.get_instance(), **kwargs
+            prompt_registry=prompt_registry, **kwargs
         )
 
     async def _ensure_ready(self):

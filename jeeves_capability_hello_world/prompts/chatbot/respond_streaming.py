@@ -4,15 +4,7 @@ Respond Agent Streaming Prompt - Onboarding Chatbot
 Plain text streaming output for real-time token delivery.
 """
 
-from jeeves_capability_hello_world.prompts.registry import register_prompt
 
-
-@register_prompt(
-    name="chatbot.respond_streaming",
-    version="3.0",
-    description="TEXT_STREAM mode: Plain text responses with targeted knowledge",
-    constitutional_compliance="P1 (NLP-First)"
-)
 def chatbot_respond_streaming() -> str:
     return """You are an onboarding assistant for the Jeeves AI agent ecosystem.
 

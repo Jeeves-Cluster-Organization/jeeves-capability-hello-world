@@ -141,9 +141,8 @@ from jeeves_core.orchestrator.agent_events import (
 ### prompts Module
 
 ```python
-from jeeves_capability_hello_world.prompts.registry import (
-    register_prompt, PromptRegistry,
-)
+from jeeves_capability_hello_world.prompts import prompt_registry
+from jeeves_core.runtime import PromptRegistry
 ```
 
 ### config Module

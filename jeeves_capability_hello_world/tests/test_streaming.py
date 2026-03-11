@@ -223,9 +223,9 @@ async def test_cancellation_propagates():
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
     # Mock the registry to avoid import issues
-    import jeeves_capability_hello_world.prompts.registry as registry_module
-    original_registry = getattr(registry_module, 'PromptRegistry', None)
-    registry_module.PromptRegistry = MockPromptRegistry
+    import jeeves_capability_hello_world.prompts as prompts_module
+    original_registry = prompts_module.prompt_registry
+    prompts_module.prompt_registry = MockPromptRegistry()
 
     try:
         service = ChatbotService(
@@ -257,8 +257,7 @@ async def test_cancellation_propagates():
 
     finally:
         # Restore original
-        if original_registry:
-            registry_module.PromptRegistry = original_registry
+        prompts_module.prompt_registry = original_registry
 
 
 # =============================================================================
@@ -497,9 +496,9 @@ async def test_exactly_one_terminal_event():
 
     from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
-    import jeeves_capability_hello_world.prompts.registry as registry_module
-    original_registry = getattr(registry_module, 'PromptRegistry', None)
-    registry_module.PromptRegistry = MockPromptRegistry
+    import jeeves_capability_hello_world.prompts as prompts_module
+    original_registry = prompts_module.prompt_registry
+    prompts_module.prompt_registry = MockPromptRegistry()
 
     try:
         service = ChatbotService(
@@ -532,5 +531,4 @@ async def test_exactly_one_terminal_event():
         assert terminal_index == len(events) - 1, "No events should come after terminal event"
 
     finally:
-        if original_registry:
-            registry_module.PromptRegistry = original_registry
+        prompts_module.prompt_registry = original_registry

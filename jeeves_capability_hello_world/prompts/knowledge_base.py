@@ -239,13 +239,9 @@ catalog.register(
 
 ```python
 # In prompts/chatbot/my_prompt.py
-from jeeves_capability_hello_world.prompts.registry import register_prompt
+# Templates are registered in prompts/__init__.py via PromptRegistry({...})
+from jeeves_core.runtime import PromptRegistry
 
-@register_prompt(
-    name="chatbot.my_agent",
-    version="1.0",
-    description="My custom agent prompt",
-)
 def my_agent_prompt() -> str:
     return \"\"\"You are a helpful assistant.
 

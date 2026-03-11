@@ -96,7 +96,7 @@ class TestKnowledgeBase:
         """Verify code examples are provided."""
         assert "def get_time" in CODE_EXAMPLES or "get_time" in CODE_EXAMPLES
         assert "tool_catalog.register" in CODE_EXAMPLES
-        assert "@register_prompt" in CODE_EXAMPLES
+        assert "PromptRegistry" in CODE_EXAMPLES
         assert "AgentConfig" in CODE_EXAMPLES
 
     def test_how_to_guides_contains_guides(self):

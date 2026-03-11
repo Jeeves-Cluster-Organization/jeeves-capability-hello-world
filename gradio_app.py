@@ -56,11 +56,6 @@ register_capability()
 from jeeves_capability_hello_world.orchestration import ChatbotService
 from jeeves_capability_hello_world.capability.wiring import create_from_app_context
 
-# Import prompts to register them (the @register_prompt decorators run on import)
-import jeeves_capability_hello_world.prompts.chatbot.understand  # noqa
-import jeeves_capability_hello_world.prompts.chatbot.respond  # noqa
-import jeeves_capability_hello_world.prompts.chatbot.respond_streaming  # noqa
-
 logger = structlog.get_logger()
 
 # Global service (singleton — shared across all sessions)

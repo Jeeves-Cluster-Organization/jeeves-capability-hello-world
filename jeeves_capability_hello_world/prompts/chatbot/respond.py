@@ -5,15 +5,7 @@ Synthesizes response from targeted knowledge. Signals needs_more_context
 when retrieved knowledge is insufficient, enabling the routing loop.
 """
 
-from jeeves_capability_hello_world.prompts.registry import register_prompt
 
-
-@register_prompt(
-    name="chatbot.respond",
-    version="3.0",
-    description="Respond agent prompt with needs_more_context signaling for routing loop",
-    constitutional_compliance="P1 (NLP-First)"
-)
 def chatbot_respond() -> str:
     return """You are an onboarding assistant for the Jeeves AI agent ecosystem.
 

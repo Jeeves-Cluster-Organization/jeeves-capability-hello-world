@@ -5,15 +5,7 @@ Classifies user intent and identifies topic for targeted knowledge retrieval.
 Supports retry-awareness: on loop-back from respond, refines classification.
 """
 
-from jeeves_capability_hello_world.prompts.registry import register_prompt
 
-
-@register_prompt(
-    name="chatbot.understand",
-    version="3.0",
-    description="Understand agent prompt with retry-awareness for routing loops",
-    constitutional_compliance="P1 (NLP-First)"
-)
 def chatbot_understand() -> str:
     return """You are an onboarding assistant for the Jeeves AI agent ecosystem.
 
