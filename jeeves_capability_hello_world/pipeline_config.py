@@ -21,7 +21,7 @@ from jeeves_core.protocols import (
     Edge,
     stage,
 )
-from jeeves_core.protocols import AgentOutputMode, TokenStreamMode, GenerationParams
+from jeeves_core.protocols import TokenStreamMode, GenerationParams
 from jeeves_core.protocols.routing import eq
 
 
@@ -196,7 +196,7 @@ ONBOARDING_CHATBOT_PIPELINE = PipelineConfig.graph(
         "understand": stage(
             "understand", model_role="planner",
             prompt_key="chatbot.understand", output_key="understanding",
-            required_output_fields=["intent", "topic"],
+            output_schema={"type": "object", "properties": {"intent": {"type": "string"}, "topic": {"type": "string"}}, "required": ["intent", "topic"]},
             max_tokens=4000, temperature=0.3,
             pre_process=understand_pre_process,
             post_process=understand_post_process,
@@ -217,12 +217,10 @@ ONBOARDING_CHATBOT_PIPELINE = PipelineConfig.graph(
         "respond": stage(
             "respond", model_role="planner",
             prompt_key="chatbot.respond", output_key="final_response",
-            required_output_fields=["response"],
             max_tokens=4000, temperature=0.5,
             generation=GenerationParams(stop=["\n\n\n", "User:", "Question:"], repeat_penalty=1.15),
             pre_process=respond_pre_process,
             post_process=respond_post_process,
-            output_mode=AgentOutputMode.TEXT,
             token_stream=TokenStreamMode.AUTHORITATIVE,
             streaming_prompt_key="chatbot.respond_streaming",
             max_visits=3,

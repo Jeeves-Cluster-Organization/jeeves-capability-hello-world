@@ -17,7 +17,6 @@ from unittest.mock import Mock, AsyncMock, MagicMock
 
 from jeeves_core.protocols import (
     AgentConfig,
-    AgentOutputMode,
     TokenStreamMode,
     Envelope,
     PipelineEvent,
@@ -52,7 +51,6 @@ async def test_text_stream_authoritative_tokens():
     config = AgentConfig(
         name="test_agent",
         has_llm=True,
-        output_mode=AgentOutputMode.TEXT,
         token_stream=TokenStreamMode.AUTHORITATIVE,
         output_key="test_output",
     )
@@ -123,7 +121,7 @@ async def test_debug_stream_tokens_not_authoritative():
     config = AgentConfig(
         name="test_agent",
         has_llm=True,
-        output_mode=AgentOutputMode.STRUCTURED,
+        output_schema={"type": "object", "properties": {"response": {"type": "string"}}, "required": ["response"]},
         token_stream=TokenStreamMode.OFF,  # STRUCTURED doesn't stream
         output_key="test_output",
     )
@@ -317,7 +315,6 @@ async def test_end_to_end_streaming_latency():
     config = AgentConfig(
         name="test_agent",
         has_llm=True,
-        output_mode=AgentOutputMode.TEXT,
         token_stream=TokenStreamMode.AUTHORITATIVE,
         output_key="test_output",
     )
@@ -388,7 +385,6 @@ async def test_no_hidden_buffering():
     config = AgentConfig(
         name="test_agent",
         has_llm=True,
-        output_mode=AgentOutputMode.TEXT,
         token_stream=TokenStreamMode.AUTHORITATIVE,
         output_key="test_output",
     )

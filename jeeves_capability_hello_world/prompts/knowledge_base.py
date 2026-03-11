@@ -269,7 +269,7 @@ AgentConfig(
     model_role="planner",
     prompt_key="chatbot.my_agent",
     output_key="my_output",
-    required_output_fields=["response"],
+    output_schema={"type": "object", "properties": {"response": {"type": "string"}}, "required": ["response"]},
     pre_process=my_pre_process,  # Optional hook
     post_process=my_post_process,  # Optional hook
     default_next="next_agent",
@@ -439,7 +439,7 @@ pytest -v
 
 **Tool not executing**
 - Verify tool is registered in `capability/wiring.py` via `catalog.register(...)`
-- Verify agent has `has_tools=True` and `tool_access=ToolAccess.ALL`
+- Verify agent has `has_tools=True` and `allowed_tools` is set
 """
 
 
