@@ -18,11 +18,57 @@ from unittest.mock import Mock, AsyncMock, MagicMock
 from jeeves_core.protocols import (
     AgentConfig,
     TokenStreamMode,
-    Envelope,
     PipelineEvent,
     RequestContext,
 )
-from jeeves_core.runtime import Agent, create_envelope
+from jeeves_core.protocols.types import AgentContext, LLMResult, LLMUsage, LLMToolCall
+from jeeves_core.llm.providers.base import TokenChunk
+from jeeves_core.runtime import Agent
+
+
+# =============================================================================
+# Shared mock helpers
+# =============================================================================
+
+def _make_mock_llm(*, chat_content="", stream_tokens=None):
+    """Build a mock LLM that satisfies LLMProviderProtocol.
+
+    Args:
+        chat_content: text returned by chat / chat_with_usage.
+        stream_tokens: list of strings yielded by chat_stream.
+    """
+    class _MockLLM:
+        async def chat(self, model, messages, options=None):
+            return LLMResult(content=chat_content)
+
+        async def chat_with_usage(self, model, messages, options=None):
+            return LLMResult(content=chat_content), LLMUsage()
+
+        async def chat_stream(self, model, messages, options=None):
+            for text in (stream_tokens or []):
+                yield TokenChunk(text=text)
+    return _MockLLM()
+
+
+def _make_delayed_mock_llm(stream_tokens, delay_seconds):
+    """Build a mock LLM whose chat_stream has artificial per-token delays."""
+    class _DelayedLLM:
+        async def chat(self, model, messages, options=None):
+            return LLMResult(content="")
+
+        async def chat_with_usage(self, model, messages, options=None):
+            return LLMResult(content=""), LLMUsage()
+
+        async def chat_stream(self, model, messages, options=None):
+            for text in stream_tokens:
+                await asyncio.sleep(delay_seconds)
+                yield TokenChunk(text=text)
+    return _DelayedLLM()
+
+
+class _MockPromptRegistry:
+    def get(self, key, context=None):
+        return "Test prompt"
 
 
 # =============================================================================
@@ -33,21 +79,6 @@ from jeeves_core.runtime import Agent, create_envelope
 async def test_text_stream_authoritative_tokens():
     """Verify TEXT_STREAM tokens are authoritative (debug=False)."""
 
-    # Create mock LLM provider that streams tokens
-    class MockLLMProvider:
-        async def generate_stream(self, model, prompt, options):
-            tokens = ["Hello", " ", "world", "!"]
-            for token in tokens:
-                chunk = MagicMock()
-                chunk.text = token
-                yield chunk
-
-    # Create mock prompt registry
-    class MockPromptRegistry:
-        def get(self, key, context=None):
-            return "Test prompt"
-
-    # Create agent with TEXT + AUTHORITATIVE config
     config = AgentConfig(
         name="test_agent",
         has_llm=True,
@@ -58,26 +89,22 @@ async def test_text_stream_authoritative_tokens():
     agent = Agent(
         config=config,
         logger=Mock(),
-        llm=MockLLMProvider(),
-        prompt_registry=MockPromptRegistry(),
+        llm=_make_mock_llm(stream_tokens=["Hello", " ", "world", "!"]),
+        prompt_registry=_MockPromptRegistry(),
     )
 
-    # Create test envelope
-    envelope = create_envelope(
+    context = AgentContext(
         raw_input="test message",
-        request_context=RequestContext(
-            request_id="test123",
-            capability="test",
-            session_id="session1",
-            user_id="user1",
-        ),
-        metadata={},
+        envelope_id="test-env-1",
+        request_id="test123",
+        session_id="session1",
+        user_id="user1",
     )
 
     # Stream tokens and verify
     tokens = []
     events = []
-    async for event_type, event in agent.stream(envelope):
+    async for event_type, event in agent.stream(context):
         if event.type == "token":
             assert event.debug == False, "Authoritative tokens must have debug=False"
             tokens.append(event.data["token"])
@@ -86,9 +113,10 @@ async def test_text_stream_authoritative_tokens():
     # Verify all tokens received
     assert tokens == ["Hello", " ", "world", "!"]
 
-    # Verify canonical output stored
-    assert "test_output" in envelope.outputs
-    assert envelope.outputs["test_output"]["response"] == "Hello world!"
+    # Verify canonical output stored via get_stream_output()
+    output, _ = agent.get_stream_output()
+    assert "response" in output
+    assert output["response"] == "Hello world!"
 
 
 # =============================================================================
@@ -97,31 +125,37 @@ async def test_text_stream_authoritative_tokens():
 
 @pytest.mark.asyncio
 async def test_debug_stream_tokens_not_authoritative():
-    """Verify STRUCTURED output uses non-streaming generate (not stream).
+    """Verify STRUCTURED output uses non-streaming chat (not stream).
 
     STRUCTURED mode agents use buffered JSON output, not token streaming.
-    This test verifies the agent.run() path for structured output.
+    This test verifies the agent.process() path for structured output.
     """
 
-    # Create mock LLM provider
-    class MockLLMProvider:
-        async def generate(self, model, prompt, options):
-            return '{"intent": "question", "needs_search": true}'
+    # Build a mock LLM that returns structured output via tool_calls
+    # (matching how Agent._call_llm works with output_schema → tool_choice)
+    class _StructuredLLM:
+        async def chat(self, model, messages, options=None):
+            return LLMResult(
+                content="",
+                tool_calls=[LLMToolCall(
+                    id="call_1",
+                    name="test_agent_output",
+                    arguments={"intent": "question", "needs_search": True},
+                )],
+            )
 
-        async def generate_stream(self, model, prompt, options):
-            # This should NOT be called for STRUCTURED mode
-            raise AssertionError("generate_stream should not be called for STRUCTURED mode")
-            yield  # Make it a generator
+        async def chat_with_usage(self, model, messages, options=None):
+            result = await self.chat(model, messages, options)
+            return result, LLMUsage()
 
-    class MockPromptRegistry:
-        def get(self, key, context=None):
-            return "Test prompt"
+        async def chat_stream(self, model, messages, options=None):
+            raise AssertionError("chat_stream should not be called for STRUCTURED mode")
+            yield  # noqa: make it a generator
 
-    # Create agent with STRUCTURED config (no streaming for structured output)
     config = AgentConfig(
         name="test_agent",
         has_llm=True,
-        output_schema={"type": "object", "properties": {"response": {"type": "string"}}, "required": ["response"]},
+        output_schema={"type": "object", "properties": {"intent": {"type": "string"}}, "required": ["intent"]},
         token_stream=TokenStreamMode.OFF,  # STRUCTURED doesn't stream
         output_key="test_output",
     )
@@ -129,27 +163,22 @@ async def test_debug_stream_tokens_not_authoritative():
     agent = Agent(
         config=config,
         logger=Mock(),
-        llm=MockLLMProvider(),
-        prompt_registry=MockPromptRegistry(),
+        llm=_StructuredLLM(),
+        prompt_registry=_MockPromptRegistry(),
     )
 
-    envelope = create_envelope(
+    context = AgentContext(
         raw_input="test message",
-        request_context=RequestContext(
-            request_id="test123",
-            capability="test",
-            session_id="session1",
-            user_id="user1",
-        ),
-        metadata={},
+        envelope_id="test-env-1",
+        request_id="test123",
+        session_id="session1",
+        user_id="user1",
     )
 
     # Use process() instead of stream() for STRUCTURED output
-    result = await agent.process(envelope)
+    output, _ = await agent.process(context)
 
-    # Verify canonical output is BUFFERED JSON
-    assert "test_output" in envelope.outputs
-    output = envelope.outputs["test_output"]
+    # Verify canonical output is BUFFERED JSON from tool_calls
     assert "intent" in output
     assert output["intent"] == "question"
 
@@ -162,31 +191,20 @@ async def test_debug_stream_tokens_not_authoritative():
 async def test_cancellation_propagates():
     """Verify cancellation propagates and no double-done."""
     from jeeves_capability_hello_world.orchestration import ChatbotService
-
-    # Create mock service components
-    class MockLLMProvider:
-        async def generate(self, model, prompt, options):
-            return '{"intent": "concept", "topic": "envelope", "reasoning": "User asking about Envelope"}'
+    from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
     class MockLLMFactory:
         def __call__(self, role):
-            return MockLLMProvider()
+            return _make_mock_llm(
+                chat_content='{"intent": "concept", "topic": "envelope", "reasoning": "User asking about Envelope"}',
+                stream_tokens=["test", " response"],
+            )
 
     class MockToolExecutor:
         async def execute(self, tool_name, params):
             return {}
 
-    class MockPromptRegistry:
-        def get(self, key, context=None):
-            return "Test prompt"
-        @staticmethod
-        def get_instance():
-            return MockPromptRegistry()
-
-    class MockResources:
-        """Mock resources tracker."""
     class MockKernelClient:
-        """Mock KernelClient for testing."""
         async def create_process(self, *args, **kwargs):
             from jeeves_core.kernel_client import ProcessInfo
             return ProcessInfo(
@@ -217,13 +235,10 @@ async def test_cancellation_propagates():
                 priority="NORMAL",
             )
 
-    # Create service
-    from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
-
     # Mock the registry to avoid import issues
     import jeeves_capability_hello_world.prompts as prompts_module
     original_registry = prompts_module.prompt_registry
-    prompts_module.prompt_registry = MockPromptRegistry()
+    prompts_module.prompt_registry = _MockPromptRegistry()
 
     try:
         service = ChatbotService(
@@ -271,7 +286,7 @@ async def test_inline_citations_best_effort():
     agent = Agent(config=config, logger=Mock())
 
     # Test successful extraction
-    text = "Temperature is 72°F [Weather.com]. Sunny today [BBC News]."
+    text = "Temperature is 72\u00b0F [Weather.com]. Sunny today [BBC News]."
     citations = agent._extract_citations(text)
     assert citations == ["Weather.com", "BBC News"]
 
@@ -295,23 +310,6 @@ async def test_inline_citations_best_effort():
 async def test_end_to_end_streaming_latency():
     """Verify first token latency and incremental display."""
 
-    # Create mock LLM with artificial delays
-    class DelayedLLMProvider:
-        async def generate(self, model, prompt, options):
-            return '{"intent": "question", "needs_search": false}'
-
-        async def generate_stream(self, model, prompt, options):
-            tokens = ["Hello", " ", "world", "!"]
-            for token in tokens:
-                await asyncio.sleep(0.1)  # 100ms delay per token
-                chunk = MagicMock()
-                chunk.text = token
-                yield chunk
-
-    class MockPromptRegistry:
-        def get(self, key, context=None):
-            return "Test prompt"
-
     config = AgentConfig(
         name="test_agent",
         has_llm=True,
@@ -322,26 +320,23 @@ async def test_end_to_end_streaming_latency():
     agent = Agent(
         config=config,
         logger=Mock(),
-        llm=DelayedLLMProvider(),
-        prompt_registry=MockPromptRegistry(),
+        llm=_make_delayed_mock_llm(["Hello", " ", "world", "!"], delay_seconds=0.1),
+        prompt_registry=_MockPromptRegistry(),
     )
 
-    envelope = create_envelope(
+    context = AgentContext(
         raw_input="test message",
-        request_context=RequestContext(
-            request_id="test123",
-            capability="test",
-            session_id="session1",
-            user_id="user1",
-        ),
-        metadata={},
+        envelope_id="test-env-1",
+        request_id="test123",
+        session_id="session1",
+        user_id="user1",
     )
 
     # Measure token yield times
     start = time.time()
     yield_times = []
 
-    async for event_type, event in agent.stream(envelope):
+    async for event_type, event in agent.stream(context):
         if event.type == "token":
             yield_times.append(time.time() - start)
 
@@ -369,19 +364,6 @@ async def test_end_to_end_streaming_latency():
 async def test_no_hidden_buffering():
     """Verify tokens yield immediately, not buffered internally."""
 
-    class DelayedLLMProvider:
-        async def generate_stream(self, model, prompt, options):
-            tokens = ["A", "B", "C", "D"]
-            for token in tokens:
-                await asyncio.sleep(0.5)  # Artificial delay
-                chunk = MagicMock()
-                chunk.text = token
-                yield chunk
-
-    class MockPromptRegistry:
-        def get(self, key, context=None):
-            return "Test prompt"
-
     config = AgentConfig(
         name="test_agent",
         has_llm=True,
@@ -392,26 +374,23 @@ async def test_no_hidden_buffering():
     agent = Agent(
         config=config,
         logger=Mock(),
-        llm=DelayedLLMProvider(),
-        prompt_registry=MockPromptRegistry(),
+        llm=_make_delayed_mock_llm(["A", "B", "C", "D"], delay_seconds=0.5),
+        prompt_registry=_MockPromptRegistry(),
     )
 
-    envelope = create_envelope(
+    context = AgentContext(
         raw_input="test message",
-        request_context=RequestContext(
-            request_id="test123",
-            capability="test",
-            session_id="session1",
-            user_id="user1",
-        ),
-        metadata={},
+        envelope_id="test-env-1",
+        request_id="test123",
+        session_id="session1",
+        user_id="user1",
     )
 
     # Measure yield times
     start = time.time()
     yield_times = []
 
-    async for event_type, event in agent.stream(envelope):
+    async for event_type, event in agent.stream(context):
         if event.type == "token":
             yield_times.append(time.time() - start)
 
@@ -432,34 +411,20 @@ async def test_no_hidden_buffering():
 async def test_exactly_one_terminal_event():
     """Verify exactly one terminal event (done OR error), no further events."""
     from jeeves_capability_hello_world.orchestration import ChatbotService
-
-    class MockLLMProvider:
-        async def generate(self, model, prompt, options):
-            return '{"intent": "concept", "topic": "architecture", "reasoning": "User asking about architecture"}'
-
-        async def generate_stream(self, model, prompt, options):
-            for token in ["test", " response"]:
-                chunk = MagicMock()
-                chunk.text = token
-                yield chunk
+    from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
 
     class MockLLMFactory:
         def __call__(self, role):
-            return MockLLMProvider()
+            return _make_mock_llm(
+                chat_content='{"intent": "concept", "topic": "architecture", "reasoning": "User asking about architecture"}',
+                stream_tokens=["test", " response"],
+            )
 
     class MockToolExecutor:
         async def execute(self, tool_name, params):
             return {}
 
-    class MockPromptRegistry:
-        def get(self, key, context=None):
-            return "Test prompt"
-        @staticmethod
-        def get_instance():
-            return MockPromptRegistry()
-
     class MockKernelClient:
-        """Mock KernelClient for testing."""
         async def create_process(self, *args, **kwargs):
             from jeeves_core.kernel_client import ProcessInfo
             return ProcessInfo(
@@ -490,11 +455,9 @@ async def test_exactly_one_terminal_event():
                 priority="NORMAL",
             )
 
-    from jeeves_capability_hello_world.pipeline_config import ONBOARDING_CHATBOT_PIPELINE
-
     import jeeves_capability_hello_world.prompts as prompts_module
     original_registry = prompts_module.prompt_registry
-    prompts_module.prompt_registry = MockPromptRegistry()
+    prompts_module.prompt_registry = _MockPromptRegistry()
 
     try:
         service = ChatbotService(

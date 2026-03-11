@@ -41,44 +41,44 @@ def _format_conversation_history(history: list) -> str:
     return "\n".join(lines)
 
 
-async def understand_pre_process(envelope: Any, agent: Any = None) -> Any:
+async def understand_pre_process(context: Any, agent: Any = None) -> Any:
     """Build context for Understand agent."""
-    user_message = envelope.raw_input.strip()
-    conversation_history = envelope.metadata.get("conversation_history", [])
+    user_message = context.raw_input.strip()
+    conversation_history = context.metadata.get("conversation_history", [])
     formatted_history = _format_conversation_history(conversation_history)
 
-    session_context = envelope.metadata.get("session_context", {})
+    session_context = context.metadata.get("session_context", {})
 
-    context = {
+    updates = {
         "user_message": user_message,
         "conversation_history": formatted_history,
         "conversation_summary": session_context.get("conversation_summary", ""),
         "turn_count": session_context.get("turn_count", 0),
-        "is_retry": "final_response" in envelope.outputs,
+        "is_retry": "final_response" in context.outputs,
         "previous_response": "",
     }
 
     # On retry loops, include what the previous respond agent produced
-    prev_response = envelope.outputs.get("final_response", {})
+    prev_response = context.outputs.get("final_response", {})
     if isinstance(prev_response, dict) and prev_response.get("response"):
-        context["previous_response"] = prev_response["response"]
+        updates["previous_response"] = prev_response["response"]
 
-    envelope.metadata.update(context)
-    return envelope
+    context.metadata.update(updates)
+    return context
 
 
-async def understand_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
+async def understand_post_process(context: Any, output: Dict[str, Any], agent: Any = None) -> Any:
     """Process Understand output — map intent to knowledge sections."""
     intent = output.get("intent", "general")
     topic = output.get("topic", "")
 
-    envelope.metadata["classified_intent"] = intent
-    envelope.metadata["classified_topic"] = topic
+    context.metadata["classified_intent"] = intent
+    context.metadata["classified_topic"] = topic
 
     knowledge_sections = _get_knowledge_sections_for_intent(intent, topic)
-    envelope.metadata["knowledge_sections"] = knowledge_sections
+    context.metadata["knowledge_sections"] = knowledge_sections
 
-    return envelope
+    return context
 
 
 def _get_knowledge_sections_for_intent(intent: str, topic: str) -> list:
@@ -93,29 +93,29 @@ def _get_knowledge_sections_for_intent(intent: str, topic: str) -> list:
     return section_map.get(intent, ["ecosystem_overview"])
 
 
-async def think_knowledge_pre_process(envelope: Any, agent: Any = None) -> Any:
+async def think_knowledge_pre_process(context: Any, agent: Any = None) -> Any:
     """Retrieve targeted knowledge sections (no LLM, no tools)."""
     from jeeves_capability_hello_world.prompts.knowledge_base import get_knowledge_for_sections
 
-    knowledge_sections = envelope.metadata.get("knowledge_sections", ["ecosystem_overview"])
+    knowledge_sections = context.metadata.get("knowledge_sections", ["ecosystem_overview"])
     targeted_knowledge = get_knowledge_for_sections(knowledge_sections)
 
-    envelope.metadata["targeted_knowledge"] = targeted_knowledge
-    return envelope
+    context.metadata["targeted_knowledge"] = targeted_knowledge
+    return context
 
 
-async def think_knowledge_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
+async def think_knowledge_post_process(context: Any, output: Dict[str, Any], agent: Any = None) -> Any:
     """Mark knowledge retrieval results."""
     output["information"] = {"has_data": True, "knowledge_retrieved": True}
-    return envelope
+    return context
 
 
-async def think_tools_pre_process(envelope: Any, agent: Any = None) -> Any:
+async def think_tools_pre_process(context: Any, agent: Any = None) -> Any:
     """Invoke tools based on classified topic."""
     from jeeves_capability_hello_world.tools.hello_world_tools import get_time, list_tools
 
-    topic = envelope.metadata.get("classified_topic", "")
-    intent = envelope.metadata.get("classified_intent", "general")
+    topic = context.metadata.get("classified_topic", "")
+    intent = context.metadata.get("classified_intent", "general")
 
     tool_output = ""
     if any(kw in topic.lower() for kw in ("time", "date", "day", "clock")):
@@ -132,50 +132,50 @@ async def think_tools_pre_process(envelope: Any, agent: Any = None) -> Any:
     elif intent == "general":
         tool_output = "No specific tools needed for this query."
 
-    envelope.metadata["targeted_knowledge"] = tool_output or "No tool results."
-    return envelope
+    context.metadata["targeted_knowledge"] = tool_output or "No tool results."
+    return context
 
 
-async def think_tools_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
+async def think_tools_post_process(context: Any, output: Dict[str, Any], agent: Any = None) -> Any:
     """Mark tool execution results."""
     output["information"] = {"has_data": True, "tools_executed": True}
-    return envelope
+    return context
 
 
-async def respond_pre_process(envelope: Any, agent: Any = None) -> Any:
+async def respond_pre_process(context: Any, agent: Any = None) -> Any:
     """Build context for Respond agent from upstream outputs."""
-    understand_output = envelope.outputs.get("understanding", {})
+    understand_output = context.outputs.get("understanding", {})
 
-    user_message = envelope.raw_input
-    intent = envelope.metadata.get("classified_intent", understand_output.get("intent", "general"))
-    topic = envelope.metadata.get("classified_topic", understand_output.get("topic", ""))
+    user_message = context.raw_input
+    intent = context.metadata.get("classified_intent", understand_output.get("intent", "general"))
+    topic = context.metadata.get("classified_topic", understand_output.get("topic", ""))
 
-    conversation_history = envelope.metadata.get("conversation_history", [])
+    conversation_history = context.metadata.get("conversation_history", [])
     if isinstance(conversation_history, str):
         formatted_history = conversation_history
     else:
         formatted_history = _format_conversation_history(conversation_history)
 
-    targeted_knowledge = envelope.metadata.get("targeted_knowledge", "")
+    targeted_knowledge = context.metadata.get("targeted_knowledge", "")
 
-    session_context = envelope.metadata.get("session_context", {})
+    session_ctx = context.metadata.get("session_context", {})
 
-    context = {
+    updates = {
         "user_message": user_message,
         "intent": intent,
         "topic": topic,
         "conversation_history": formatted_history,
-        "conversation_summary": session_context.get("conversation_summary", ""),
-        "turn_count": session_context.get("turn_count", 0),
+        "conversation_summary": session_ctx.get("conversation_summary", ""),
+        "turn_count": session_ctx.get("turn_count", 0),
         "targeted_knowledge": targeted_knowledge,
         "task": "Craft a helpful, accurate response about the Jeeves ecosystem",
     }
 
-    envelope.metadata.update(context)
-    return envelope
+    context.metadata.update(updates)
+    return context
 
 
-async def respond_post_process(envelope: Any, output: Dict[str, Any], agent: Any = None) -> Any:
+async def respond_post_process(context: Any, output: Dict[str, Any], agent: Any = None) -> Any:
     """Check if response is complete or needs another loop.
 
     needs_more_context=True → kernel routing rule sends back to understand.
@@ -183,7 +183,7 @@ async def respond_post_process(envelope: Any, output: Dict[str, Any], agent: Any
     """
     if "response" not in output:
         output["response"] = "I apologize, but I wasn't able to generate a response. Please try again."
-    return envelope
+    return context
 
 
 # =============================================================================

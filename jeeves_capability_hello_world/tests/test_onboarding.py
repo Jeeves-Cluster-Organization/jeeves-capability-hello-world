@@ -95,7 +95,7 @@ class TestKnowledgeBase:
     def test_code_examples_contains_patterns(self):
         """Verify code examples are provided."""
         assert "def get_time" in CODE_EXAMPLES or "get_time" in CODE_EXAMPLES
-        assert "tool_catalog.register" in CODE_EXAMPLES
+        assert "catalog.register" in CODE_EXAMPLES
         assert "PromptRegistry" in CODE_EXAMPLES
         assert "AgentConfig" in CODE_EXAMPLES
 
@@ -145,7 +145,7 @@ class TestKnowledgeBase:
         # Multiple sections
         result = get_knowledge_for_sections(["key_concepts", "code_examples"])
         assert "Envelope" in result
-        assert "tool_catalog.register" in result
+        assert "catalog.register" in result
 
     def test_get_knowledge_for_sections_fallback(self):
         """Verify fallback to ecosystem_overview for empty/invalid."""
@@ -160,7 +160,7 @@ class TestKnowledgeBase:
         names = get_section_names()
         assert "ecosystem_overview" in names
         assert "key_concepts" in names
-        assert len(names) == 6
+        assert len(names) == 7
 
 
 class TestOnboardingIntents:

@@ -12,7 +12,6 @@ from uuid import uuid4
 
 from jeeves_core.runtime import CapabilityService, CapabilityResult
 from jeeves_core.pipeline_worker import WorkerResult
-from jeeves_core.protocols import Envelope
 
 
 class ChatbotService(CapabilityService):
@@ -114,13 +113,11 @@ class ChatbotService(CapabilityService):
         except Exception as e:
             self._logger.warning("session_state_load_failed", error=str(e))
 
-    async def _on_result(self, worker_result, capability_result, envelope):
+    async def _on_result(self, worker_result, capability_result, *, raw_input="", session_id=""):
         """Persist user and assistant messages to SQLite."""
         if not self._db:
             return
         try:
-            session_id = envelope.session_id
-            user_message = envelope.raw_input
             assistant_response = capability_result.response or ""
             now = datetime.now(timezone.utc).isoformat()
 
@@ -130,7 +127,7 @@ class ChatbotService(CapabilityService):
                     "message_id": f"msg_{uuid4().hex[:12]}",
                     "session_id": session_id,
                     "role": "user",
-                    "content": user_message,
+                    "content": raw_input,
                     "created_at": now,
                 },
             )
@@ -148,7 +145,7 @@ class ChatbotService(CapabilityService):
         except Exception as e:
             self._logger.error(
                 "message_persist_failed",
-                session_id=envelope.session_id,
+                session_id=session_id,
                 error=str(e),
             )
 
@@ -156,7 +153,7 @@ class ChatbotService(CapabilityService):
         """Convert WorkerResult to CapabilityResult with chatbot-specific metadata."""
         result = super()._build_result(worker_result, request_id)
 
-        final = worker_result.envelope.outputs.get(self.output_key, {})
+        final = worker_result.outputs.get(self.output_key, {})
         if result.status == "success":
             result.metadata["citations"] = final.get("citations") or None
             result.metadata["confidence"] = final.get("confidence", "medium")
