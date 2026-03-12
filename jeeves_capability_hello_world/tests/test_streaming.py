@@ -22,8 +22,9 @@ from jeeves_core.protocols import (
     RequestContext,
 )
 from jeeves_core.protocols.types import AgentContext, LLMResult, LLMUsage, LLMToolCall
-from jeeves_core.llm.providers.base import TokenChunk
-from jeeves_core.runtime import Agent
+from jeeves_core.protocols import TokenChunk
+from jeeves_core.runtime import Agent, StreamingAgent
+from jeeves_core.runtime.agents import _extract_citations
 
 
 # =============================================================================
@@ -86,7 +87,7 @@ async def test_text_stream_authoritative_tokens():
         output_key="test_output",
     )
 
-    agent = Agent(
+    agent = StreamingAgent(
         config=config,
         logger=Mock(),
         llm=_make_mock_llm(stream_tokens=["Hello", " ", "world", "!"]),
@@ -280,24 +281,20 @@ async def test_cancellation_propagates():
 @pytest.mark.asyncio
 async def test_inline_citations_best_effort():
     """Verify inline citations are extracted but not guaranteed."""
-    from jeeves_core.runtime import Agent
-
-    config = AgentConfig(name="test", output_key="test")
-    agent = Agent(config=config, logger=Mock())
 
     # Test successful extraction
     text = "Temperature is 72\u00b0F [Weather.com]. Sunny today [BBC News]."
-    citations = agent._extract_citations(text)
+    citations = _extract_citations(text)
     assert citations == ["Weather.com", "BBC News"]
 
     # Test deduplication
     text_dup = "Data from [Source1]. More data [Source1]. Final [Source2]."
-    citations_dup = agent._extract_citations(text_dup)
+    citations_dup = _extract_citations(text_dup)
     assert citations_dup == ["Source1", "Source2"]
 
     # Test edge case: nested brackets (brittle - may not work)
     text_brittle = "Data from [Source [nested]]."
-    citations_brittle = agent._extract_citations(text_brittle)
+    citations_brittle = _extract_citations(text_brittle)
     # This is v0 best-effort - we document it may not work perfectly
     assert isinstance(citations_brittle, list)  # Just verify it doesn't crash
 
@@ -317,7 +314,7 @@ async def test_end_to_end_streaming_latency():
         output_key="test_output",
     )
 
-    agent = Agent(
+    agent = StreamingAgent(
         config=config,
         logger=Mock(),
         llm=_make_delayed_mock_llm(["Hello", " ", "world", "!"], delay_seconds=0.1),
@@ -371,7 +368,7 @@ async def test_no_hidden_buffering():
         output_key="test_output",
     )
 
-    agent = Agent(
+    agent = StreamingAgent(
         config=config,
         logger=Mock(),
         llm=_make_delayed_mock_llm(["A", "B", "C", "D"], delay_seconds=0.5),
