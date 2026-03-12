@@ -16,7 +16,7 @@ Tight bounds guarantee termination:
 """
 
 from typing import Any, Dict
-from jeeves_core.api import (
+from jeeves_core import (
     PipelineConfig, Edge, stage, TokenStreamMode, GenerationParams,
     eq, DeterministicAgent, AgentContext,
 )

@@ -6,7 +6,7 @@ This script enforces the Jeeves layer architecture invariants:
 - L1 (Rust kernel): Process lifecycle, resources - accessed via KernelClient (gRPC)
 - L2 (jeeves_core.memory): Event sourcing, semantic memory - imports L0 only
 - L3 (jeeves_core): Infrastructure - LLM, DB, Gateway - imports L0, L2
-- L4 (jeeves_core.api): API layer - orchestration, services - imports L0, L2, L3
+- Consumer surface: `from jeeves_core import ...` (top-level re-exports from L0, L3)
 
 Note: L1 is implemented in Rust (jeeves-core/src/). Python code
 accesses it via jeeves_core.kernel_client (gRPC bridge), which is part of L3.
@@ -50,11 +50,8 @@ LAYERS: Dict[str, int] = {
     # L2: Memory module (L1 is Rust kernel, not Python)
     "jeeves_core.memory": 2,
 
-    # L3: Infrastructure layer
+    # L3: Infrastructure layer (consumer surface is jeeves_core top-level)
     "jeeves_core": 3,
-
-    # L4: API layer
-    "jeeves_core.api": 4,
 }
 
 # Mapping from import prefixes to their layer
@@ -64,7 +61,6 @@ LAYER_MAPPING: Dict[str, int] = {
     "jeeves_core.utils": 0,
     "jeeves_core.memory": 2,
     "jeeves_core": 3,  # Catch-all for other jeeves_core imports
-    "jeeves_core.api": 4,
 }
 
 # Allowed imports per layer
@@ -86,13 +82,6 @@ LAYER_RULES: Dict[str, List[str]] = {
         "jeeves_core.memory",
     ],
 
-    # L4: Can import from L0, L2, L3
-    "jeeves_core.api": [
-        "jeeves_core.protocols",
-        "jeeves_core.utils",
-        "jeeves_core.memory",
-        "jeeves_core",
-    ],
 }
 
 # Base directory for Python packages (jeeves-core submodule)
@@ -166,8 +155,7 @@ def get_layer_for_file(filepath: Path) -> Optional[str]:
                 return "jeeves_core.utils"
             elif parts[1] == "memory":
                 return "jeeves_core.memory"
-            elif parts[1] == "api":
-                return "jeeves_core.api"
+            pass  # All other submodules are L3
         return "jeeves_core"
 
     return None
@@ -312,9 +300,6 @@ def print_layer_diagram() -> None:
 Jeeves Layer Architecture:
 
 ┌─────────────────────────────────────────────────────────────────┐
-│ L4: jeeves_core.api (jeeves-core/jeeves_core/api/)        │
-│     API layer - orchestration, services, capabilities           │
-├─────────────────────────────────────────────────────────────────┤
 │ L3: jeeves_core (jeeves-core/jeeves_core/)                │
 │     Infrastructure - LLM, DB, Gateway, Tools, KernelClient      │
 ├─────────────────────────────────────────────────────────────────┤

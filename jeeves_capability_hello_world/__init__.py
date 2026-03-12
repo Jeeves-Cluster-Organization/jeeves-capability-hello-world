@@ -19,8 +19,6 @@ from jeeves_capability_hello_world.capability.wiring import (
     CAPABILITY_ID,
     CAPABILITY_VERSION,
     CAPABILITY_ROOT,
-    AGENT_LLM_CONFIGS,
-    AGENT_DEFINITIONS,
 )
 
 __version__ = CAPABILITY_VERSION
@@ -32,9 +30,6 @@ __all__ = [
     "CAPABILITY_ID",
     "CAPABILITY_VERSION",
     "CAPABILITY_ROOT",
-    # Agent configurations
-    "AGENT_LLM_CONFIGS",
-    "AGENT_DEFINITIONS",
     # Metadata
     "__version__",
     "__capability__",

@@ -84,7 +84,7 @@ service = create_hello_world_from_app_context(app_context)
 ### Tool Access Control
 
 - All tools are READ-ONLY (no state modification)
-- Tools are registered via `CapabilityToolCatalog` in `capability/wiring.py`
+- Tools are registered via `ToolCatalog` in `capability/wiring.py`
 - Tool catalog provides metadata for access control
 
 ## Ownership Rules

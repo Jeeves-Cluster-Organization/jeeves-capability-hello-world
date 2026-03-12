@@ -222,9 +222,9 @@ def get_time(timezone: str = "UTC") -> dict:
 
 ```python
 # In capability/wiring.py
-from jeeves_core.protocols import CapabilityToolCatalog
+from jeeves_core.protocols import ToolCatalog
 
-catalog = CapabilityToolCatalog("my_capability")
+catalog = ToolCatalog("my_capability")
 catalog.register(
     tool_id="get_time",
     func=get_time,
@@ -371,9 +371,9 @@ HOW_TO_GUIDES = """
 
 2. **Register in** `capability/wiring.py` using `catalog.register(...)`:
    ```python
-   from jeeves_core.protocols import CapabilityToolCatalog
+   from jeeves_core.protocols import ToolCatalog
 
-   catalog = CapabilityToolCatalog("hello_world")
+   catalog = ToolCatalog("hello_world")
    catalog.register(
        tool_id="my_tool",
        func=my_tool,
