@@ -16,17 +16,58 @@ Tight bounds guarantee termination:
 """
 
 from typing import Any, Dict
-from jeeves_core.protocols import (
-    PipelineConfig,
-    Edge,
-    stage,
+from jeeves_core.api import (
+    PipelineConfig, Edge, stage, TokenStreamMode, GenerationParams,
+    eq, DeterministicAgent, AgentContext,
 )
-from jeeves_core.protocols import TokenStreamMode, GenerationParams
-from jeeves_core.protocols.routing import eq
 
 
 # =============================================================================
-# AGENT HOOK FUNCTIONS
+# DETERMINISTIC AGENTS (no LLM — replace pre/post hooks)
+# =============================================================================
+
+class ThinkKnowledgeAgent(DeterministicAgent):
+    """Retrieve targeted knowledge sections (no LLM, no tools)."""
+
+    async def execute(self, context: AgentContext) -> dict:
+        from jeeves_capability_hello_world.prompts.knowledge_base import get_knowledge_for_sections
+
+        sections = context.metadata.get("knowledge_sections", ["ecosystem_overview"])
+        targeted = get_knowledge_for_sections(sections)
+        context.metadata["targeted_knowledge"] = targeted
+        return {"information": {"has_data": True, "knowledge_retrieved": True}}
+
+
+class ThinkToolsAgent(DeterministicAgent):
+    """Invoke tools based on classified topic (no LLM)."""
+
+    async def execute(self, context: AgentContext) -> dict:
+        from jeeves_capability_hello_world.tools.hello_world_tools import get_time, list_tools
+
+        topic = context.metadata.get("classified_topic", "")
+        intent = context.metadata.get("classified_intent", "general")
+
+        tool_output = ""
+        if any(kw in topic.lower() for kw in ("time", "date", "day", "clock")):
+            result = get_time()
+            tool_output = (
+                f"Current date: {result['date']}, time: {result['time']} {result['timezone']}, "
+                f"day: {result['day_of_week']}"
+            )
+        elif any(kw in topic.lower() for kw in ("tool", "capability", "what can")):
+            result = list_tools()
+            tools_desc = ", ".join(t["id"] for t in result["tools"])
+            caps_desc = "; ".join(result["capabilities"][:3])
+            tool_output = f"Available tools: {tools_desc}. Capabilities: {caps_desc}"
+        elif intent == "general":
+            tool_output = "No specific tools needed for this query."
+
+        context.metadata["targeted_knowledge"] = tool_output or "No tool results."
+        return {"information": {"has_data": True, "tools_executed": True}}
+
+
+# =============================================================================
+# AGENT HOOK FUNCTIONS (LLM stages only)
 # =============================================================================
 
 def _format_conversation_history(history: list) -> str:
@@ -93,55 +134,6 @@ def _get_knowledge_sections_for_intent(intent: str, topic: str) -> list:
     return section_map.get(intent, ["ecosystem_overview"])
 
 
-async def think_knowledge_pre_process(context: Any, agent: Any = None) -> Any:
-    """Retrieve targeted knowledge sections (no LLM, no tools)."""
-    from jeeves_capability_hello_world.prompts.knowledge_base import get_knowledge_for_sections
-
-    knowledge_sections = context.metadata.get("knowledge_sections", ["ecosystem_overview"])
-    targeted_knowledge = get_knowledge_for_sections(knowledge_sections)
-
-    context.metadata["targeted_knowledge"] = targeted_knowledge
-    return context
-
-
-async def think_knowledge_post_process(context: Any, output: Dict[str, Any], agent: Any = None) -> Any:
-    """Mark knowledge retrieval results."""
-    output["information"] = {"has_data": True, "knowledge_retrieved": True}
-    return context
-
-
-async def think_tools_pre_process(context: Any, agent: Any = None) -> Any:
-    """Invoke tools based on classified topic."""
-    from jeeves_capability_hello_world.tools.hello_world_tools import get_time, list_tools
-
-    topic = context.metadata.get("classified_topic", "")
-    intent = context.metadata.get("classified_intent", "general")
-
-    tool_output = ""
-    if any(kw in topic.lower() for kw in ("time", "date", "day", "clock")):
-        result = get_time()
-        tool_output = (
-            f"Current date: {result['date']}, time: {result['time']} {result['timezone']}, "
-            f"day: {result['day_of_week']}"
-        )
-    elif any(kw in topic.lower() for kw in ("tool", "capability", "what can")):
-        result = list_tools()
-        tools_desc = ", ".join(t["id"] for t in result["tools"])
-        caps_desc = "; ".join(result["capabilities"][:3])
-        tool_output = f"Available tools: {tools_desc}. Capabilities: {caps_desc}"
-    elif intent == "general":
-        tool_output = "No specific tools needed for this query."
-
-    context.metadata["targeted_knowledge"] = tool_output or "No tool results."
-    return context
-
-
-async def think_tools_post_process(context: Any, output: Dict[str, Any], agent: Any = None) -> Any:
-    """Mark tool execution results."""
-    output["information"] = {"has_data": True, "tools_executed": True}
-    return context
-
-
 async def respond_pre_process(context: Any, agent: Any = None) -> Any:
     """Build context for Respond agent from upstream outputs."""
     understand_output = context.outputs.get("understanding", {})
@@ -204,14 +196,12 @@ ONBOARDING_CHATBOT_PIPELINE = PipelineConfig.graph(
         ),
         "think_knowledge": stage(
             "think_knowledge", output_key="think_results",
-            pre_process=think_knowledge_pre_process,
-            post_process=think_knowledge_post_process,
+            agent_class=ThinkKnowledgeAgent,
             error_next="respond",
         ),
         "think_tools": stage(
-            "think_tools", tools=True, output_key="think_results",
-            pre_process=think_tools_pre_process,
-            post_process=think_tools_post_process,
+            "think_tools", output_key="think_results",
+            agent_class=ThinkToolsAgent,
             error_next="respond",
         ),
         "respond": stage(
