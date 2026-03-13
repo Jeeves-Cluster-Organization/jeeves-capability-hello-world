@@ -27,21 +27,21 @@ Jeeves is a multi-layered AI agent orchestration system designed for building
 production-grade AI applications. It follows a micro-kernel architecture where
 a Rust core handles all orchestration decisions.
 
-### The Three Layers
+### The Two Layers
 
-1. **jeeves-core** (Rust) - The micro-kernel: HTTP gateway, pipeline orchestration,
-   routing engine, bounds checking, agent execution, LLM providers, MCP tool client
-2. **jeeves-mcp-bridge** (Python) - Thin MCP tool server library: exposes Python
-   domain logic as tools the kernel can call via JSON-RPC 2.0
-3. **Capabilities** (Python) - Your domain-specific code: MCP tool servers,
+1. **jeeves-core** (Rust + PyO3) - The micro-kernel, importable as a Python library:
+   pipeline orchestration, routing engine, bounds checking, agent execution,
+   LLM providers, Python tool bridge. Optional HTTP gateway (feature-gated).
+2. **Capabilities** (Python) - Your domain-specific code: tools as Python callables,
    pipeline configs (JSON), prompt templates (.txt), Gradio/FastAPI UIs
 
 ### Data Flow
 
-User Request -> HTTP Gateway -> Kernel Pipeline (Agents) -> MCP Tools -> Response
+Python: runner.run(input) → Kernel Pipeline (Agents) → Python Tools → Result dict
 
-The Envelope carries state through this entire flow, ensuring immutable state
-transitions and full auditability.
+The Envelope carries state through the pipeline, ensuring immutable state
+transitions and full auditability. Tools are Python callables registered via
+`@tool` decorator — no subprocess, no IPC, no MCP.
 """
 
 
@@ -52,45 +52,40 @@ transitions and full auditability.
 LAYER_DETAILS = """
 ## Layer Details
 
-### Layer 1: jeeves-core (Rust Micro-Kernel)
+### Layer 1: jeeves-core (Rust Micro-Kernel + PyO3)
 
 The foundation of Jeeves, written in Rust for performance and reliability.
-This is the sole orchestration authority.
+This is the sole orchestration authority. Python imports it directly as a library.
 
 **Responsibilities:**
 - Pipeline orchestration engine - routes envelopes through agent stages
 - Envelope state management - immutable state transitions with full history
 - Resource quotas - limits on iterations, LLM calls, agent hops
-- HTTP gateway (axum) - REST API + SSE streaming for clients
 - LLM providers - OpenAI-compatible HTTP client for LLM calls
-- MCP tool client - JSON-RPC 2.0 client for calling Python tools
-- Agent profiles - LlmAgent, McpDelegatingAgent, DeterministicAgent
-- PipelineRunner - executes agent pipelines via kernel instruction loop
+- Python tool bridge - calls `@tool`-decorated Python functions directly
+- Agent auto-creation - LlmAgent, McpDelegatingAgent, DeterministicAgent
+- PipelineRunner - high-level facade (run/stream methods)
+- Optional HTTP gateway (axum, behind `http-server` feature flag)
 
-**Key Endpoints:**
-- `POST /api/v1/chat/messages` - Run pipeline (buffered response)
-- `POST /api/v1/chat/stream` - Run pipeline (SSE streaming)
-- `GET /health` - Health check
+**Python API:**
+```python
+from jeeves_core import PipelineRunner, tool
 
-### Layer 2: jeeves-mcp-bridge (Python Bridge)
+runner = PipelineRunner.from_json("pipeline.json", prompts_dir="prompts/")
+result = runner.run("input", user_id="u1")       # Buffered
+for event in runner.stream("input", user_id="u1"):  # Streaming
+    print(event)
+```
 
-Lightweight Python library for building MCP tool servers.
-
-**Responsibilities:**
-- `@mcp_tool` decorator - mark Python functions as MCP tools
-- `McpToolServer` - JSON-RPC 2.0 server (stdio or HTTP transport)
-- Tool discovery (`tools/list`) and execution (`tools/call`)
-- Zero dependencies (stdlib only)
-
-### Layer 3: Capabilities (Python User Space)
+### Layer 2: Capabilities (Python User Space)
 
 Your domain-specific implementations.
 
 **Responsibilities:**
 - Domain prompts - `.txt` prompt templates loaded by kernel
-- Custom tools - Python functions exposed via MCP tool server
+- Custom tools - Python functions registered via `@tool` decorator
 - Pipeline configuration - `pipeline.json` defining stages + routing
-- UI layer - Gradio or FastAPI frontends that call kernel HTTP API
+- UI layer - Gradio or FastAPI frontends
 - Database clients - capability-owned persistence (SQLite, etc.)
 
 **This is where hello-world lives!**
@@ -143,24 +138,25 @@ JSON configuration for an entire multi-agent pipeline (pipeline.json).
 - `max_llm_calls` - Budget for LLM usage
 - `max_agent_hops` - Maximum stage transitions
 
-### Constitution R7 (Import Boundaries)
+### Integration Pattern (PyO3 Library)
 
-A strict rule: Capabilities communicate with the kernel only via HTTP API
-and MCP protocol. No direct Rust imports.
+Capabilities import the Rust kernel directly as a Python library via PyO3.
+No HTTP, no subprocess, no IPC — single process.
 
-**CORRECT:**
 ```python
-import requests
-resp = requests.post("http://localhost:8080/api/v1/chat/messages", json=payload)
+from jeeves_core import PipelineRunner, tool
+
+@tool(name="my_tool", description="Does something")
+def my_tool(params):
+    return {"result": "done"}
+
+runner = PipelineRunner.from_json("pipeline.json", prompts_dir="prompts/")
+runner.register_tool(my_tool)
+result = runner.run("hello", user_id="user1")
 ```
 
-**WRONG:**
-```python
-from jeeves_core import PipelineRunner  # No Python package exists!
-```
-
-**Why?** This ensures capabilities remain portable and the kernel
-can be upgraded without breaking user code.
+**Why direct import?** The kernel is fundamentally a library, not a service.
+Like Temporal workers import the SDK, capabilities import jeeves-core.
 
 ### The Pipeline Pattern
 
@@ -170,11 +166,11 @@ Jeeves uses a staged pipeline with declarative routing:
 **Conditional routing:** Understand can route to Think-Tools for general/getting_started intents
 **Loop-back:** Respond can route back to Understand when knowledge is insufficient
 
-Agent types:
-1. **Understand** (LLM): Classifies intent, determines routing
-2. **Think-Knowledge** (No LLM): Retrieves embedded knowledge sections via MCP
-3. **Think-Tools** (No LLM, Has Tools): Executes tools (get_time, list_tools) via MCP
-4. **Respond** (LLM): Synthesizes response, may loop back
+Agent types (auto-created from pipeline.json):
+1. **Understand** (LLM, `has_llm: true`): Classifies intent, determines routing
+2. **Think-Knowledge** (No LLM, `has_llm: false`): Calls Python tool via ToolRegistry
+3. **Think-Tools** (No LLM, `has_llm: false`): Calls Python tool via ToolRegistry
+4. **Respond** (LLM, `has_llm: true`): Synthesizes response, may loop back
 
 Routing rules use expression trees in JSON, evaluated by the Rust kernel:
 ```json
@@ -193,45 +189,37 @@ Bounds guarantee termination: `max_llm_calls=7` means max 3 loops.
 CODE_EXAMPLES = """
 ## Code Examples
 
-### Creating an MCP Tool
+### Creating a Tool
 
 ```python
-# In mcp_server.py
-from jeeves_mcp_bridge import mcp_tool, McpToolServer
+from jeeves_core import PipelineRunner, tool
 
-@mcp_tool(
-    name="get_time",
-    description="Get current date and time",
-    parameters={"type": "object", "properties": {}}
-)
-def get_time(params: dict) -> dict:
-    from datetime import datetime, timezone as tz
-    now = datetime.now(tz.utc)
-    return {
-        "status": "success",
-        "current_time": now.isoformat(),
-        "timezone": "UTC"
-    }
-
-server = McpToolServer()
-server.register(get_time)
-server.run_stdio()  # Kernel spawns this process
+@tool(name="get_time", description="Get current date and time",
+      parameters={"type": "object", "properties": {}})
+def get_time(params):
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    return {"status": "success", "current_time": now.isoformat(), "timezone": "UTC"}
 ```
 
-### Registering Tools with the Kernel
+The `@tool` decorator sets `_tool_name`, `_tool_description`, and `_tool_parameters`
+attributes on the function. `register_tool()` reads these attributes.
 
-Tools are registered via MCP server config in `run.py`:
+### Registering Tools
+
 ```python
-mcp_servers = [{"name": "hello_tools", "transport": "stdio",
-                "command": sys.executable, "args": ["mcp_server.py"]}]
-os.environ["JEEVES_MCP_SERVERS"] = json.dumps(mcp_servers)
+runner = PipelineRunner.from_json("pipeline.json", prompts_dir="prompts/")
+runner.register_tool(get_time)
+runner.register_tool(my_other_tool)
 ```
 
-The kernel discovers tools automatically via `tools/list` JSON-RPC call.
+Agents are auto-created from pipeline.json stages. When a tool name matches
+a `has_llm: false` agent name, the kernel creates an McpDelegatingAgent that
+calls the Python tool directly.
 
 ### Creating a Prompt Template
 
-```python
+```
 # In prompts/chatbot.respond.txt (loaded by kernel PromptRegistry)
 You are a helpful assistant.
 
@@ -263,29 +251,34 @@ loads all `.txt` files from the prompts directory.
 }
 ```
 
-### Registering Agents with the Kernel
+### Running a Pipeline
 
 ```python
-agents = [
-    {"name": "understand", "type": "llm", "prompt_key": "chatbot.understand"},
-    {"name": "think_knowledge", "type": "mcp_delegate", "tool_name": "think_knowledge"},
-    {"name": "respond", "type": "llm", "prompt_key": "chatbot.respond"},
-]
-os.environ["JEEVES_AGENTS"] = json.dumps(agents)
+from jeeves_core import PipelineRunner
+
+runner = PipelineRunner.from_json("pipeline.json", prompts_dir="prompts/",
+                                   openai_api_key="sk-...")
+
+# Buffered (blocks until done)
+result = runner.run("What is Jeeves?", user_id="user1")
+# result["outputs"], result["terminated"], result["terminal_reason"]
+
+# Streaming (Python iterator, releases GIL while waiting)
+for event in runner.stream("What is Jeeves?", user_id="user1"):
+    if event["type"] == "delta":
+        print(event["content"], end="", flush=True)
 ```
 
-### Calling the Kernel HTTP API
+### Cross-Pipeline Coordination
 
 ```python
-import requests
+# Tool can call runner.run() for sub-pipeline (reentrant, uses block_in_place)
+runner.register_pipeline("analysis", analysis_config_json)
 
-resp = requests.post("http://localhost:8080/api/v1/chat/messages", json={
-    "pipeline_config": pipeline_config,  # loaded from pipeline.json
-    "input": "What is the Jeeves architecture?",
-    "user_id": "user1",
-    "session_id": "session1",
-})
-result = resp.json()  # {"process_id": "...", "outputs": {...}, "terminated": true}
+@tool(name="analyze", description="Run sub-analysis")
+def analyze(params):
+    sub = runner.run(params["topic"], pipeline_name="analysis", user_id="system")
+    return sub["outputs"]
 ```
 """
 
@@ -301,9 +294,7 @@ This capability demonstrates the minimal Jeeves pattern.
 
 ```
 jeeves-capability-hello-world/
-├── run.py                           # Starts kernel + Gradio UI
-├── gradio_app.py                    # HTTP-based Gradio web UI
-├── mcp_server.py                    # MCP tool server (4 tools)
+├── app.py                           # Single entry point (PyO3 + Gradio)
 ├── pipeline.json                    # Pipeline definition (JSON)
 ├── prompts/                         # Prompt templates for kernel
 │   ├── chatbot.understand.txt       # Intent classification prompt
@@ -320,12 +311,21 @@ jeeves-capability-hello-world/
 
 ### Key Files Explained
 
-- **run.py**: Configures agents + MCP servers, starts kernel subprocess, launches Gradio
-- **gradio_app.py**: HTTP client to kernel API, Gradio chat UI
-- **mcp_server.py**: Exposes 4 tools (get_time, list_tools, think_knowledge, think_tools)
+- **app.py**: Single-file entry point — defines 4 tools, creates PipelineRunner,
+  runs Gradio ChatInterface. One file, one process, ~150 LOC.
 - **pipeline.json**: 4-stage pipeline with conditional routing rules
 - **prompts/*.txt**: Prompt templates loaded by kernel's PromptRegistry
 - **knowledge_base.py**: Embedded knowledge sections for onboarding responses
+
+### How It Works
+
+1. `app.py` imports `PipelineRunner` and `tool` from `jeeves_core` (Rust via PyO3)
+2. 4 tools are defined as Python functions with `@tool` decorator
+3. `PipelineRunner.from_json()` loads pipeline.json + prompts
+4. `register_tool()` bridges Python callables into the Rust ToolRegistry
+5. Agents are auto-created from pipeline stages (LlmAgent for understand/respond,
+   McpDelegatingAgent for think_knowledge/think_tools)
+6. Gradio ChatInterface calls `runner.stream()` for real-time responses
 """
 
 
@@ -338,26 +338,29 @@ HOW_TO_GUIDES = """
 
 ### How to Add a New Tool
 
-1. **Create the function** in `mcp_server.py`:
+1. **Define the function** in `app.py` with the `@tool` decorator:
    ```python
-   @mcp_tool(name="my_tool", description="Does something useful",
-             parameters={"type": "object", "properties": {"input": {"type": "string"}}})
-   def my_tool(params: dict) -> dict:
+   from jeeves_core import tool
+
+   @tool(name="my_tool", description="Does something useful",
+         parameters={"type": "object", "properties": {"input": {"type": "string"}}})
+   def my_tool(params):
        return {"status": "success", "result": params.get("input", "").upper()}
    ```
 
-2. **Register it** with the server:
+2. **Register it** with the runner:
    ```python
-   server.register(my_tool)
+   runner.register_tool(my_tool)
    ```
 
-That's it -- the kernel discovers the tool automatically via MCP `tools/list`.
+That's it — the kernel creates an McpDelegatingAgent for any `has_llm: false`
+stage whose name matches a registered tool.
 
 ### How to Create a New Agent
 
 1. **Create the prompt** as a `.txt` file in `prompts/`
 2. **Add a stage** to `pipeline.json` with the agent name and prompt_key
-3. **Register the agent** in `run.py` via the `agents` list
+3. Agents are auto-created — no manual registration needed!
 4. **Add routing rules** in pipeline.json if conditional routing is needed
 
 ### How to Modify the Pipeline Flow
@@ -372,11 +375,11 @@ Edit `pipeline.json`:
 ### How to Run the Capability
 
 ```bash
-# Start kernel + Gradio UI
-python run.py
+# Install jeeves-core PyO3 module (once)
+cd ../jeeves-core && pip install -e .
 
-# Or kernel only (for testing with curl)
-python run.py --kernel-only
+# Start Gradio UI (single process — kernel runs embedded)
+python app.py
 ```
 
 Then open http://localhost:8001 in your browser.
@@ -396,18 +399,18 @@ pytest -v
 
 ### Common Troubleshooting
 
-**Cannot connect to kernel**
-- Ensure kernel is running: `python run.py --kernel-only`
-- Check `http://localhost:8080/health` returns 200
+**Import error: `from jeeves_core import ...`**
+- Build the PyO3 module: `cd ../jeeves-core && pip install -e .`
+- On Windows, use `pip install -e .` (not `maturin develop`)
 
 **Agent not receiving context**
 - Check prompt template uses `{variable_name}` placeholders
 - Check pipeline.json has correct `output_key` and routing
 
 **Tool not executing**
-- Verify tool is registered in `mcp_server.py` via `server.register(fn)`
-- Verify MCP server config in `run.py` points to correct script
-- Check kernel logs for MCP connection errors
+- Verify tool is registered via `runner.register_tool(fn)`
+- Verify tool name matches the agent name in pipeline.json for `has_llm: false` stages
+- Check that `@tool` decorator has `name` and `description` set
 """
 
 

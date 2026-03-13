@@ -10,10 +10,8 @@ requires-python = ">=3.11"
 dependencies = [
     # UI
     "gradio>=5.0.0",
-    # HTTP client
-    "requests>=2.31.0",
-    # MCP bridge (for mcp_server.py)
-    "jeeves-mcp-bridge",
+    # Rust kernel (PyO3 bindings)
+    "jeeves-core",
     # Python 3.13 compat (audioop removed from stdlib, pydub needs it)
     "audioop-lts>=0.2.1; python_version>='3.13'",
 ]
@@ -33,7 +31,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-jeeves-mcp-bridge = { path = "../jeeves-mcp-bridge", editable = true }
+jeeves-core = { path = "../jeeves-core", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["jeeves_capability_hello_world"]

@@ -7,11 +7,7 @@ Architecture:
     Respond may loop back to Understand (bounded by max_llm_calls=7)
 
 Usage:
-    # Start Rust kernel + Gradio UI
-    python run.py
-
-    # Kernel only (for manual testing with curl)
-    python run.py --kernel-only
+    python app.py
 """
 
 CAPABILITY_ID = "hello_world"
