@@ -25,17 +25,20 @@ ECOSYSTEM_OVERVIEW = """
 
 Jeeves is a multi-layered AI agent orchestration system designed for building
 production-grade AI applications. It follows a micro-kernel architecture where
-a Rust core handles orchestration while Python provides the AI/ML capabilities.
+a Rust core handles all orchestration decisions.
 
 ### The Three Layers
 
-1. **jeeves-core** (Rust) - The micro-kernel that orchestrates everything
-2. **jeeves-core** (Python) - Infrastructure & orchestration framework: LLM providers, database protocols, adapters, pipeline runner, config
-3. **Capabilities** (Python) - Your domain-specific code: prompts, tools, services
+1. **jeeves-core** (Rust) - The micro-kernel: HTTP gateway, pipeline orchestration,
+   routing engine, bounds checking, agent execution, LLM providers, MCP tool client
+2. **jeeves-mcp-bridge** (Python) - Thin MCP tool server library: exposes Python
+   domain logic as tools the kernel can call via JSON-RPC 2.0
+3. **Capabilities** (Python) - Your domain-specific code: MCP tool servers,
+   pipeline configs (JSON), prompt templates (.txt), Gradio/FastAPI UIs
 
 ### Data Flow
 
-User Request -> Gateway -> Pipeline (Agents) -> Tools -> Response
+User Request -> HTTP Gateway -> Kernel Pipeline (Agents) -> MCP Tools -> Response
 
 The Envelope carries state through this entire flow, ensuring immutable state
 transitions and full auditability.
@@ -52,55 +55,43 @@ LAYER_DETAILS = """
 ### Layer 1: jeeves-core (Rust Micro-Kernel)
 
 The foundation of Jeeves, written in Rust for performance and reliability.
+This is the sole orchestration authority.
 
 **Responsibilities:**
 - Pipeline orchestration engine - routes envelopes through agent stages
 - Envelope state management - immutable state transitions with full history
 - Resource quotas - limits on iterations, LLM calls, agent hops
-- Circuit breakers - fault tolerance for external service failures
-- IPC services (TCP+msgpack) - communication bridge to Python layer
+- HTTP gateway (axum) - REST API + SSE streaming for clients
+- LLM providers - OpenAI-compatible HTTP client for LLM calls
+- MCP tool client - JSON-RPC 2.0 client for calling Python tools
+- Agent profiles - LlmAgent, McpDelegatingAgent, DeterministicAgent
+- PipelineRunner - executes agent pipelines via kernel instruction loop
 
-**Key Files:**
-- `src/` - Core orchestration logic
-- `tests/` - Integration tests
+**Key Endpoints:**
+- `POST /api/v1/chat/messages` - Run pipeline (buffered response)
+- `POST /api/v1/chat/stream` - Run pipeline (SSE streaming)
+- `GET /health` - Health check
 
-### Layer 2: jeeves-core (Python Infrastructure)
+### Layer 2: jeeves-mcp-bridge (Python Bridge)
 
-Shared infrastructure used by all Python components.
+Lightweight Python library for building MCP tool servers.
 
 **Responsibilities:**
-- LLM providers - unified interface to OpenAI, Anthropic, llama.cpp
-- Database clients - Protocol-based registry (capabilities own concrete backends)
-- Protocols - type definitions shared across layers
-- Gateway - HTTP/WebSocket translation layer
-- kernel_client - Python interface to jeeves-core
-- Agent profiles - declarative agent configuration
-- Adapters - Constitution R7 compliant wrappers (create_llm_provider_factory)
-- PipelineRunner - executes agent pipelines
-- Event handling - streaming events to clients
-- Orchestrator - event context, governance, flow
-- Memory handlers - CommBus handler registration, message types
-- Bootstrap - AppContext creation, composition root
-
-**Key Modules:**
-- `jeeves_core.llm` - LLM provider implementations
-- `jeeves_core.protocols` - Envelope, AgentConfig, PipelineConfig, PipelineEvent
-- `jeeves_core.gateway` - API translation layer
-- `jeeves_core.kernel_client` - IPC client to jeeves-core (TCP+msgpack)
-- `jeeves_core.wiring` - Factory functions (create_llm_provider_factory, create_tool_executor)
-- `jeeves_core.orchestrator` - Event orchestration and governance
-- `jeeves_core.config` - Agent profiles, registry, constants
-- `jeeves_core.bootstrap` - AppContext composition root
+- `@mcp_tool` decorator - mark Python functions as MCP tools
+- `McpToolServer` - JSON-RPC 2.0 server (stdio or HTTP transport)
+- Tool discovery (`tools/list`) and execution (`tools/call`)
+- Zero dependencies (stdlib only)
 
 ### Layer 3: Capabilities (Python User Space)
 
 Your domain-specific implementations.
 
 **Responsibilities:**
-- Domain prompts - LLM prompts for your use case
-- Custom tools - functions agents can call
-- Pipeline configuration - agent definitions and hooks
-- Service layer - ChatbotService wraps PipelineRunner
+- Domain prompts - `.txt` prompt templates loaded by kernel
+- Custom tools - Python functions exposed via MCP tool server
+- Pipeline configuration - `pipeline.json` defining stages + routing
+- UI layer - Gradio or FastAPI frontends that call kernel HTTP API
+- Database clients - capability-owned persistence (SQLite, etc.)
 
 **This is where hello-world lives!**
 """
@@ -131,44 +122,44 @@ full replay and debugging.
 
 ### AgentConfig
 
-Declarative configuration for an agent in the pipeline.
+Declarative configuration for an agent, passed via JEEVES_AGENTS env var.
 
 **Key Fields:**
 - `name` - Agent identifier (e.g., "understand", "respond")
-- `stage_order` - Execution order (0, 1, 2...)
-- `has_llm` - Whether this agent calls an LLM
+- `type` - Agent type: "llm", "mcp_delegate", "deterministic"
+- `has_llm` - Whether this agent calls an LLM (set in pipeline.json)
 - `has_tools` - Whether this agent can execute tools
-- `prompt_key` - Which prompt to use (e.g., "chatbot.respond")
+- `prompt_key` - Which prompt template to use (e.g., "chatbot.respond")
 - `output_key` - Where to store results in envelope.outputs
-- `pre_process` / `post_process` - Hook functions
 
 ### PipelineConfig
 
-Configuration for an entire multi-agent pipeline.
+JSON configuration for an entire multi-agent pipeline (pipeline.json).
 
 **Key Fields:**
 - `name` - Pipeline identifier
-- `agents` - List of AgentConfig
+- `stages` - List of PipelineStage definitions
 - `max_iterations` - Circuit breaker for loops
 - `max_llm_calls` - Budget for LLM usage
+- `max_agent_hops` - Maximum stage transitions
 
 ### Constitution R7 (Import Boundaries)
 
-A strict rule: Capabilities MUST NOT import infrastructure directly.
+A strict rule: Capabilities communicate with the kernel only via HTTP API
+and MCP protocol. No direct Rust imports.
 
 **CORRECT:**
 ```python
-from jeeves_core.bootstrap import create_app_context
-app_context = create_app_context()
-llm_factory = app_context.llm_provider_factory
+import requests
+resp = requests.post("http://localhost:8080/api/v1/chat/messages", json=payload)
 ```
 
 **WRONG:**
 ```python
-from jeeves_core.llm import LLMProvider  # Violates R7!
+from jeeves_core import PipelineRunner  # No Python package exists!
 ```
 
-**Why?** This ensures capabilities remain portable and the infrastructure
+**Why?** This ensures capabilities remain portable and the kernel
 can be upgraded without breaking user code.
 
 ### The Pipeline Pattern
@@ -181,18 +172,17 @@ Jeeves uses a staged pipeline with declarative routing:
 
 Agent types:
 1. **Understand** (LLM): Classifies intent, determines routing
-2. **Think-Knowledge** (No LLM): Retrieves embedded knowledge sections
-3. **Think-Tools** (No LLM, Has Tools): Executes tools (get_time, list_tools)
+2. **Think-Knowledge** (No LLM): Retrieves embedded knowledge sections via MCP
+3. **Think-Tools** (No LLM, Has Tools): Executes tools (get_time, list_tools) via MCP
 4. **Respond** (LLM): Synthesizes response, may loop back
 
-Routing rules use expression trees evaluated by the Rust kernel:
-```python
-from jeeves_core.protocols.routing import eq, not_, always
-RoutingRule(expr=eq("intent", "general"), target="think_tools")
-RoutingRule(expr=eq("needs_more_context", True), target="understand")
+Routing rules use expression trees in JSON, evaluated by the Rust kernel:
+```json
+{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "general"}, "target": "think_tools"}
+{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "needs_more_context"}, "value": true}, "target": "understand"}
 ```
 
-Bounds guarantee termination: `max_llm_calls=6` means max 3 loops.
+Bounds guarantee termination: `max_llm_calls=7` means max 3 loops.
 """
 
 
@@ -203,103 +193,99 @@ Bounds guarantee termination: `max_llm_calls=6` means max 3 loops.
 CODE_EXAMPLES = """
 ## Code Examples
 
-### Creating a Simple Tool
+### Creating an MCP Tool
 
 ```python
-# In tools/my_tools.py
-def get_time(timezone: str = "UTC") -> dict:
-    \"\"\"Get current time in specified timezone.\"\"\"
+# In mcp_server.py
+from jeeves_mcp_bridge import mcp_tool, McpToolServer
+
+@mcp_tool(
+    name="get_time",
+    description="Get current date and time",
+    parameters={"type": "object", "properties": {}}
+)
+def get_time(params: dict) -> dict:
     from datetime import datetime, timezone as tz
     now = datetime.now(tz.utc)
     return {
         "status": "success",
         "current_time": now.isoformat(),
-        "timezone": timezone
+        "timezone": "UTC"
     }
+
+server = McpToolServer()
+server.register(get_time)
+server.run_stdio()  # Kernel spawns this process
 ```
 
-### Registering a Tool
+### Registering Tools with the Kernel
 
+Tools are registered via MCP server config in `run.py`:
 ```python
-# In capability/wiring.py
-from jeeves_core.protocols import ToolCatalog
-
-catalog = ToolCatalog("my_capability")
-catalog.register(
-    tool_id="get_time",
-    func=get_time,
-    description="Get current date and time",
-    category="standalone",
-    risk_semantic="read_only",
-    risk_severity="low",
-)
+mcp_servers = [{"name": "hello_tools", "transport": "stdio",
+                "command": sys.executable, "args": ["mcp_server.py"]}]
+os.environ["JEEVES_MCP_SERVERS"] = json.dumps(mcp_servers)
 ```
 
-### Creating an Agent Prompt
+The kernel discovers tools automatically via `tools/list` JSON-RPC call.
+
+### Creating a Prompt Template
 
 ```python
-# In prompts/chatbot/my_prompt.py
-# Templates are registered in prompts/__init__.py via PromptRegistry({...})
-from jeeves_core.runtime import PromptRegistry
-
-def my_agent_prompt() -> str:
-    return \"\"\"You are a helpful assistant.
+# In prompts/chatbot.respond.txt (loaded by kernel PromptRegistry)
+You are a helpful assistant.
 
 ## User Message
-{user_message}
+{raw_input}
+
+## Context
+{understand_intent}
 
 ## Task
-Respond helpfully.
-
-## Output (JSON)
-{{"response": "<your response>"}}
-\"\"\"
+Respond helpfully based on the context provided.
 ```
 
-### Defining an Agent in the Pipeline
+Templates use `{variable_name}` placeholders. The kernel's PromptRegistry
+loads all `.txt` files from the prompts directory.
 
-```python
-# In pipeline_config.py
-from jeeves_core.protocols import AgentConfig
+### Defining a Pipeline (JSON)
 
-AgentConfig(
-    name="my_agent",
-    stage_order=0,
-    has_llm=True,
-    model_role="planner",
-    prompt_key="chatbot.my_agent",
-    output_key="my_output",
-    output_schema={"type": "object", "properties": {"response": {"type": "string"}}, "required": ["response"]},
-    pre_process=my_pre_process,  # Optional hook
-    post_process=my_post_process,  # Optional hook
-    default_next="next_agent",
-)
+```json
+{
+  "name": "my_pipeline",
+  "stages": [
+    {"name": "understand", "agent": "understand", "has_llm": true,
+     "prompt_key": "chatbot.understand", "default_next": "respond"},
+    {"name": "respond", "agent": "respond", "has_llm": true,
+     "prompt_key": "chatbot.respond"}
+  ],
+  "max_iterations": 4, "max_llm_calls": 7, "max_agent_hops": 12
+}
 ```
 
-### Pre/Post Process Hooks
+### Registering Agents with the Kernel
 
 ```python
-async def my_pre_process(envelope, agent=None):
-    \"\"\"Prepare context before agent runs.\"\"\"
-    envelope.metadata["extra_context"] = "some value"
-    return envelope
-
-async def my_post_process(envelope, output, agent=None):
-    \"\"\"Process agent output before next stage.\"\"\"
-    # Modify output or envelope as needed
-    output["processed"] = True
-    return envelope
+agents = [
+    {"name": "understand", "type": "llm", "prompt_key": "chatbot.understand"},
+    {"name": "think_knowledge", "type": "mcp_delegate", "tool_name": "think_knowledge"},
+    {"name": "respond", "type": "llm", "prompt_key": "chatbot.respond"},
+]
+os.environ["JEEVES_AGENTS"] = json.dumps(agents)
 ```
 
-### Using Factories (Constitution R7)
+### Calling the Kernel HTTP API
 
 ```python
-# CORRECT way to get LLM provider (via AppContext, K8s-style bootstrap)
-from jeeves_core.bootstrap import create_app_context
+import requests
 
-app_context = create_app_context()
-llm = app_context.llm_provider_factory(role="planner")
-response = await llm.generate(model, prompt, options)
+resp = requests.post("http://localhost:8080/api/v1/chat/messages", json={
+    "pipeline_config": pipeline_config,  # loaded from pipeline.json
+    "input": "What is the Jeeves architecture?",
+    "user_id": "user1",
+    "session_id": "session1",
+})
+result = resp.json()  # {"process_id": "...", "outputs": {...}, "terminated": true}
 ```
 """
 
@@ -315,42 +301,31 @@ This capability demonstrates the minimal Jeeves pattern.
 
 ```
 jeeves-capability-hello-world/
-├── gradio_app.py                    # Entry point - Gradio web UI
-├── jeeves_capability_hello_world/   # Main capability package
+├── run.py                           # Starts kernel + Gradio UI
+├── gradio_app.py                    # HTTP-based Gradio web UI
+├── mcp_server.py                    # MCP tool server (4 tools)
+├── pipeline.json                    # Pipeline definition (JSON)
+├── prompts/                         # Prompt templates for kernel
+│   ├── chatbot.understand.txt       # Intent classification prompt
+│   ├── chatbot.respond.txt          # Response synthesis prompt
+│   └── chatbot.respond_streaming.txt
+├── jeeves_capability_hello_world/   # Python package
 │   ├── __init__.py
-│   ├── pipeline_config.py           # 4-agent pipeline configuration
-│   │
-│   ├── prompts/                     # LLM prompts
-│   │   ├── __init__.py
-│   │   ├── knowledge_base.py        # Embedded knowledge (this file!)
-│   │   └── chatbot/
-│   │       ├── understand.py        # Intent classification prompt
-│   │       ├── respond.py           # Response synthesis prompt
-│   │       └── respond_streaming.py # Streaming variant
-│   │
-│   ├── tools/                       # Available tools
-│   │   ├── __init__.py
-│   │   └── hello_world_tools.py     # get_time, list_tools
-│   │
-│   ├── orchestration/               # Service layer
-│   │   ├── __init__.py
-│   │   ├── chatbot_service.py       # Pipeline execution wrapper
-│   │   └── wiring.py                # Dependency injection
-│   │
-│   ├── capability/                  # Capability registration
-│   │   └── wiring.py                # Register with jeeves-core
-│   │
-│   └── tests/                       # Unit tests
+│   ├── prompts/
+│   │   └── knowledge_base.py        # Embedded knowledge (this file!)
+│   └── tests/
+│       └── test_onboarding.py       # Knowledge base tests
+└── pyproject.toml
 ```
 
 ### Key Files Explained
 
-- **gradio_app.py**: Starts the web UI, initializes the capability
-- **pipeline_config.py**: Defines the 4-agent pipeline with routing rules
-- **prompts/chatbot/*.py**: LLM prompts for each agent
-- **tools/hello_world_tools.py**: Simple demonstration tools
-- **orchestration/chatbot_service.py**: Wraps PipelineRunner
-- **capability/wiring.py**: Registers tools and capability with jeeves-core
+- **run.py**: Configures agents + MCP servers, starts kernel subprocess, launches Gradio
+- **gradio_app.py**: HTTP client to kernel API, Gradio chat UI
+- **mcp_server.py**: Exposes 4 tools (get_time, list_tools, think_knowledge, think_tools)
+- **pipeline.json**: 4-stage pipeline with conditional routing rules
+- **prompts/*.txt**: Prompt templates loaded by kernel's PromptRegistry
+- **knowledge_base.py**: Embedded knowledge sections for onboarding responses
 """
 
 
@@ -363,53 +338,45 @@ HOW_TO_GUIDES = """
 
 ### How to Add a New Tool
 
-1. **Create the function** in `tools/hello_world_tools.py`:
+1. **Create the function** in `mcp_server.py`:
    ```python
-   def my_tool(param1: str) -> dict:
-       return {"status": "success", "result": param1.upper()}
+   @mcp_tool(name="my_tool", description="Does something useful",
+             parameters={"type": "object", "properties": {"input": {"type": "string"}}})
+   def my_tool(params: dict) -> dict:
+       return {"status": "success", "result": params.get("input", "").upper()}
    ```
 
-2. **Register in** `capability/wiring.py` using `catalog.register(...)`:
+2. **Register it** with the server:
    ```python
-   from jeeves_core.protocols import ToolCatalog
-
-   catalog = ToolCatalog("hello_world")
-   catalog.register(
-       tool_id="my_tool",
-       func=my_tool,
-       description="Does something useful",
-       category="standalone",
-       risk_semantic="read_only",
-       risk_severity="low",
-   )
+   server.register(my_tool)
    ```
 
-That's it -- no ToolId enum, no catalog.py, no registration.py, no EXPOSED_TOOL_IDS.
+That's it -- the kernel discovers the tool automatically via MCP `tools/list`.
 
 ### How to Create a New Agent
 
-1. **Create the prompt** in `prompts/chatbot/my_agent.py`
-2. **Add AgentConfig** to `pipeline_config.py`
-3. **Create pre/post hooks** if needed
-4. **Register tools** in `capability/wiring.py` if agent needs tools
+1. **Create the prompt** as a `.txt` file in `prompts/`
+2. **Add a stage** to `pipeline.json` with the agent name and prompt_key
+3. **Register the agent** in `run.py` via the `agents` list
+4. **Add routing rules** in pipeline.json if conditional routing is needed
 
 ### How to Modify the Pipeline Flow
 
-Edit `pipeline_config.py`:
-- Change `stage_order` to reorder agents
+Edit `pipeline.json`:
 - Change `default_next` to alter the default flow
-- Add `routing_rules` to create conditional branches
+- Add `routing` rules to create conditional branches
 - Set `error_next` to define fallback agents on failure
-- Add/remove agents from the `agents` list
+- Add/remove stages from the `stages` list
+- Adjust bounds (`max_iterations`, `max_llm_calls`, `max_agent_hops`)
 
 ### How to Run the Capability
 
 ```bash
-# Start jeeves-core (Rust kernel)
-cd jeeves-core && cargo run
+# Start kernel + Gradio UI
+python run.py
 
-# In another terminal, start the Gradio UI
-python gradio_app.py
+# Or kernel only (for testing with curl)
+python run.py --kernel-only
 ```
 
 Then open http://localhost:8001 in your browser.
@@ -429,17 +396,18 @@ pytest -v
 
 ### Common Troubleshooting
 
-**Import Error: Cannot import from protocols**
-- Use `from jeeves_core.protocols import ...`
-- NOT `from protocols import ...`
+**Cannot connect to kernel**
+- Ensure kernel is running: `python run.py --kernel-only`
+- Check `http://localhost:8080/health` returns 200
 
 **Agent not receiving context**
-- Check `pre_process` hook is updating `envelope.metadata`
-- Check prompt uses `{variable_name}` placeholders
+- Check prompt template uses `{variable_name}` placeholders
+- Check pipeline.json has correct `output_key` and routing
 
 **Tool not executing**
-- Verify tool is registered in `capability/wiring.py` via `catalog.register(...)`
-- Verify agent has `has_tools=True` and `allowed_tools` is set
+- Verify tool is registered in `mcp_server.py` via `server.register(fn)`
+- Verify MCP server config in `run.py` points to correct script
+- Check kernel logs for MCP connection errors
 """
 
 
@@ -452,59 +420,61 @@ CONDITIONAL_ROUTING = """
 
 ### RoutingRule
 
-Agents define routing rules using expression trees that the Rust kernel evaluates after each
-agent completes. Rules are checked against the agent's output dict.
+Stages define routing rules as JSON expression trees that the Rust kernel evaluates
+after each agent completes. Rules are checked against the agent's output dict.
 
-```python
-from jeeves_core.protocols.routing import eq, not_
-
-AgentConfig(
-    name="understand",
-    routing_rules=[
-        RoutingRule(expr=eq("intent", "general"), target="think_tools"),
-        RoutingRule(expr=eq("intent", "getting_started"), target="think_tools"),
-    ],
-    default_next="think_knowledge",  # Used when no rule matches
-    error_next="respond",            # Used on agent failure
-)
+```json
+{
+  "name": "understand",
+  "agent": "understand",
+  "routing": [
+    {"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "general"}, "target": "think_tools"},
+    {"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "getting_started"}, "target": "think_tools"}
+  ],
+  "default_next": "think_knowledge",
+  "error_next": "respond"
+}
 ```
 
 ### Loop-Back Routing (Temporal Pattern)
 
-The respond agent uses the Temporal pattern: routing expresses when to CONTINUE.
+The respond stage uses the Temporal pattern: routing expresses when to CONTINUE.
 When no rule matches and no default_next is set, the kernel terminates naturally.
 
-```python
-AgentConfig(
-    name="respond",
-    routing_rules=[
-        RoutingRule(expr=eq("needs_more_context", True), target="understand"),
-    ],
-    default_next=None,  # No match = kernel terminates (COMPLETED)
-)
+```json
+{
+  "name": "respond",
+  "agent": "respond",
+  "routing": [
+    {"expr": {"op": "Eq", "field": {"scope": "Current", "key": "needs_more_context"}, "value": true}, "target": "understand"}
+  ]
+}
 ```
+
+No `default_next` = kernel terminates with COMPLETED when no rule matches.
 
 ### Tight Bounds
 
 Circular routes require bounds to guarantee termination:
-- `max_llm_calls=6`: Each loop uses 2 LLM calls (understand + respond), so max 3 loops
+- `max_llm_calls=7`: Each loop uses 2 LLM calls (understand + respond), so max 3 loops
 - `max_agent_hops=12`: Each loop uses ~4 hops, so max 3 loops
-- `max_iterations=3`: Explicit iteration cap
+- `max_iterations=4`: Explicit iteration cap
 
-When bounds are exceeded, the kernel returns `TERMINATE` with a reason like
-`TERMINAL_REASON_MAX_LLM_CALLS_EXCEEDED`. The Python worker maps this to
-`TerminalReason.MAX_LLM_CALLS_EXCEEDED` and returns a partial response if available.
+When bounds are exceeded, the kernel terminates with a reason like
+`MaxLlmCallsExceeded`. The response includes `terminal_reason` so the
+client can display a partial response if available.
 
 ### error_next
 
-Each agent can define a fallback agent via `error_next`. If the agent fails,
+Each stage can define a fallback stage via `error_next`. If the agent fails,
 the kernel routes to error_next instead of terminating the pipeline.
 
-```python
-AgentConfig(
-    name="think_knowledge",
-    error_next="respond",  # If retrieval fails, go straight to respond
-)
+```json
+{
+  "name": "think_knowledge",
+  "agent": "think_knowledge",
+  "error_next": "respond"
+}
 ```
 """
 

@@ -87,17 +87,17 @@ class TestKnowledgeBase:
     def test_hello_world_structure_contains_files(self):
         """Verify hello world structure is documented."""
         assert "gradio_app.py" in HELLO_WORLD_STRUCTURE
-        assert "pipeline_config.py" in HELLO_WORLD_STRUCTURE
-        assert "understand.py" in HELLO_WORLD_STRUCTURE
-        assert "respond.py" in HELLO_WORLD_STRUCTURE
-        assert "chatbot_service.py" in HELLO_WORLD_STRUCTURE
+        assert "run.py" in HELLO_WORLD_STRUCTURE
+        assert "mcp_server.py" in HELLO_WORLD_STRUCTURE
+        assert "pipeline.json" in HELLO_WORLD_STRUCTURE
+        assert "knowledge_base.py" in HELLO_WORLD_STRUCTURE
 
     def test_code_examples_contains_patterns(self):
         """Verify code examples are provided."""
-        assert "def get_time" in CODE_EXAMPLES or "get_time" in CODE_EXAMPLES
-        assert "catalog.register" in CODE_EXAMPLES
-        assert "PromptRegistry" in CODE_EXAMPLES
-        assert "AgentConfig" in CODE_EXAMPLES
+        assert "get_time" in CODE_EXAMPLES
+        assert "mcp_tool" in CODE_EXAMPLES
+        assert "McpToolServer" in CODE_EXAMPLES
+        assert "pipeline_config" in CODE_EXAMPLES
 
     def test_how_to_guides_contains_guides(self):
         """Verify how-to guides are provided."""
@@ -145,7 +145,7 @@ class TestKnowledgeBase:
         # Multiple sections
         result = get_knowledge_for_sections(["key_concepts", "code_examples"])
         assert "Envelope" in result
-        assert "catalog.register" in result
+        assert "mcp_tool" in result
 
     def test_get_knowledge_for_sections_fallback(self):
         """Verify fallback to ecosystem_overview for empty/invalid."""
@@ -184,39 +184,3 @@ class TestOnboardingIntents:
         assert expected_intent in valid_intents
 
 
-class TestToolsOnboarding:
-    """Tests for onboarding tools."""
-
-    def test_list_tools_returns_capabilities(self):
-        """Verify list_tools includes onboarding capabilities."""
-        from jeeves_capability_hello_world.tools.hello_world_tools import list_tools
-
-        result = list_tools()
-
-        assert result["status"] == "success"
-        assert "tools" in result
-        assert "capabilities" in result
-        assert len(result["capabilities"]) > 0
-
-    def test_list_tools_mentions_ecosystem(self):
-        """Verify list_tools describes ecosystem capabilities."""
-        from jeeves_capability_hello_world.tools.hello_world_tools import list_tools
-
-        result = list_tools()
-        capabilities = result["capabilities"]
-
-        # Check key capabilities are listed
-        capability_text = " ".join(capabilities)
-        assert "Jeeves" in capability_text or "ecosystem" in capability_text
-        assert "jeeves-core" in capability_text or "architecture" in capability_text
-
-    def test_get_time_works(self):
-        """Verify get_time tool still works."""
-        from jeeves_capability_hello_world.tools.hello_world_tools import get_time
-
-        result = get_time()
-
-        assert result["status"] == "success"
-        assert "datetime" in result
-        assert "date" in result
-        assert "time" in result

@@ -1,1 +1,0 @@
-"""Capability-owned memory services."""

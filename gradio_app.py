@@ -1,85 +1,95 @@
 """
-Jeeves Onboarding Assistant - Gradio Application
+Jeeves Onboarding Assistant - Gradio Application (HTTP API)
 
-3-agent pipeline (Understand -> Think -> Respond) that explains the Jeeves ecosystem.
-Shows intent classification and knowledge retrieval as the pipeline progresses.
-
-Features:
-- Intent classification: architecture, concept, getting_started, component, general
-- Targeted knowledge retrieval based on classified intent
-- Streaming responses with pipeline visibility
-- SQLite-backed in-dialogue memory (session state + message persistence)
-- Per-tab session isolation
-
-Supports Ollama and other OpenAI-compatible endpoints.
+Communicates with the Rust kernel via HTTP instead of the Python jeeves_core package.
+Supports both buffered and streaming modes.
 
 Usage:
-    # With Ollama (default)
-    python gradio_app.py
-
-    # With custom endpoint (e.g., llama-server)
-    JEEVES_LLM_BASE_URL=http://localhost:8080/v1 JEEVES_LLM_MODEL=qwen2.5 python gradio_app.py
-
-    # With OpenAI
-    JEEVES_LLM_API_KEY=sk-xxx JEEVES_LLM_BASE_URL=https://api.openai.com/v1 python gradio_app.py
+    # Start the Rust kernel with hello-world config (see run.py)
+    # Then start the Gradio UI:
+    python gradio_app_http.py
 
 Open browser: http://localhost:8001
 """
+
 import gradio as gr
-import structlog
+import json
 import os
 import uuid
+import requests
 from typing import List, Generator
 
 # =============================================================================
-# LLM CONFIGURATION - Configure for Ollama or other providers
+# CONFIGURATION
 # =============================================================================
 
-DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434/v1"
-DEFAULT_OLLAMA_MODEL = "llama3.2"
+KERNEL_URL = os.getenv("JEEVES_KERNEL_URL", "http://localhost:8080")
+PIPELINE_CONFIG_PATH = os.getenv("JEEVES_PIPELINE_CONFIG", os.path.join(os.path.dirname(__file__), "pipeline.json"))
 
-os.environ.setdefault("JEEVES_LLM_ADAPTER", "openai_http")
-os.environ.setdefault("JEEVES_LLM_BASE_URL", DEFAULT_OLLAMA_BASE_URL)
-os.environ.setdefault("JEEVES_LLM_MODEL", DEFAULT_OLLAMA_MODEL)
-os.environ.setdefault("JEEVES_LLM_API_KEY", "ollama")
+# Load pipeline config once
+with open(PIPELINE_CONFIG_PATH) as f:
+    PIPELINE_CONFIG = json.load(f)
 
-os.environ.setdefault("JEEVES_LLM_UNDERSTAND_MODEL", DEFAULT_OLLAMA_MODEL)
-os.environ.setdefault("JEEVES_LLM_RESPOND_MODEL", DEFAULT_OLLAMA_MODEL)
 
 # =============================================================================
+# Kernel HTTP Client
+# =============================================================================
 
-# Constitution R7: Register capability FIRST, before infrastructure imports
-from jeeves_capability_hello_world import register_capability
-register_capability()
+def chat_buffered(message: str, session_id: str, metadata: dict = None) -> dict:
+    """Send a message to the kernel and get the full response."""
+    payload = {
+        "pipeline_config": PIPELINE_CONFIG,
+        "input": message,
+        "user_id": "gradio_user",
+        "session_id": session_id,
+    }
+    if metadata:
+        payload["metadata"] = metadata
 
-# Capability layer imports only
-from jeeves_capability_hello_world.orchestration import ChatbotService
-from jeeves_capability_hello_world.capability.wiring import create_from_app_context
+    resp = requests.post(
+        f"{KERNEL_URL}/api/v1/chat/messages",
+        json=payload,
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return resp.json()
 
-logger = structlog.get_logger()
 
-# Global service (singleton — shared across all sessions)
-_service: ChatbotService = None
+def chat_streaming(message: str, session_id: str, metadata: dict = None) -> Generator:
+    """Send a message to the kernel and stream SSE events."""
+    payload = {
+        "pipeline_config": PIPELINE_CONFIG,
+        "input": message,
+        "user_id": "gradio_user",
+        "session_id": session_id,
+    }
+    if metadata:
+        payload["metadata"] = metadata
+
+    resp = requests.post(
+        f"{KERNEL_URL}/api/v1/chat/stream",
+        json=payload,
+        stream=True,
+        timeout=120,
+    )
+    resp.raise_for_status()
+
+    for line in resp.iter_lines(decode_unicode=True):
+        if not line:
+            continue
+        if line.startswith("data: "):
+            data = line[6:]
+            if data.strip() == "[DONE]":
+                break
+            try:
+                yield json.loads(data)
+            except json.JSONDecodeError:
+                continue
 
 
-def get_or_create_service() -> ChatbotService:
-    """Get or create the chatbot service via capability layer."""
-    global _service
-
-    if _service is None:
-        logger.info("initializing_chatbot_service")
-
-        from jeeves_core.bootstrap import create_app_context
-        app_context = create_app_context()
-
-        _service = create_from_app_context(app_context)
-
-        logger.info("chatbot_service_ready",
-                    pipeline="onboarding_chatbot",
-                    agents=4)
-
-    return _service
-
+# =============================================================================
+# Helpers
+# =============================================================================
 
 def format_agent_status(agent_name: str, data: dict) -> str:
     """Format agent completion for pipeline status display."""
@@ -99,173 +109,138 @@ def format_agent_status(agent_name: str, data: dict) -> str:
     return ""
 
 
-async def chat_with_pipeline(message: str, history: List[List], session_id: str) -> Generator:
-    """Handle user message with kernel-driven pipeline streaming."""
-    service = get_or_create_service()
-    user_id = "gradio-user"
+def extract_conversation_history(history: list) -> list:
+    """Extract conversation history from Gradio chat format."""
+    conversation = []
+    for msg in history:
+        if isinstance(msg, dict):
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        content = item.get("text", "")
+                        break
+            if content:
+                if role == "assistant" and "---" in str(content):
+                    content = str(content).split("---")[-1].strip()
+                conversation.append({"role": role, "content": str(content)})
+        elif isinstance(msg, (list, tuple)) and len(msg) >= 2:
+            user_msg, assistant_msg = msg[0], msg[1]
+            if user_msg:
+                conversation.append({"role": "user", "content": str(user_msg)})
+            if assistant_msg:
+                clean_msg = str(assistant_msg)
+                if "---" in clean_msg:
+                    clean_msg = clean_msg.split("---")[-1].strip()
+                conversation.append({"role": "assistant", "content": clean_msg})
+    return conversation
 
-    logger.info("message_received", message=message, session_id=session_id)
+
+# =============================================================================
+# Chat handlers
+# =============================================================================
+
+def chat_with_pipeline_buffered(message: str, history: list, session_id: str) -> str:
+    """Handle user message with buffered kernel response."""
+    conversation_history = extract_conversation_history(history)
+    metadata = {"conversation_history": conversation_history[-5:]}
+
+    try:
+        result = chat_buffered(message, session_id, metadata)
+        outputs = result.get("outputs", {})
+
+        # Build pipeline status
+        pipeline_status = ""
+        understand = outputs.get("understand", {})
+        if understand:
+            status = format_agent_status("understand", understand)
+            if status:
+                pipeline_status += status + " "
+
+        think = outputs.get("think_results", {})
+        if think:
+            status = format_agent_status(
+                "think_knowledge" if think.get("information", {}).get("knowledge_retrieved") else "think_tools",
+                think,
+            )
+            if status:
+                pipeline_status += status + "\n\n"
+
+        # Extract response
+        respond_output = outputs.get("respond", {})
+        response = respond_output.get("response", "")
+        if not response:
+            response = str(respond_output) if respond_output else "No response generated."
+
+        return pipeline_status + response
+
+    except requests.exceptions.ConnectionError:
+        return "Error: Cannot connect to kernel at {}. Is it running?".format(KERNEL_URL)
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def chat_with_pipeline_streaming(message: str, history: list, session_id: str) -> Generator:
+    """Handle user message with streaming kernel response."""
+    conversation_history = extract_conversation_history(history)
+    metadata = {"conversation_history": conversation_history[-5:]}
 
     pipeline_status = ""
     current_response = ""
 
     try:
-        conversation_history = []
-        for msg in history:
-            if isinstance(msg, dict):
-                role = msg.get('role', 'user')
-                content = msg.get('content', '')
-                if isinstance(content, list):
-                    for item in content:
-                        if isinstance(item, dict) and item.get('type') == 'text':
-                            content = item.get('text', '')
-                            break
-                if content:
-                    if role == 'assistant' and "---" in str(content):
-                        content = str(content).split("---")[-1].strip()
-                    conversation_history.append({"role": role, "content": str(content)})
-            elif isinstance(msg, (list, tuple)) and len(msg) >= 2:
-                user_msg, assistant_msg = msg[0], msg[1]
-                if user_msg:
-                    conversation_history.append({"role": "user", "content": str(user_msg)})
-                if assistant_msg:
-                    clean_msg = str(assistant_msg)
-                    if "---" in clean_msg:
-                        clean_msg = clean_msg.split("---")[-1].strip()
-                    conversation_history.append({"role": "assistant", "content": clean_msg})
+        for event in chat_streaming(message, session_id, metadata):
+            event_type = event.get("type", "")
 
-        metadata = {"conversation_history": conversation_history[-5:]}
+            if event_type == "stage_started":
+                pass  # Wait for stage_completed
 
-        async for event in service.process_message_stream(
-            user_id=user_id,
-            session_id=session_id,
-            message=message,
-            metadata=metadata,
-        ):
-            event_type = event.type
-            agent_name = event.agent if hasattr(event, 'agent') else ""
-            data = event.data if hasattr(event, 'data') else {}
+            elif event_type == "stage_completed":
+                stage = event.get("stage", "")
+                # Status will be built from outputs at done
 
-            if event_type == "stage":
-                status_text = format_agent_status(agent_name, data)
-                if status_text:
-                    if agent_name == "understand":
-                        pipeline_status = status_text + " "
-                    elif agent_name.startswith("think"):
-                        pipeline_status += status_text + "\n\n"
-
-            elif event_type == "token":
-                token = data.get("token", "")
-                current_response += token
+            elif event_type == "delta":
+                content = event.get("content", "")
+                current_response += content
                 yield pipeline_status + current_response
-
-            elif event_type == "error":
-                error_msg = data.get("error", "Unknown error")
-                logger.error("streaming_error", error=error_msg)
-                yield f"Error: {error_msg}"
-                break
-
-            elif event_type == "interrupt":
-                interrupt_kind = data.get("kind", "unknown")
-                yield f"Pipeline paused: {interrupt_kind}"
-                break
 
             elif event_type == "done":
-                # If we didn't get tokens (non-streaming), extract response from final output
                 if not current_response:
-                    final_output = data.get("final_output", {})
-                    current_response = final_output.get("response", "")
-                logger.info("response_completed", session_id=session_id)
+                    # Fallback: extract from final outputs
+                    current_response = "Pipeline completed."
                 yield pipeline_status + current_response
-                break
+                return
 
+            elif event_type == "error":
+                yield f"Error: {event.get('message', 'Unknown error')}"
+                return
+
+    except requests.exceptions.ConnectionError:
+        yield "Error: Cannot connect to kernel at {}. Is it running?".format(KERNEL_URL)
     except Exception as e:
-        logger.exception("message_handling_failed", error=str(e))
-        yield f"An unexpected error occurred: {str(e)}"
-
-
-# =============================================================================
-# LLM Settings Management
-# =============================================================================
-
-def get_current_llm_config() -> dict:
-    return {
-        "base_url": os.getenv("JEEVES_LLM_BASE_URL", DEFAULT_OLLAMA_BASE_URL),
-        "model": os.getenv("JEEVES_LLM_MODEL", DEFAULT_OLLAMA_MODEL),
-        "api_key": os.getenv("JEEVES_LLM_API_KEY", "ollama"),
-    }
-
-
-def update_llm_config(base_url: str, model: str, api_key: str) -> str:
-    global _service
-
-    os.environ["JEEVES_LLM_BASE_URL"] = base_url
-    os.environ["JEEVES_LLM_MODEL"] = model
-    os.environ["JEEVES_LLM_API_KEY"] = api_key
-    os.environ["JEEVES_LLM_UNDERSTAND_MODEL"] = model
-    os.environ["JEEVES_LLM_RESPOND_MODEL"] = model
-
-    _service = None
-
-    logger.info("llm_config_updated", base_url=base_url, model=model)
-    return f"Configuration updated. Using model `{model}` at `{base_url}`"
+        yield f"Error: {e}"
 
 
 # =============================================================================
 # Gradio UI
 # =============================================================================
 
+# Use streaming if available, fall back to buffered
+USE_STREAMING = os.getenv("JEEVES_STREAMING", "false").lower() == "true"
+
 with gr.Blocks(title="Jeeves Onboarding Assistant") as demo:
     gr.Markdown("# Jeeves Onboarding Assistant")
+    gr.Markdown(f"*Kernel: `{KERNEL_URL}` | Mode: {'streaming' if USE_STREAMING else 'buffered'}*")
 
-    # Per-tab session ID (unique per browser tab)
     session_id_state = gr.State(lambda: str(uuid.uuid4()))
 
-    with gr.Accordion("LLM Settings (Ollama / OpenAI)", open=False):
-        gr.Markdown("""
-        Configure your LLM endpoint. Default is **Ollama** running locally.
-
-        **Popular Ollama models:** `llama3.2`, `llama3.1`, `qwen2.5`, `mistral`, `phi3`
-        """)
-
-        with gr.Row():
-            base_url_input = gr.Textbox(
-                label="API Base URL",
-                value=os.getenv("JEEVES_LLM_BASE_URL", DEFAULT_OLLAMA_BASE_URL),
-                placeholder="http://localhost:11434/v1",
-            )
-            model_input = gr.Textbox(
-                label="Model Name",
-                value=os.getenv("JEEVES_LLM_MODEL", DEFAULT_OLLAMA_MODEL),
-                placeholder="llama3.2",
-            )
-
-        with gr.Row():
-            api_key_input = gr.Textbox(
-                label="API Key (optional for Ollama)",
-                value="",
-                placeholder="sk-xxx or 'ollama'",
-                type="password",
-            )
-            apply_btn = gr.Button("Apply Settings", variant="secondary")
-
-        config_status = gr.Markdown("")
-
-        apply_btn.click(
-            update_llm_config,
-            inputs=[base_url_input, model_input, api_key_input],
-            outputs=[config_status],
-        )
-
-    chatbot = gr.Chatbot(
-        label="Conversation",
-        height=450,
-    )
+    chatbot = gr.Chatbot(label="Conversation", height=450)
 
     with gr.Row():
         msg = gr.Textbox(
             label="Your message",
-            placeholder="Ask a question...",
+            placeholder="Ask about the Jeeves ecosystem...",
             scale=4,
             show_label=False,
         )
@@ -274,23 +249,36 @@ with gr.Blocks(title="Jeeves Onboarding Assistant") as demo:
     with gr.Row():
         clear_btn = gr.Button("Clear Chat")
 
-    async def respond(message: str, chat_history: List, session_id: str):
-        """Handle message and update chat with pipeline visibility."""
-        if not message.strip():
+    if USE_STREAMING:
+        async def respond(message: str, chat_history: list, session_id: str):
+            if not message.strip():
+                yield chat_history
+                return
+            chat_history = chat_history + [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": ""},
+            ]
             yield chat_history
-            return
-
-        chat_history = chat_history + [
-            {"role": "user", "content": message},
-            {"role": "assistant", "content": ""},
-        ]
-        yield chat_history
-
-        async for response in chat_with_pipeline(message, chat_history[:-2], session_id):
+            for response in chat_with_pipeline_streaming(message, chat_history[:-2], session_id):
+                chat_history[-1]["content"] = response
+                yield chat_history
+    else:
+        async def respond(message: str, chat_history: list, session_id: str):
+            if not message.strip():
+                yield chat_history
+                return
+            chat_history = chat_history + [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": "Thinking..."},
+            ]
+            yield chat_history
+            response = chat_buffered_wrapper(message, chat_history[:-2], session_id)
             chat_history[-1]["content"] = response
             yield chat_history
 
-    # Wire up the interface with per-tab session_id
+        def chat_buffered_wrapper(message, history, session_id):
+            return chat_with_pipeline_buffered(message, history, session_id)
+
     msg.submit(respond, [msg, chatbot, session_id_state], [chatbot]).then(
         lambda: "", None, [msg]
     )
@@ -301,11 +289,6 @@ with gr.Blocks(title="Jeeves Onboarding Assistant") as demo:
 
 
 if __name__ == "__main__":
-    import os
     port = int(os.getenv("GRADIO_SERVER_PORT", "8001"))
-    logger.info("starting_gradio_app", port=port)
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=port,
-        share=False,
-    )
+    print(f"Starting Gradio on port {port}...")
+    demo.launch(server_name="0.0.0.0", server_port=port, share=False)

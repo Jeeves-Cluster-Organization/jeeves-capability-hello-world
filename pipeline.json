@@ -1,0 +1,61 @@
+{
+  "name": "onboarding_chatbot",
+  "stages": [
+    {
+      "name": "understand",
+      "agent": "understand",
+      "has_llm": true,
+      "output_key": "understand",
+      "prompt_key": "chatbot.understand",
+      "temperature": 0.3,
+      "max_tokens": 4000,
+      "routing": [
+        {
+          "expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "getting_started"},
+          "target": "think_tools"
+        },
+        {
+          "expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "general"},
+          "target": "think_tools"
+        }
+      ],
+      "default_next": "think_knowledge",
+      "error_next": "respond"
+    },
+    {
+      "name": "think_knowledge",
+      "agent": "think_knowledge",
+      "has_llm": false,
+      "output_key": "think_results",
+      "default_next": "respond",
+      "error_next": "respond"
+    },
+    {
+      "name": "think_tools",
+      "agent": "think_tools",
+      "has_llm": false,
+      "output_key": "think_results",
+      "default_next": "respond",
+      "error_next": "respond"
+    },
+    {
+      "name": "respond",
+      "agent": "respond",
+      "has_llm": true,
+      "output_key": "respond",
+      "prompt_key": "chatbot.respond",
+      "temperature": 0.5,
+      "max_tokens": 4000,
+      "max_visits": 3,
+      "routing": [
+        {
+          "expr": {"op": "Eq", "field": {"scope": "Current", "key": "needs_more_context"}, "value": true},
+          "target": "understand"
+        }
+      ]
+    }
+  ],
+  "max_iterations": 4,
+  "max_llm_calls": 7,
+  "max_agent_hops": 12
+}
