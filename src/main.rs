@@ -40,7 +40,7 @@ async fn main() {
         .with_env_filter(std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".into()))
         .init();
 
-    let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".into());
+    let model = std::env::var("DEFAULT_MODEL").unwrap_or_else(|_| "gpt-4o-mini".into());
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())

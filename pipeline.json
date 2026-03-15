@@ -6,6 +6,7 @@
       "name": "understand",
       "agent": "understand",
       "has_llm": true,
+      "model_role": "fast",
       "output_key": "understand",
       "prompt_key": "chatbot.understand",
       "temperature": 0.3,
