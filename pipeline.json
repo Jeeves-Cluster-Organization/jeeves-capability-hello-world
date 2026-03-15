@@ -1,4 +1,5 @@
 {
+  "$schema": "../jeeves-core/schema/pipeline.schema.json",
   "name": "onboarding_chatbot",
   "stages": [
     {
