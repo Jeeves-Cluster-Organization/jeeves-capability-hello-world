@@ -42,3 +42,4 @@ nul
 .env.backup
 bin/
 node_modules
+/target/

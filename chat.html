@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Jeeves Onboarding Assistant</title>
+<style>
+  body { font-family: system-ui; max-width: 700px; margin: 40px auto; padding: 0 20px; }
+  #messages { border: 1px solid #ddd; border-radius: 8px; padding: 16px; height: 400px; overflow-y: auto; margin-bottom: 12px; }
+  .msg { margin: 8px 0; padding: 8px 12px; border-radius: 6px; }
+  .user { background: #e3f2fd; text-align: right; }
+  .assistant { background: #f5f5f5; white-space: pre-wrap; }
+  #input { width: calc(100% - 80px); padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+  #send { padding: 10px 20px; border: none; background: #1976d2; color: white; border-radius: 6px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h2>Jeeves Onboarding Assistant</h2>
+<div id="messages"></div>
+<input id="input" placeholder="Ask about Jeeves..." autofocus>
+<button id="send" onclick="send()">Send</button>
+<script>
+const msgs = document.getElementById('messages');
+const input = document.getElementById('input');
+input.onkeydown = e => { if (e.key === 'Enter') send(); };
+
+function appendMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+async function send() {
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  appendMsg('user', msg);
+  const div = appendMsg('assistant', '');
+  try {
+    const res = await fetch('/chat/stream', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: msg})
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream: true});
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data:')) {
+          const data = line.slice(5).trim();
+          if (data) div.textContent += data;
+        }
+      }
+    }
+  } catch(e) { div.textContent = 'Error: ' + e.message; }
+  if (!div.textContent) div.textContent = '(no response)';
+}
+</script>
+</body>
+</html>

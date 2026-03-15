@@ -1,26 +1,6 @@
-"""Embedded knowledge about the Jeeves ecosystem for onboarding.
+use std::collections::HashMap;
 
-This module provides sectioned knowledge that can be retrieved based on
-the user's intent, enabling more targeted and relevant responses.
-
-Sections:
-- ecosystem_overview: High-level architecture overview
-- layer_details: Detailed explanation of each layer
-- key_concepts: Core concepts (Envelope, AgentConfig, etc.)
-- code_examples: Practical code snippets
-- hello_world_structure: This capability's structure
-- how_to_guides: Step-by-step guides for common tasks
-- conditional_routing: RoutingRule, loop-back, bounds, error_next
-"""
-
-from typing import List
-
-
-# =============================================================================
-# SECTION: ECOSYSTEM OVERVIEW
-# =============================================================================
-
-ECOSYSTEM_OVERVIEW = """
+const ECOSYSTEM_OVERVIEW: &str = r#"
 ## The Jeeves Ecosystem
 
 Jeeves is a multi-layered AI agent orchestration system designed for building
@@ -42,14 +22,9 @@ Python: runner.run(input) → Kernel Pipeline (Agents) → Python Tools → Resu
 The Envelope carries state through the pipeline, ensuring immutable state
 transitions and full auditability. Tools are Python callables registered via
 `@tool` decorator — no subprocess, no IPC, no MCP.
-"""
+"#;
 
-
-# =============================================================================
-# SECTION: LAYER DETAILS
-# =============================================================================
-
-LAYER_DETAILS = """
+const LAYER_DETAILS: &str = r#"
 ## Layer Details
 
 ### Layer 1: jeeves-core (Rust Micro-Kernel + PyO3)
@@ -89,14 +64,9 @@ Your domain-specific implementations.
 - Database clients - capability-owned persistence (SQLite, etc.)
 
 **This is where hello-world lives!**
-"""
+"#;
 
-
-# =============================================================================
-# SECTION: KEY CONCEPTS
-# =============================================================================
-
-KEY_CONCEPTS = """
+const KEY_CONCEPTS: &str = r#"
 ## Key Concepts
 
 ### Envelope
@@ -179,14 +149,9 @@ Routing rules use expression trees in JSON, evaluated by the Rust kernel:
 ```
 
 Bounds guarantee termination: `max_llm_calls=7` means max 3 loops.
-"""
+"#;
 
-
-# =============================================================================
-# SECTION: CODE EXAMPLES
-# =============================================================================
-
-CODE_EXAMPLES = """
+const CODE_EXAMPLES: &str = r#"
 ## Code Examples
 
 ### Creating a Tool
@@ -280,14 +245,9 @@ def analyze(params):
     sub = runner.run(params["topic"], pipeline_name="analysis", user_id="system")
     return sub["outputs"]
 ```
-"""
+"#;
 
-
-# =============================================================================
-# SECTION: HELLO WORLD STRUCTURE
-# =============================================================================
-
-HELLO_WORLD_STRUCTURE = """
+const HELLO_WORLD_STRUCTURE: &str = r#"
 ## Hello World Capability Structure
 
 This capability demonstrates the minimal Jeeves pattern.
@@ -326,14 +286,9 @@ jeeves-capability-hello-world/
 5. Agents are auto-created from pipeline stages (LlmAgent for understand/respond,
    McpDelegatingAgent for think_knowledge/think_tools)
 6. Gradio ChatInterface calls `runner.stream()` for real-time responses
-"""
+"#;
 
-
-# =============================================================================
-# SECTION: HOW-TO GUIDES
-# =============================================================================
-
-HOW_TO_GUIDES = """
+const HOW_TO_GUIDES: &str = r#"
 ## How-To Guides
 
 ### How to Add a New Tool
@@ -411,14 +366,9 @@ pytest -v
 - Verify tool is registered via `runner.register_tool(fn)`
 - Verify tool name matches the agent name in pipeline.json for `has_llm: false` stages
 - Check that `@tool` decorator has `name` and `description` set
-"""
+"#;
 
-
-# =============================================================================
-# SECTION: CONDITIONAL ROUTING
-# =============================================================================
-
-CONDITIONAL_ROUTING = """
+const CONDITIONAL_ROUTING: &str = r#"
 ## Conditional Routing
 
 ### RoutingRule
@@ -479,67 +429,25 @@ the kernel routes to error_next instead of terminating the pipeline.
   "error_next": "respond"
 }
 ```
-"""
+"#;
 
-
-# =============================================================================
-# SECTION REGISTRY
-# =============================================================================
-
-KNOWLEDGE_SECTIONS = {
-    "ecosystem_overview": ECOSYSTEM_OVERVIEW,
-    "layer_details": LAYER_DETAILS,
-    "key_concepts": KEY_CONCEPTS,
-    "code_examples": CODE_EXAMPLES,
-    "hello_world_structure": HELLO_WORLD_STRUCTURE,
-    "how_to_guides": HOW_TO_GUIDES,
-    "conditional_routing": CONDITIONAL_ROUTING,
+pub fn get_for_sections(sections: &[String]) -> String {
+    let map: HashMap<&str, &str> = HashMap::from([
+        ("ecosystem_overview", ECOSYSTEM_OVERVIEW),
+        ("layer_details", LAYER_DETAILS),
+        ("key_concepts", KEY_CONCEPTS),
+        ("code_examples", CODE_EXAMPLES),
+        ("hello_world_structure", HELLO_WORLD_STRUCTURE),
+        ("how_to_guides", HOW_TO_GUIDES),
+        ("conditional_routing", CONDITIONAL_ROUTING),
+    ]);
+    let result: Vec<&str> = sections
+        .iter()
+        .filter_map(|s| map.get(s.as_str()).copied())
+        .collect();
+    if result.is_empty() {
+        ECOSYSTEM_OVERVIEW.to_string()
+    } else {
+        result.join("\n\n")
+    }
 }
-
-
-# =============================================================================
-# PUBLIC API
-# =============================================================================
-
-def get_knowledge_for_sections(sections: List[str]) -> str:
-    """
-    Get knowledge content for specified sections.
-
-    Args:
-        sections: List of section names to retrieve
-
-    Returns:
-        Combined knowledge text for the requested sections
-    """
-    parts = []
-    for section in sections:
-        if section in KNOWLEDGE_SECTIONS:
-            parts.append(KNOWLEDGE_SECTIONS[section])
-    return "\n\n".join(parts) if parts else ECOSYSTEM_OVERVIEW
-
-
-def get_onboarding_context() -> str:
-    """Get full onboarding context for prompts (all sections)."""
-    return "\n\n".join(KNOWLEDGE_SECTIONS.values())
-
-
-def get_section_names() -> List[str]:
-    """Get list of available knowledge section names."""
-    return list(KNOWLEDGE_SECTIONS.keys())
-
-
-__all__ = [
-    # Section constants
-    "ECOSYSTEM_OVERVIEW",
-    "LAYER_DETAILS",
-    "KEY_CONCEPTS",
-    "CODE_EXAMPLES",
-    "HELLO_WORLD_STRUCTURE",
-    "HOW_TO_GUIDES",
-    "CONDITIONAL_ROUTING",
-    # Registry and functions
-    "KNOWLEDGE_SECTIONS",
-    "get_knowledge_for_sections",
-    "get_onboarding_context",
-    "get_section_names",
-]
