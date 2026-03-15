@@ -10,6 +10,17 @@
       "prompt_key": "chatbot.understand",
       "temperature": 0.3,
       "max_tokens": 4000,
+      "max_context_tokens": 8000,
+      "context_overflow": "TruncateOldest",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "intent": {"type": "string"},
+          "topic": {"type": "string"},
+          "reasoning": {"type": "string"}
+        },
+        "required": ["intent"]
+      },
       "routing": [
         {
           "expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "getting_started"},
@@ -47,6 +58,16 @@
       "prompt_key": "chatbot.respond",
       "temperature": 0.5,
       "max_tokens": 4000,
+      "max_context_tokens": 8000,
+      "context_overflow": "TruncateOldest",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "response": {"type": "string"},
+          "needs_more_context": {"type": "boolean"}
+        },
+        "required": ["response"]
+      },
       "max_visits": 3,
       "routing": [
         {
@@ -58,5 +79,8 @@
   ],
   "max_iterations": 4,
   "max_llm_calls": 7,
-  "max_agent_hops": 12
+  "max_agent_hops": 12,
+  "state_schema": [
+    {"key": "think_results", "merge": "Append"}
+  ]
 }

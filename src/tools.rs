@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use async_trait::async_trait;
 use serde_json::{json, Value};
-use jeeves_core::worker::tools::{ToolExecutor, ToolInfo};
+use jeeves_core::prelude::{ToolExecutor, ToolInfo};
 use crate::knowledge;
 
 #[derive(Debug)]
