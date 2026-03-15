@@ -3,67 +3,64 @@ use std::collections::HashMap;
 const ECOSYSTEM_OVERVIEW: &str = r#"
 ## The Jeeves Ecosystem
 
-Jeeves is a multi-layered AI agent orchestration system designed for building
-production-grade AI applications. It follows a micro-kernel architecture where
-a Rust core handles all orchestration decisions.
+Jeeves is a multi-layered AI agent orchestration system built on a Rust
+micro-kernel. It follows a library-first architecture: consumers import
+jeeves-core as a crate dependency and compose pipelines declaratively.
 
-### The Two Layers
+### Architecture
 
-1. **jeeves-core** (Rust + PyO3) - The micro-kernel, importable as a Python library:
-   pipeline orchestration, routing engine, bounds checking, agent execution,
-   LLM providers, Python tool bridge. Optional HTTP gateway (feature-gated).
-2. **Capabilities** (Python) - Your domain-specific code: tools as Python callables,
-   pipeline configs (JSON), prompt templates (.txt), Gradio/FastAPI UIs
+1. **jeeves-core** (Rust library) — The micro-kernel: pipeline orchestration,
+   routing engine, bounds checking, agent execution, multi-provider LLM via
+   genai (OpenAI, Anthropic, Gemini, Ollama, Groq, DeepSeek, Cohere, xAI),
+   tool registry, checkpoint/resume, OTEL tracing.
+2. **Capabilities** (Rust or Python) — Domain-specific consumers: tools as
+   ToolExecutor impls, pipeline configs (JSON), prompt templates (.txt),
+   HTTP servers (Axum) or Python apps (PyO3).
 
 ### Data Flow
 
-Python: runner.run(input) → Kernel Pipeline (Agents) → Python Tools → Result dict
+Request → Kernel Pipeline (Agents) → Tools → Result
 
-The Envelope carries state through the pipeline, ensuring immutable state
-transitions and full auditability. Tools are Python callables registered via
-`@tool` decorator — no subprocess, no IPC, no MCP.
+The Envelope carries state through the pipeline, accumulating outputs from
+each stage. The kernel is sole orchestration authority — agents have no
+control over what runs next.
 "#;
 
 const LAYER_DETAILS: &str = r#"
 ## Layer Details
 
-### Layer 1: jeeves-core (Rust Micro-Kernel + PyO3)
+### jeeves-core (Rust Micro-Kernel)
 
-The foundation of Jeeves, written in Rust for performance and reliability.
-This is the sole orchestration authority. Python imports it directly as a library.
+The foundation. Written in Rust for performance and reliability.
 
-**Responsibilities:**
-- Pipeline orchestration engine - routes envelopes through agent stages
-- Envelope state management - immutable state transitions with full history
-- Resource quotas - limits on iterations, LLM calls, agent hops
-- LLM providers - OpenAI-compatible HTTP client for LLM calls
-- Python tool bridge - calls `@tool`-decorated Python functions directly
-- Agent auto-creation - LlmAgent, McpDelegatingAgent, DeterministicAgent
-- PipelineRunner - high-level facade (run/stream methods)
-- Optional HTTP gateway (axum, behind `http-server` feature flag)
+**Core Modules:**
+- Pipeline orchestration — routes envelopes through agent stages
+- Envelope state management — immutable transitions with full audit trail
+- Resource bounds — max_iterations, max_llm_calls, max_agent_hops, edge_limits
+- GenaiProvider — 8 native LLM providers via genai crate
+- Model roles — abstract roles (fast, reasoning) resolved via MODEL_* env vars
+- ToolRegistry — composable tool registration with per-stage ACL
+- AgentFactoryBuilder — auto-creates agents from pipeline stage config
+- NodeKind: Agent, Gate, Fork, Router — four graph node types
+- Checkpoint/resume — serializable pipeline state for durability
+- OTEL bridge — feature-gated OpenTelemetry tracing
 
-**Python API:**
-```python
-from jeeves_core import PipelineRunner, tool
+**Consumption modes:**
+- Rust crate: `use jeeves_core::prelude::*;`
+- PyO3 module: `from jeeves_core import PipelineRunner`
+- MCP stdio: `jeeves-kernel` binary (feature-gated)
 
-runner = PipelineRunner.from_json("pipeline.json", prompts_dir="prompts/")
-result = runner.run("input", user_id="u1")       # Buffered
-for event in runner.stream("input", user_id="u1"):  # Streaming
-    print(event)
-```
+### Capabilities (Consumer Layer)
 
-### Layer 2: Capabilities (Python User Space)
+Domain-specific implementations that use jeeves-core as a library.
 
-Your domain-specific implementations.
+**Rust consumers** (Axum HTTP servers):
+- jeeves-capability-hello-world — onboarding chatbot
+- assistant-7agent — personal assistant with 24 tools
+- game-server — game NPC dialogue system
 
-**Responsibilities:**
-- Domain prompts - `.txt` prompt templates loaded by kernel
-- Custom tools - Python functions registered via `@tool` decorator
-- Pipeline configuration - `pipeline.json` defining stages + routing
-- UI layer - Gradio or FastAPI frontends
-- Database clients - capability-owned persistence (SQLite, etc.)
-
-**This is where hello-world lives!**
+**Python consumers** (PyO3 import):
+- jeeves-capability-mini-swe-agent — SWE agent with Gradio UI
 "#;
 
 const KEY_CONCEPTS: &str = r#"
@@ -71,221 +68,180 @@ const KEY_CONCEPTS: &str = r#"
 
 ### Envelope
 
-The state container that flows through the pipeline. Think of it as a "request
-context" that accumulates results from each processing stage.
+The state container flowing through the pipeline. Carries:
+- `raw_input` — original user message
+- `outputs` — dict mapping stage output_keys to their outputs
+- `state` — persistent fields with merge strategies (Replace/Append/MergeDict)
+- `metadata` — context dict (user_id, session_id, custom fields)
+- `bounds` — iteration/LLM/hop counters and terminal_reason
 
-**Properties:**
-- `envelope_id` - Unique identifier for tracing
-- `raw_input` - The original user message
-- `metadata` - Context dict passed between agents
-- `outputs` - Dict mapping agent names to their outputs
-- `current_stage` - Which agent is currently processing
-- `terminated` - Whether pipeline should stop
+### PipelineConfig (pipeline.json)
 
-**Immutability:** Each state transition creates a new snapshot, enabling
-full replay and debugging.
+Declarative pipeline definition:
+- `stages` — ordered list of PipelineStage definitions
+- `max_iterations`, `max_llm_calls`, `max_agent_hops` — termination bounds
+- `edge_limits` — per-edge transition caps
+- `state_schema` — typed state fields with merge strategies
 
-### AgentConfig
+### PipelineStage
 
-Declarative configuration for an agent, passed via JEEVES_AGENTS env var.
+Each stage declares:
+- `agent` — agent name to dispatch
+- `has_llm` — whether agent makes LLM calls
+- `model_role` — abstract model role (e.g. "fast", "reasoning")
+- `prompt_key` — prompt template key
+- `node_kind` — Agent, Gate, Fork, or Router
+- `routing` — expression-based routing rules (first match wins)
+- `router_targets` — declared targets for Router nodes
+- `output_schema` — JSON Schema for output validation
+- `allowed_tools` — per-stage tool whitelist
+- `max_context_tokens` + `context_overflow` — context window safety
 
-**Key Fields:**
-- `name` - Agent identifier (e.g., "understand", "respond")
-- `type` - Agent type: "llm", "mcp_delegate", "deterministic"
-- `has_llm` - Whether this agent calls an LLM (set in pipeline.json)
-- `has_tools` - Whether this agent can execute tools
-- `prompt_key` - Which prompt template to use (e.g., "chatbot.respond")
-- `output_key` - Where to store results in envelope.outputs
+### NodeKind (Graph Node Types)
 
-### PipelineConfig
+| Kind | Behavior |
+|------|----------|
+| **Agent** | Runs agent, then evaluates routing rules |
+| **Gate** | Evaluates routing rules without running an agent |
+| **Fork** | Evaluates ALL rules, dispatches matching targets in parallel |
+| **Router** | Runs agent, agent picks target from declared set |
 
-JSON configuration for an entire multi-agent pipeline (pipeline.json).
+### Routing
 
-**Key Fields:**
-- `name` - Pipeline identifier
-- `stages` - List of PipelineStage definitions
-- `max_iterations` - Circuit breaker for loops
-- `max_llm_calls` - Budget for LLM usage
-- `max_agent_hops` - Maximum stage transitions
+Expression trees evaluated by the kernel (13 ops, 5 scopes):
+```json
+{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "search"}, "target": "search_agent"}
+```
 
-### Integration Pattern (PyO3 Library)
+Router nodes use target declarations instead:
+```json
+{"router_targets": [
+  {"target": "search", "description": "User wants to find information"},
+  {"target": "chat", "description": "Casual conversation",
+   "when": {"op": "Exists", "field": {"scope": "State", "key": "chat_enabled"}}}
+]}
+```
 
-Capabilities import the Rust kernel directly as a Python library via PyO3.
-No HTTP, no subprocess, no IPC — single process.
+### Model Roles
+
+Stages set `model_role` to an abstract role name. The GenaiProvider resolves
+roles via `MODEL_*` environment variables:
+- `MODEL_FAST=gpt-4o-mini` → `model_role: "fast"` uses gpt-4o-mini
+- `MODEL_REASONING=claude-3-5-sonnet` → `model_role: "reasoning"` uses claude-3-5-sonnet
+- Explicit model names pass through unchanged
+"#;
+
+const CODE_EXAMPLES: &str = r#"
+## Code Examples
+
+### Rust Consumer Pattern
+
+```rust
+use jeeves_core::prelude::*;
+use jeeves_core::worker::llm::genai_provider::GenaiProvider;
+
+// LLM provider (reads API keys from env, model roles from MODEL_* vars)
+let llm: Arc<dyn LlmProvider> = Arc::new(GenaiProvider::new("gpt-4o-mini"));
+
+// Load pipeline + prompts
+let config: PipelineConfig = serde_json::from_str(&std::fs::read_to_string("pipeline.json")?)?;
+let prompts = Arc::new(PromptRegistry::from_dir("prompts"));
+
+// Build tools + agents
+let tools = ToolRegistryBuilder::new().add_executor(my_tools).build();
+let agents = AgentFactoryBuilder::new(llm, prompts, tools, handle.clone())
+    .add_pipeline(config.clone())
+    .build();
+
+// Run pipeline
+let envelope = Envelope::new_minimal(user_id, session_id, input, None);
+let result = run_pipeline_with_envelope(&handle, pid, config, envelope, &agents).await?;
+```
+
+### Implementing a ToolExecutor
+
+```rust
+#[derive(Debug)]
+struct MyTools;
+
+#[async_trait]
+impl ToolExecutor for MyTools {
+    async fn execute(&self, name: &str, params: Value) -> jeeves_core::Result<Value> {
+        match name {
+            "get_time" => Ok(json!({"time": chrono::Utc::now().to_rfc3339()})),
+            _ => Err(jeeves_core::Error::not_found(format!("Unknown tool: {name}"))),
+        }
+    }
+    fn list_tools(&self) -> Vec<ToolInfo> {
+        vec![ToolInfo {
+            name: "get_time".into(),
+            description: "Get current UTC time".into(),
+            parameters: json!({"type": "object", "properties": {}}),
+        }]
+    }
+}
+```
+
+### Python Consumer Pattern (PyO3)
 
 ```python
 from jeeves_core import PipelineRunner, tool
 
 @tool(name="my_tool", description="Does something")
 def my_tool(params):
-    return {"result": "done"}
+    return {"result": params.get("input")}
 
-runner = PipelineRunner.from_json("pipeline.json", prompts_dir="prompts/")
+runner = PipelineRunner.from_json("pipeline.json", model="gpt-4o-mini")
 runner.register_tool(my_tool)
 result = runner.run("hello", user_id="user1")
 ```
 
-**Why direct import?** The kernel is fundamentally a library, not a service.
-Like Temporal workers import the SDK, capabilities import jeeves-core.
-
-### The Pipeline Pattern
-
-Jeeves uses a staged pipeline with declarative routing:
-
-**Linear flow:** Understand → Think-Knowledge → Respond
-**Conditional routing:** Understand can route to Think-Tools for general/getting_started intents
-**Loop-back:** Respond can route back to Understand when knowledge is insufficient
-
-Agent types (auto-created from pipeline.json):
-1. **Understand** (LLM, `has_llm: true`): Classifies intent, determines routing
-2. **Think-Knowledge** (No LLM, `has_llm: false`): Calls Python tool via ToolRegistry
-3. **Think-Tools** (No LLM, `has_llm: false`): Calls Python tool via ToolRegistry
-4. **Respond** (LLM, `has_llm: true`): Synthesizes response, may loop back
-
-Routing rules use expression trees in JSON, evaluated by the Rust kernel:
-```json
-{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "general"}, "target": "think_tools"}
-{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "needs_more_context"}, "value": true}, "target": "understand"}
-```
-
-Bounds guarantee termination: `max_llm_calls=7` means max 3 loops.
-"#;
-
-const CODE_EXAMPLES: &str = r#"
-## Code Examples
-
-### Creating a Tool
-
-```python
-from jeeves_core import PipelineRunner, tool
-
-@tool(name="get_time", description="Get current date and time",
-      parameters={"type": "object", "properties": {}})
-def get_time(params):
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc)
-    return {"status": "success", "current_time": now.isoformat(), "timezone": "UTC"}
-```
-
-The `@tool` decorator sets `_tool_name`, `_tool_description`, and `_tool_parameters`
-attributes on the function. `register_tool()` reads these attributes.
-
-### Registering Tools
-
-```python
-runner = PipelineRunner.from_json("pipeline.json", prompts_dir="prompts/")
-runner.register_tool(get_time)
-runner.register_tool(my_other_tool)
-```
-
-Agents are auto-created from pipeline.json stages. When a tool name matches
-a `has_llm: false` agent name, the kernel creates an McpDelegatingAgent that
-calls the Python tool directly.
-
-### Creating a Prompt Template
-
-```
-# In prompts/chatbot.respond.txt (loaded by kernel PromptRegistry)
-You are a helpful assistant.
-
-## User Message
-{raw_input}
-
-## Context
-{understand_intent}
-
-## Task
-Respond helpfully based on the context provided.
-```
-
-Templates use `{variable_name}` placeholders. The kernel's PromptRegistry
-loads all `.txt` files from the prompts directory.
-
-### Defining a Pipeline (JSON)
+### Pipeline JSON
 
 ```json
 {
   "name": "my_pipeline",
   "stages": [
-    {"name": "understand", "agent": "understand", "has_llm": true,
-     "prompt_key": "chatbot.understand", "default_next": "respond"},
+    {"name": "classify", "agent": "classify", "has_llm": true,
+     "model_role": "fast", "prompt_key": "classify",
+     "default_next": "respond"},
     {"name": "respond", "agent": "respond", "has_llm": true,
-     "prompt_key": "chatbot.respond"}
+     "prompt_key": "respond"}
   ],
   "max_iterations": 4, "max_llm_calls": 7, "max_agent_hops": 12
 }
-```
-
-### Running a Pipeline
-
-```python
-from jeeves_core import PipelineRunner
-
-runner = PipelineRunner.from_json("pipeline.json", prompts_dir="prompts/",
-                                   openai_api_key="sk-...")
-
-# Buffered (blocks until done)
-result = runner.run("What is Jeeves?", user_id="user1")
-# result["outputs"], result["terminated"], result["terminal_reason"]
-
-# Streaming (Python iterator, releases GIL while waiting)
-for event in runner.stream("What is Jeeves?", user_id="user1"):
-    if event["type"] == "delta":
-        print(event["content"], end="", flush=True)
-```
-
-### Cross-Pipeline Coordination
-
-```python
-# Tool can call runner.run() for sub-pipeline (reentrant, uses block_in_place)
-runner.register_pipeline("analysis", analysis_config_json)
-
-@tool(name="analyze", description="Run sub-analysis")
-def analyze(params):
-    sub = runner.run(params["topic"], pipeline_name="analysis", user_id="system")
-    return sub["outputs"]
 ```
 "#;
 
 const HELLO_WORLD_STRUCTURE: &str = r#"
 ## Hello World Capability Structure
 
-This capability demonstrates the minimal Jeeves pattern.
+This capability demonstrates the minimal Rust consumer pattern.
 
 ```
 jeeves-capability-hello-world/
-├── app.py                           # Single entry point (PyO3 + Gradio)
-├── pipeline.json                    # Pipeline definition (JSON)
-├── prompts/                         # Prompt templates for kernel
-│   ├── chatbot.understand.txt       # Intent classification prompt
-│   ├── chatbot.respond.txt          # Response synthesis prompt
+├── src/
+│   ├── main.rs          # Axum HTTP server (chat + streaming endpoints)
+│   ├── tools.rs         # ToolExecutor impl (knowledge retrieval + time)
+│   └── knowledge.rs     # Embedded knowledge sections
+├── pipeline.json        # 4-stage pipeline with routing
+├── prompts/             # Prompt templates (.txt)
+│   ├── chatbot.understand.txt
+│   ├── chatbot.respond.txt
 │   └── chatbot.respond_streaming.txt
-├── jeeves_capability_hello_world/   # Python package
-│   ├── __init__.py
-│   ├── prompts/
-│   │   └── knowledge_base.py        # Embedded knowledge (this file!)
-│   └── tests/
-│       └── test_onboarding.py       # Knowledge base tests
-└── pyproject.toml
+├── chat.html            # Simple chat UI
+├── Cargo.toml           # Depends on jeeves-core
+└── .env                 # OPENAI_API_KEY, DEFAULT_MODEL, PORT
 ```
-
-### Key Files Explained
-
-- **app.py**: Single-file entry point — defines 4 tools, creates PipelineRunner,
-  runs Gradio ChatInterface. One file, one process, ~150 LOC.
-- **pipeline.json**: 4-stage pipeline with conditional routing rules
-- **prompts/*.txt**: Prompt templates loaded by kernel's PromptRegistry
-- **knowledge_base.py**: Embedded knowledge sections for onboarding responses
 
 ### How It Works
 
-1. `app.py` imports `PipelineRunner` and `tool` from `jeeves_core` (Rust via PyO3)
-2. 4 tools are defined as Python functions with `@tool` decorator
-3. `PipelineRunner.from_json()` loads pipeline.json + prompts
-4. `register_tool()` bridges Python callables into the Rust ToolRegistry
-5. Agents are auto-created from pipeline stages (LlmAgent for understand/respond,
-   McpDelegatingAgent for think_knowledge/think_tools)
-6. Gradio ChatInterface calls `runner.stream()` for real-time responses
+1. `main.rs` creates GenaiProvider, Kernel, PromptRegistry, ToolRegistry
+2. AgentFactoryBuilder auto-creates agents from pipeline.json stages
+3. Axum serves `/chat` (buffered) and `/chat/stream` (SSE) endpoints
+4. Pipeline: understand → think_knowledge/think_tools → respond
+5. The `understand` stage (model_role: fast) classifies intent cheaply
+6. The `respond` stage uses the deployment default model for quality
 "#;
 
 const HOW_TO_GUIDES: &str = r#"
@@ -293,142 +249,65 @@ const HOW_TO_GUIDES: &str = r#"
 
 ### How to Add a New Tool
 
-1. **Define the function** in `app.py` with the `@tool` decorator:
-   ```python
-   from jeeves_core import tool
-
-   @tool(name="my_tool", description="Does something useful",
-         parameters={"type": "object", "properties": {"input": {"type": "string"}}})
-   def my_tool(params):
-       return {"status": "success", "result": params.get("input", "").upper()}
+1. Add a match arm in `tools.rs`:
+   ```rust
+   "my_tool" => Ok(json!({"result": "done"})),
+   ```
+2. Add a `ToolInfo` entry in `list_tools()`:
+   ```rust
+   ToolInfo { name: "my_tool".into(), description: "...".into(), parameters: json!({...}) }
    ```
 
-2. **Register it** with the runner:
-   ```python
-   runner.register_tool(my_tool)
+### How to Add a New Stage
+
+1. Create a prompt template in `prompts/my_stage.txt`
+2. Add a stage to `pipeline.json`:
+   ```json
+   {"name": "my_stage", "agent": "my_stage", "has_llm": true,
+    "prompt_key": "my_stage", "default_next": "respond"}
    ```
+3. Agents are auto-created — no manual registration needed
 
-That's it — the kernel creates an McpDelegatingAgent for any `has_llm: false`
-stage whose name matches a registered tool.
+### How to Use a Different LLM Provider
 
-### How to Create a New Agent
+Set the appropriate API key environment variable:
+- `OPENAI_API_KEY` for OpenAI models (gpt-4o, gpt-4o-mini)
+- `ANTHROPIC_API_KEY` for Anthropic models (claude-3-5-sonnet)
+- `GEMINI_API_KEY` for Google models
 
-1. **Create the prompt** as a `.txt` file in `prompts/`
-2. **Add a stage** to `pipeline.json` with the agent name and prompt_key
-3. Agents are auto-created — no manual registration needed!
-4. **Add routing rules** in pipeline.json if conditional routing is needed
+Set `DEFAULT_MODEL` to the desired model name. Model roles resolve via:
+- `MODEL_FAST=gpt-4o-mini` → stages with `"model_role": "fast"` use this
+- `MODEL_REASONING=claude-3-5-sonnet` → stages with `"model_role": "reasoning"` use this
 
-### How to Modify the Pipeline Flow
-
-Edit `pipeline.json`:
-- Change `default_next` to alter the default flow
-- Add `routing` rules to create conditional branches
-- Set `error_next` to define fallback agents on failure
-- Add/remove stages from the `stages` list
-- Adjust bounds (`max_iterations`, `max_llm_calls`, `max_agent_hops`)
-
-### How to Run the Capability
+### How to Run
 
 ```bash
-# Install jeeves-core PyO3 module (once)
-cd ../jeeves-core && pip install -e .
+# Set API key
+export OPENAI_API_KEY=sk-...
 
-# Start Gradio UI (single process — kernel runs embedded)
-python app.py
+# Optional: configure model roles
+export MODEL_FAST=gpt-4o-mini
+export MODEL_REASONING=claude-3-5-sonnet
+export DEFAULT_MODEL=gpt-4o-mini
+
+# Run
+cargo run
+# → listening on 0.0.0.0:8001
 ```
 
-Then open http://localhost:8001 in your browser.
+### Routing
 
-### How to Test Your Changes
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest jeeves_capability_hello_world/tests/test_onboarding.py
-
-# Run with verbose output
-pytest -v
-```
-
-### Common Troubleshooting
-
-**Import error: `from jeeves_core import ...`**
-- Build the PyO3 module: `cd ../jeeves-core && pip install -e .`
-- On Windows, use `pip install -e .` (not `maturin develop`)
-
-**Agent not receiving context**
-- Check prompt template uses `{variable_name}` placeholders
-- Check pipeline.json has correct `output_key` and routing
-
-**Tool not executing**
-- Verify tool is registered via `runner.register_tool(fn)`
-- Verify tool name matches the agent name in pipeline.json for `has_llm: false` stages
-- Check that `@tool` decorator has `name` and `description` set
-"#;
-
-const CONDITIONAL_ROUTING: &str = r#"
-## Conditional Routing
-
-### RoutingRule
-
-Stages define routing rules as JSON expression trees that the Rust kernel evaluates
-after each agent completes. Rules are checked against the agent's output dict.
-
+Conditional routing uses expression trees in pipeline.json:
 ```json
-{
-  "name": "understand",
-  "agent": "understand",
-  "routing": [
-    {"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "general"}, "target": "think_tools"},
-    {"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "getting_started"}, "target": "think_tools"}
-  ],
-  "default_next": "think_knowledge",
-  "error_next": "respond"
-}
+{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "general"}, "target": "think_tools"}
 ```
 
-### Loop-Back Routing (Temporal Pattern)
-
-The respond stage uses the Temporal pattern: routing expresses when to CONTINUE.
-When no rule matches and no default_next is set, the kernel terminates naturally.
-
+Loop-back routing (Temporal pattern) — respond loops to understand when knowledge is insufficient:
 ```json
-{
-  "name": "respond",
-  "agent": "respond",
-  "routing": [
-    {"expr": {"op": "Eq", "field": {"scope": "Current", "key": "needs_more_context"}, "value": true}, "target": "understand"}
-  ]
-}
+{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "needs_more_context"}, "value": true}, "target": "understand"}
 ```
 
-No `default_next` = kernel terminates with COMPLETED when no rule matches.
-
-### Tight Bounds
-
-Circular routes require bounds to guarantee termination:
-- `max_llm_calls=7`: Each loop uses 2 LLM calls (understand + respond), so max 3 loops
-- `max_agent_hops=12`: Each loop uses ~4 hops, so max 3 loops
-- `max_iterations=4`: Explicit iteration cap
-
-When bounds are exceeded, the kernel terminates with a reason like
-`MaxLlmCallsExceeded`. The response includes `terminal_reason` so the
-client can display a partial response if available.
-
-### error_next
-
-Each stage can define a fallback stage via `error_next`. If the agent fails,
-the kernel routes to error_next instead of terminating the pipeline.
-
-```json
-{
-  "name": "think_knowledge",
-  "agent": "think_knowledge",
-  "error_next": "respond"
-}
-```
+Bounds guarantee termination: max_llm_calls=7, max_agent_hops=12, max_iterations=4.
 "#;
 
 pub fn get_for_sections(sections: &[String]) -> String {
@@ -439,7 +318,6 @@ pub fn get_for_sections(sections: &[String]) -> String {
         ("code_examples", CODE_EXAMPLES),
         ("hello_world_structure", HELLO_WORLD_STRUCTURE),
         ("how_to_guides", HOW_TO_GUIDES),
-        ("conditional_routing", CONDITIONAL_ROUTING),
     ]);
     let result: Vec<&str> = sections
         .iter()

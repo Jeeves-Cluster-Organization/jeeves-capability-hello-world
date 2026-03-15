@@ -15,7 +15,7 @@ impl HelloWorldTools {
         section_map.insert("architecture".into(), vec!["ecosystem_overview".into(), "layer_details".into()]);
         section_map.insert("concept".into(), vec!["key_concepts".into(), "code_examples".into()]);
         section_map.insert("getting_started".into(), vec!["hello_world_structure".into(), "how_to_guides".into()]);
-        section_map.insert("component".into(), vec!["ecosystem_overview".into(), "layer_details".into()]);
+        section_map.insert("component".into(), vec!["layer_details".into(), "key_concepts".into()]);
         section_map.insert("general".into(), vec!["ecosystem_overview".into()]);
         Self { section_map }
     }
