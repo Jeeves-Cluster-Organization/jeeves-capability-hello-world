@@ -13,7 +13,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tracing::info;
 
 use jeeves_core::prelude::*;
-use jeeves_core::worker::llm::openai::OpenAiProvider;
+use jeeves_core::worker::llm::genai_provider::GenaiProvider;
 
 #[derive(Clone)]
 struct AppState {
@@ -40,7 +40,6 @@ async fn main() {
         .with_env_filter(std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".into()))
         .init();
 
-    let api_key = std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY required");
     let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".into());
     let port: u16 = std::env::var("PORT")
         .ok()
@@ -59,7 +58,7 @@ async fn main() {
     let handle = spawn_kernel(kernel, cancel);
 
     // LLM + prompts
-    let llm: Arc<dyn LlmProvider> = Arc::new(OpenAiProvider::new(&api_key, &model));
+    let llm: Arc<dyn LlmProvider> = Arc::new(GenaiProvider::new(&model));
     let prompts = Arc::new(PromptRegistry::from_dir("prompts"));
 
     // Tools
