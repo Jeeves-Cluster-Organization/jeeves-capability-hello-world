@@ -11,7 +11,7 @@ Usage:
 """
 
 CAPABILITY_ID = "hello_world"
-CAPABILITY_VERSION = "0.0.1"
+CAPABILITY_VERSION = "0.0.2"
 
 __version__ = CAPABILITY_VERSION
 __capability__ = CAPABILITY_ID

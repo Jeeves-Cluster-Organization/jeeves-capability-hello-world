@@ -86,18 +86,14 @@ class TestKnowledgeBase:
 
     def test_hello_world_structure_contains_files(self):
         """Verify hello world structure is documented."""
-        assert "gradio_app.py" in HELLO_WORLD_STRUCTURE
-        assert "run.py" in HELLO_WORLD_STRUCTURE
-        assert "mcp_server.py" in HELLO_WORLD_STRUCTURE
+        assert "app.py" in HELLO_WORLD_STRUCTURE
         assert "pipeline.json" in HELLO_WORLD_STRUCTURE
         assert "knowledge_base.py" in HELLO_WORLD_STRUCTURE
 
     def test_code_examples_contains_patterns(self):
         """Verify code examples are provided."""
         assert "get_time" in CODE_EXAMPLES
-        assert "mcp_tool" in CODE_EXAMPLES
-        assert "McpToolServer" in CODE_EXAMPLES
-        assert "pipeline_config" in CODE_EXAMPLES
+        assert "PipelineRunner" in CODE_EXAMPLES
 
     def test_how_to_guides_contains_guides(self):
         """Verify how-to guides are provided."""
@@ -145,7 +141,7 @@ class TestKnowledgeBase:
         # Multiple sections
         result = get_knowledge_for_sections(["key_concepts", "code_examples"])
         assert "Envelope" in result
-        assert "mcp_tool" in result
+        assert "get_time" in result
 
     def test_get_knowledge_for_sections_fallback(self):
         """Verify fallback to ecosystem_overview for empty/invalid."""
