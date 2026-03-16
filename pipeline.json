@@ -13,6 +13,8 @@
       "max_tokens": 4000,
       "max_context_tokens": 8000,
       "context_overflow": "TruncateOldest",
+      "timeout_seconds": 10,
+      "retry_policy": {"max_retries": 1},
       "output_schema": {
         "type": "object",
         "properties": {
@@ -40,6 +42,8 @@
       "agent": "think_knowledge",
       "has_llm": false,
       "output_key": "think_results",
+      "allowed_tools": ["think_knowledge"],
+      "timeout_seconds": 5,
       "default_next": "respond",
       "error_next": "respond"
     },
@@ -48,6 +52,8 @@
       "agent": "think_tools",
       "has_llm": false,
       "output_key": "think_results",
+      "allowed_tools": ["think_tools", "get_time", "list_tools"],
+      "timeout_seconds": 5,
       "default_next": "respond",
       "error_next": "respond"
     },
@@ -61,6 +67,8 @@
       "max_tokens": 4000,
       "max_context_tokens": 8000,
       "context_overflow": "TruncateOldest",
+      "timeout_seconds": 30,
+      "retry_policy": {"max_retries": 1},
       "output_schema": {
         "type": "object",
         "properties": {
