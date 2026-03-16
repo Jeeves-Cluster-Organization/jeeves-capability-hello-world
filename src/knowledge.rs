@@ -149,7 +149,7 @@ let prompts = Arc::new(PromptRegistry::from_dir("prompts"));
 
 // Build tools + agents
 let tools = ToolRegistryBuilder::new().add_executor(my_tools).build();
-let agents = AgentFactoryBuilder::new(llm, prompts, tools, handle.clone())
+let agents = AgentFactoryBuilder::new(llm, prompts, tools)
     .add_pipeline(config.clone())
     .build();
 

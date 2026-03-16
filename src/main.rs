@@ -67,7 +67,7 @@ async fn main() {
         .build();
 
     // Build agents from pipeline stages
-    let agents = AgentFactoryBuilder::new(llm, prompts, tool_registry, handle.clone())
+    let agents = AgentFactoryBuilder::new(llm, prompts, tool_registry)
         .add_pipeline(config.clone())
         .build();
 
