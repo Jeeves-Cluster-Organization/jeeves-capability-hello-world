@@ -24,16 +24,7 @@
         },
         "required": ["intent"]
       },
-      "routing": [
-        {
-          "expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "getting_started"},
-          "target": "think_tools"
-        },
-        {
-          "expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "general"},
-          "target": "think_tools"
-        }
-      ],
+      "routing_fn": "intent_router",
       "default_next": "think_knowledge",
       "error_next": "respond"
     },
@@ -78,12 +69,7 @@
         "required": ["response"]
       },
       "max_visits": 3,
-      "routing": [
-        {
-          "expr": {"op": "Eq", "field": {"scope": "Current", "key": "needs_more_context"}, "value": true},
-          "target": "understand"
-        }
-      ]
+      "routing_fn": "respond_loop"
     }
   ],
   "max_iterations": 4,

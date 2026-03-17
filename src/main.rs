@@ -52,8 +52,28 @@ async fn main() {
     )
     .expect("invalid pipeline.json");
 
-    // Kernel
-    let kernel = Kernel::new();
+    // Kernel + routing functions
+    let mut kernel = Kernel::new();
+    kernel.register_routing_fn("intent_router", Arc::new(|ctx: &RoutingContext<'_>| {
+        let intent = ctx.outputs.get(ctx.agent_name)
+            .and_then(|o| o.get("intent"))
+            .and_then(|v| v.as_str());
+        match intent {
+            Some("getting_started" | "general") => RoutingResult::Next("think_tools".into()),
+            _ => RoutingResult::Next("think_knowledge".into()),
+        }
+    }));
+    kernel.register_routing_fn("respond_loop", Arc::new(|ctx: &RoutingContext<'_>| {
+        let needs_more = ctx.outputs.get(ctx.agent_name)
+            .and_then(|o| o.get("needs_more_context"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        if needs_more {
+            RoutingResult::Next("understand".into())
+        } else {
+            RoutingResult::Terminate
+        }
+    }));
     let cancel = tokio_util::sync::CancellationToken::new();
     let handle = spawn_kernel(kernel, cancel);
 

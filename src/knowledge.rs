@@ -41,7 +41,7 @@ The foundation. Written in Rust for performance and reliability.
 - Model roles — abstract roles (fast, reasoning) resolved via MODEL_* env vars
 - ToolRegistry — composable tool registration with per-stage ACL
 - AgentFactoryBuilder — auto-creates agents from pipeline stage config
-- NodeKind: Agent, Gate, Fork, Router — four graph node types
+- NodeKind: Agent, Gate, Fork — three graph node types
 - Checkpoint/resume — serializable pipeline state for durability
 - OTEL bridge — feature-gated OpenTelemetry tracing
 
@@ -90,9 +90,8 @@ Each stage declares:
 - `has_llm` — whether agent makes LLM calls
 - `model_role` — abstract model role (e.g. "fast", "reasoning")
 - `prompt_key` — prompt template key
-- `node_kind` — Agent, Gate, Fork, or Router
-- `routing` — expression-based routing rules (first match wins)
-- `router_targets` — declared targets for Router nodes
+- `node_kind` — Agent, Gate, or Fork
+- `routing_fn` — name of registered routing function
 - `output_schema` — JSON Schema for output validation
 - `allowed_tools` — per-stage tool whitelist
 - `max_context_tokens` + `context_overflow` — context window safety
@@ -101,26 +100,21 @@ Each stage declares:
 
 | Kind | Behavior |
 |------|----------|
-| **Agent** | Runs agent, then evaluates routing rules |
-| **Gate** | Evaluates routing rules without running an agent |
-| **Fork** | Evaluates ALL rules, dispatches matching targets in parallel |
-| **Router** | Runs agent, agent picks target from declared set |
+| **Agent** | Runs agent, then calls routing_fn (or default_next) |
+| **Gate** | Calls routing_fn without running an agent |
+| **Fork** | Calls routing_fn, dispatches returned targets in parallel |
 
 ### Routing
 
-Expression trees evaluated by the kernel (13 ops, 5 scopes):
-```json
-{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "search"}, "target": "search_agent"}
-```
+Routing is code, not data. Consumers register named routing functions on
+the Kernel before spawning. Stages reference them by name via `routing_fn`.
+Static wiring (`default_next`, `error_next`) remains declarative.
 
-Router nodes use target declarations instead:
-```json
-{"router_targets": [
-  {"target": "search", "description": "User wants to find information"},
-  {"target": "chat", "description": "Casual conversation",
-   "when": {"op": "Exists", "field": {"scope": "State", "key": "chat_enabled"}}}
-]}
-```
+Evaluation order:
+1. `agent_failed` + `error_next` -> error_next
+2. `routing_fn` registered -> call it
+3. `default_next`
+4. Terminate COMPLETED
 
 ### Model Roles
 
@@ -297,15 +291,10 @@ cargo run
 
 ### Routing
 
-Conditional routing uses expression trees in pipeline.json:
-```json
-{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "intent"}, "value": "general"}, "target": "think_tools"}
-```
-
-Loop-back routing (Temporal pattern) — respond loops to understand when knowledge is insufficient:
-```json
-{"expr": {"op": "Eq", "field": {"scope": "Current", "key": "needs_more_context"}, "value": true}, "target": "understand"}
-```
+Routing is code. Stages set `routing_fn` to reference a registered function.
+The `understand` stage uses `intent_router` to route getting_started/general
+intents to think_tools, and everything else to think_knowledge. The `respond`
+stage uses `respond_loop` to loop back to understand when needs_more_context is true.
 
 Bounds guarantee termination: max_llm_calls=7, max_agent_hops=12, max_iterations=4.
 "#;
