@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use async_trait::async_trait;
 use serde_json::{json, Value};
-use jeeves_core::prelude::{ToolExecutor, ToolInfo};
+use jeeves_core::prelude::{ToolExecutor, ToolInfo, ToolOutput};
 use crate::knowledge;
 
 #[derive(Debug)]
@@ -23,11 +23,11 @@ impl HelloWorldTools {
 
 #[async_trait]
 impl ToolExecutor for HelloWorldTools {
-    async fn execute(&self, name: &str, params: Value) -> jeeves_core::Result<Value> {
+    async fn execute(&self, name: &str, params: Value) -> jeeves_core::Result<ToolOutput> {
         match name {
             "get_time" => {
                 let now = chrono::Utc::now();
-                Ok(json!({
+                Ok(ToolOutput::json(json!({
                     "status": "success",
                     "datetime": now.format("%Y-%m-%d %H:%M:%S").to_string(),
                     "date": now.format("%Y-%m-%d").to_string(),
@@ -35,10 +35,10 @@ impl ToolExecutor for HelloWorldTools {
                     "timezone": "UTC",
                     "day_of_week": now.format("%A").to_string(),
                     "iso_format": now.to_rfc3339(),
-                }))
+                })))
             }
             "list_tools" => {
-                Ok(json!({
+                Ok(ToolOutput::json(json!({
                     "status": "success",
                     "tools": [
                         {
@@ -62,7 +62,7 @@ impl ToolExecutor for HelloWorldTools {
                         "Help with getting started and adding tools"
                     ],
                     "count": 2
-                }))
+                })))
             }
             "think_knowledge" => {
                 let intent = params.get("outputs")
@@ -74,10 +74,10 @@ impl ToolExecutor for HelloWorldTools {
                     .cloned()
                     .unwrap_or_else(|| vec!["ecosystem_overview".into()]);
                 let targeted = knowledge::get_for_sections(&sections);
-                Ok(json!({
+                Ok(ToolOutput::json(json!({
                     "information": {"has_data": true, "knowledge_retrieved": true},
                     "targeted_knowledge": targeted,
-                }))
+                })))
             }
             "think_tools" => {
                 let outputs = params.get("outputs").cloned().unwrap_or(Value::Null);
@@ -101,10 +101,10 @@ impl ToolExecutor for HelloWorldTools {
                     "No tool results.".into()
                 };
 
-                Ok(json!({
+                Ok(ToolOutput::json(json!({
                     "information": {"has_data": true, "tools_executed": true},
                     "targeted_knowledge": tool_output,
-                }))
+                })))
             }
             _ => Err(jeeves_core::Error::not_found(format!("Unknown tool: {}", name))),
         }

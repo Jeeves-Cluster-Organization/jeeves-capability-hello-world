@@ -160,9 +160,9 @@ struct MyTools;
 
 #[async_trait]
 impl ToolExecutor for MyTools {
-    async fn execute(&self, name: &str, params: Value) -> jeeves_core::Result<Value> {
+    async fn execute(&self, name: &str, params: Value) -> jeeves_core::Result<ToolOutput> {
         match name {
-            "get_time" => Ok(json!({"time": chrono::Utc::now().to_rfc3339()})),
+            "get_time" => Ok(ToolOutput::json(json!({"time": chrono::Utc::now().to_rfc3339()}))),
             _ => Err(jeeves_core::Error::not_found(format!("Unknown tool: {name}"))),
         }
     }
